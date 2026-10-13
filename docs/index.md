@@ -23,6 +23,17 @@ with Music Assistant 2.10.6.
   plays on.
 - Pairing only while you open a pairing window. No guest mode.
 
+## Web UI
+
+<figure class="shot">
+  <picture>
+    <source srcset="{{ '/assets/screenshots/web-ui-dark.png' | relative_url }}" media="(prefers-color-scheme: dark)">
+    <img src="{{ '/assets/screenshots/web-ui-light.png' | relative_url }}" width="640" height="954"
+      alt="ToothSpin web UI: a phone playing a track on two grouped speakers, and a second phone showing its Music Assistant pairing code">
+  </picture>
+  <figcaption>One phone playing on a speaker group, one waiting for Music Assistant pairing. Demo data.</figcaption>
+</figure>
+
 ## What you need
 
 - Music Assistant 2.10.6 or newer.

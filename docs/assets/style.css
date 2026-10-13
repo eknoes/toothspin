@@ -104,3 +104,12 @@ footer {
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+.shot { margin: 1.25rem auto; max-width: 28rem; text-align: center; }
+.shot img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+.shot figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; }

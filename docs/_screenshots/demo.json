@@ -1,0 +1,42 @@
+{
+  "bluetooth": {"name": "Music Assistant", "address": "00:1A:7D:DA:71:13", "pairing_remaining": null},
+  "devices": [
+    {
+      "address": "AA:BB:CC:00:00:01", "name": "Pixel 9", "paired": true, "trusted": false, "connected": true,
+      "audio": {"codec": "AAC", "now_playing": {"title": "Teardrop", "artist": "Massive Attack"}},
+      "sendspin": {
+        "name": "Alex's Pixel (Bluetooth)", "url": "ws://192.168.1.10:8927/sendspin", "connected": true,
+        "server_name": "Music Assistant", "paired": true, "requested": true, "streaming": true, "signal": true,
+        "pairing_window_open": false, "pairing_requested": false, "pin": null
+      },
+      "source_uri": "sendspin_source://audio_source/demo-pixel"
+    },
+    {
+      "address": "AA:BB:CC:00:00:02", "name": "iPhone", "paired": true, "trusted": false, "connected": false,
+      "audio": null,
+      "sendspin": {
+        "name": "iPhone (Bluetooth)", "url": "ws://192.168.1.10:8927/sendspin", "connected": true,
+        "server_name": "Music Assistant", "paired": false, "requested": false, "streaming": false, "signal": false,
+        "pairing_window_open": true, "pairing_requested": false, "pin": "482913"
+      },
+      "source_uri": "sendspin_source://audio_source/demo-iphone"
+    }
+  ],
+  "speakers": {
+    "connected": true,
+    "list": [
+      {"player_id": "kitchen", "name": "Kitchen", "can_group_with": ["living", "office"],
+       "playing_uri": "sendspin_source://audio_source/demo-pixel", "synced_to": null, "members": ["living"],
+       "volume": 35, "muted": false, "has_volume": true, "has_mute": true},
+      {"player_id": "living", "name": "Living room", "can_group_with": ["kitchen", "office"],
+       "playing_uri": "sendspin_source://audio_source/demo-pixel", "synced_to": "kitchen", "members": [],
+       "volume": 28, "muted": false, "has_volume": true, "has_mute": true},
+      {"player_id": "office", "name": "Office", "can_group_with": ["kitchen", "living"],
+       "playing_uri": null, "synced_to": null, "members": [],
+       "volume": 20, "muted": false, "has_volume": true, "has_mute": false},
+      {"player_id": "tv", "name": "TV soundbar", "can_group_with": [],
+       "playing_uri": null, "synced_to": null, "members": [],
+       "volume": 15, "muted": true, "has_volume": true, "has_mute": true}
+    ]
+  }
+}
