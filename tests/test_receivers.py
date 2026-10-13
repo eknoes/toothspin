@@ -30,7 +30,7 @@ def test_one_receiver_per_paired_phone(tmp_path: Path, monkeypatch) -> None:
         bluetooth = FakeBluetooth()
         receivers = Receivers(
             bluetooth, tmp_path, "ws://127.0.0.1:1/sendspin", AudioCodec.PCM,  # type: ignore[arg-type]
-            "{device} (Bluetooth)",
+            "{device} (Bluetooth)", "sendspin-bt",
         )
         bluetooth.paired = [_device("AA:AA:AA:AA:AA:AA", "Pixel"), _device("BB:BB:BB:BB:BB:BB", "iPhone")]
         await receivers.sync()

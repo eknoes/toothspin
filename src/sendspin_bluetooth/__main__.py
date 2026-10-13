@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import os
+import socket
 from pathlib import Path
 
 from aiohttp import web
@@ -35,6 +36,10 @@ def _parse_args() -> argparse.Namespace:
         "--bt-name", default=env("BT_NAME", "Music Assistant"),
         help="Bluetooth name phones see",
     )
+    parser.add_argument(
+        "--manufacturer", default=env("SENDSPIN_MANUFACTURER", socket.gethostname()),
+        help="Manufacturer shown for each input in Music Assistant (default: host name)",
+    )
     parser.add_argument("--adapter", default=env("BT_ADAPTER", "hci0"))
     parser.add_argument(
         "--codec", default=env("SENDSPIN_CODEC", "pcm"), choices=["pcm", "flac", "opus"],
@@ -56,7 +61,9 @@ async def _run(args: argparse.Namespace) -> None:
     bluetooth = BluetoothManager(
         bus, args.adapter, alias=args.bt_name, on_change=lambda: receivers.notify()
     )
-    receivers = Receivers(bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name)
+    receivers = Receivers(
+        bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name, args.manufacturer
+    )
     await bluetooth.start()
     await receivers.sync()
 

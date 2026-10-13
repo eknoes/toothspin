@@ -10,9 +10,11 @@ import asyncio
 import contextlib
 import logging
 import shutil
+from importlib.metadata import version
 from dataclasses import dataclass
 from pathlib import Path
 
+from aiosendspin.models.core import DeviceInfo
 from aiosendspin.models.types import AudioCodec
 
 from .bluez import BluetoothManager
@@ -38,12 +40,18 @@ class Receivers:
         url: str | None,
         codec: AudioCodec,
         name_format: str,
+        manufacturer: str,
     ) -> None:
         self._bluetooth = bluetooth
         self._data_dir = data_dir / "devices"
         self._url = url
         self._codec = codec
         self._name_format = name_format
+        self._device_info = DeviceInfo(
+            manufacturer=manufacturer,
+            product_name="Bluetooth receiver",
+            software_version=version("sendspin-bluetooth"),
+        )
         self._receivers: dict[str, Receiver] = {}
         self._sync_lock = asyncio.Lock()
         self._sync_pending = False
@@ -94,6 +102,7 @@ class Receivers:
             self._url,
             self._device_dir(address),
             self._codec,
+            self._device_info,
         )
         await source.setup()
         capture = Capture(address, source, source.client.now_us)

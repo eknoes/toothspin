@@ -49,8 +49,10 @@ class SendspinSource:
         url: str | None,
         data_dir: Path,
         codec: AudioCodec = AudioCodec.PCM,
+        device_info: DeviceInfo | None = None,
     ) -> None:
         self._name = name
+        self._device_info = device_info
         self._url = url
         self._data_dir = data_dir
         self._codec = codec
@@ -80,7 +82,7 @@ class SendspinSource:
             client_name=self._name,
             roles=[Roles.SOURCE],
             pairing_store=self._store,
-            device_info=DeviceInfo(product_name="Bluetooth receiver"),
+            device_info=self._device_info,
             pairing_support=PairingSupport(
                 pin_display=self._on_pin,
                 gesture_prompt=self._on_gesture_prompt,
