@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import os
+import signal
 import socket
 from pathlib import Path
 
@@ -84,7 +85,12 @@ async def _run(args: argparse.Namespace) -> None:
     await web.TCPSite(runner, args.web_host, args.web_port).start()
     logger.info("Web UI on http://%s:%d/", args.web_host, args.web_port)
 
+    # We run as PID 1 in the container, where SIGTERM has no default action.
+    stop = asyncio.Event()
+    asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, stop.set)
+    stop_task = asyncio.create_task(stop.wait())
     tasks = [
+        stop_task,
         asyncio.create_task(bluetooth.lost.wait()),
         asyncio.create_task(receivers.failed.wait()),
     ]
@@ -97,7 +103,10 @@ async def _run(args: argparse.Namespace) -> None:
         )
     try:
         await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-        raise SystemExit("Bluetooth stack lost or a receiver failed; exiting to restart")
+        if stop_task.done():
+            logger.info("Stopping")
+        else:
+            raise SystemExit("Bluetooth stack lost or a receiver failed; exiting to restart")
     finally:
         for task in tasks:
             task.cancel()
