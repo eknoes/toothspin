@@ -10,10 +10,10 @@ podman build -t localhost/sendspin-bluetooth:latest "$repo"
 loginctl enable-linger "$USER"
 install -D -m 0644 "$repo/deploy/service/sendspin-bluetooth.container" \
     ~/.config/containers/systemd/sendspin-bluetooth.container
-install -D -m 0644 "$repo/deploy/pipewire/50-sendspin-bluetooth.conf" \
-    ~/.config/wireplumber/wireplumber.conf.d/50-sendspin-bluetooth.conf
 touch ~/.config/sendspin-bluetooth.env
+chmod 600 ~/.config/sendspin-bluetooth.env
+# The image runs its own PipeWire; a host PipeWire would register a second
+# Bluetooth audio receiver with bluetoothd and compete for the phones.
+systemctl --user mask --now pipewire.socket pipewire.service wireplumber.service 2>/dev/null || true
 systemctl --user daemon-reload
-systemctl --user enable --now pipewire.socket wireplumber.service
-systemctl --user restart wireplumber.service
 systemctl --user restart sendspin-bluetooth.service

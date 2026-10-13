@@ -15,6 +15,7 @@ from aiosendspin.models.types import AudioCodec
 from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 
+from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant
 from .receivers import Receivers
@@ -60,11 +61,19 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ma-token", default=env("MA_TOKEN"), help="Long-lived Music Assistant API token"
     )
+    parser.add_argument(
+        "--bundled-pipewire", action=argparse.BooleanOptionalAction,
+        default=env("BUNDLED_PIPEWIRE", "0") == "1",
+        help="Start PipeWire + WirePlumber ourselves (the container image does this)",
+    )
     parser.add_argument("--log-level", default=env("LOG_LEVEL", "INFO"))
     return parser.parse_args()
 
 
 async def _run(args: argparse.Namespace) -> None:
+    audio = AudioStack() if args.bundled_pipewire else None
+    if audio:
+        await audio.start()
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 
     bluetooth = BluetoothManager(
@@ -94,6 +103,8 @@ async def _run(args: argparse.Namespace) -> None:
         asyncio.create_task(bluetooth.lost.wait()),
         asyncio.create_task(receivers.failed.wait()),
     ]
+    if audio:
+        tasks.append(asyncio.create_task(audio.exited.wait()))
     ma_task = asyncio.create_task(ma.run()) if ma else None
     if ma_task:
         # Speaker control is optional: log a crash instead of taking the service down.
@@ -106,7 +117,9 @@ async def _run(args: argparse.Namespace) -> None:
         if stop_task.done():
             logger.info("Stopping")
         else:
-            raise SystemExit("Bluetooth stack lost or a receiver failed; exiting to restart")
+            raise SystemExit(
+                "Bluetooth stack lost, PipeWire exited or a receiver failed; exiting to restart"
+            )
     finally:
         for task in tasks:
             task.cancel()
@@ -116,6 +129,8 @@ async def _run(args: argparse.Namespace) -> None:
         await receivers.close()
         await runner.cleanup()
         bus.disconnect()
+        if audio:
+            await audio.stop()
 
 
 def main() -> None:

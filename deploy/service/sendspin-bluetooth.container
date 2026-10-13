@@ -2,8 +2,6 @@
 # ~/.config/containers/systemd/sendspin-bluetooth.container
 [Unit]
 Description=Sendspin Bluetooth source
-Requires=pipewire.socket
-After=pipewire.socket wireplumber.service
 
 [Quadlet]
 # Quadlet would otherwise wait for the system network-online.target, which
@@ -19,10 +17,9 @@ Network=host
 # Run as core's own uid inside the container: D-Bus EXTERNAL auth compares
 # the uid the client claims with the socket's peer credentials.
 UserNS=keep-id
-# Talk to bluetoothd on the host bus and read audio from core's PipeWire.
-# SELinux would otherwise deny container_t access to both sockets.
+# Talk to bluetoothd on the host bus; the image brings its own PipeWire.
+# SELinux would otherwise deny container_t access to the bus socket.
 Volume=/run/dbus/system_bus_socket:/run/dbus/system_bus_socket
-Volume=%t/pipewire-0:/run/pipewire/pipewire-0
 SecurityLabelDisable=true
 Volume=sendspin-bluetooth-data:/data
 # Optional overrides (SENDSPIN_URL, SENDSPIN_NAME, BT_NAME, ...).
