@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import stat
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -35,7 +36,10 @@ class SourceStatus:
     connected: bool
     server_name: str | None
     paired: bool
+    requested: bool
+    """Music Assistant asked for this input's audio."""
     streaming: bool
+    """The stream to Music Assistant is set up (lags ``requested`` briefly)."""
     signal: bool
     pairing_window_open: bool
     pairing_requested: bool
@@ -61,6 +65,7 @@ class SendspinSource:
         self._paired_servers: set[str] = set()
         self._lock = asyncio.Lock()
         self._start_requested = False
+        self._stopped_at = 0.0
         self._capture: SourceCapture | None = None
         self._format = CAPTURE_FORMAT
         self._signal = False
@@ -152,6 +157,7 @@ class SendspinSource:
     async def _handle_stop(self) -> None:
         async with self._lock:
             self._start_requested = False
+            self._stopped_at = time.monotonic()
             await self._stop_capture()
 
     async def push(self, pcm: bytes, fmt: PcmFormat, timestamp_us: int) -> None:
@@ -267,6 +273,9 @@ class SendspinSource:
             connected=client.connected,
             server_name=info.name if info else None,
             paired=info.server_id in self._paired_servers if info else bool(self._paired_servers),
+            # MA stops and restarts the input whenever its speakers regroup;
+            # don't flicker to "not playing" for that.
+            requested=self._start_requested or time.monotonic() - self._stopped_at < 2.0,
             streaming=self._capture is not None,
             signal=self._signal,
             pairing_window_open=client.pairing_window_open,

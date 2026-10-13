@@ -146,7 +146,8 @@ function renderAudio(d) {
     : "";
   return `${track}<div><span class="dot ${ss && ss.signal ? "ok" : ""}"></span>
       ${ss && ss.signal ? "Playing" : "Silent"} · ${esc(d.audio.codec || "Bluetooth")} ·
-      ${ss && ss.streaming ? "streaming to Music Assistant" : "not requested by Music Assistant"}</div>`;
+      ${!ss || !ss.requested ? "not playing in Music Assistant"
+        : ss.streaming ? "streaming to Music Assistant" : "starting stream…"}</div>`;
 }
 
 function renderSendspin(d) {
