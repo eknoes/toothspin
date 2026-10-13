@@ -37,10 +37,18 @@ class Speaker:
     """Group leader this speaker follows, if it isn't the leader itself."""
     members: tuple[str, ...]
     """Group members incl. itself, when this speaker leads a group."""
+    volume: int | None
+    muted: bool
+    has_volume: bool
+    has_mute: bool
+    """Whether the speaker can mute itself; otherwise mute is emulated."""
 
 
-def speakers(players: list[dict[str, Any]]) -> list[Speaker]:
+def speakers(
+    players: list[dict[str, Any]], emulated_mutes: dict[str, int] | None = None
+) -> list[Speaker]:
     """Available output players, by name."""
+    emulated_mutes = emulated_mutes or {}
     result = []
     for p in players:
         if not p.get("available") or p.get("type") not in ("player", "group"):
@@ -57,6 +65,10 @@ def speakers(players: list[dict[str, Any]]) -> list[Speaker]:
                 playing_uri=active if playing else None,
                 synced_to=p.get("synced_to"),
                 members=tuple(p.get("group_members") or ()),
+                volume=p.get("volume_level"),
+                muted=bool(p.get("volume_muted")) or p["player_id"] in emulated_mutes,
+                has_volume=p.get("volume_control") not in (None, "none"),
+                has_mute=p.get("mute_control") not in (None, "none"),
             )
         )
     return sorted(result, key=lambda s: s.name.lower())
@@ -160,3 +172,36 @@ async def toggle(ma: MusicAssistant, uri: str, player_id: str, on: bool) -> None
             if _applied(ma.players, command, args) or loop.time() > deadline:
                 break
             await asyncio.sleep(SETTLE_POLL_S)
+
+
+class Volumes:
+    """Volume and mute; mute is emulated (volume 0, then restore) where unsupported."""
+
+    def __init__(self, ma: MusicAssistant) -> None:
+        self._ma = ma
+        # player_id -> volume to restore, for speakers muted by emulation.
+        self.emulated_mutes: dict[str, int] = {}
+
+    def _speaker(self, player_id: str) -> Speaker:
+        for speaker in speakers(self._ma.players, self.emulated_mutes):
+            if speaker.player_id == player_id:
+                return speaker
+        raise MusicAssistantError(f"speaker {player_id} is not available")
+
+    async def set_volume(self, player_id: str, volume: int) -> None:
+        volume = max(0, min(100, volume))
+        self.emulated_mutes.pop(player_id, None)
+        await self._ma.call("players/cmd/volume_set", player_id=player_id, volume_level=volume)
+        await self._ma.refresh()
+
+    async def set_muted(self, player_id: str, muted: bool) -> None:
+        speaker = self._speaker(player_id)
+        if speaker.has_mute:
+            await self._ma.call("players/cmd/volume_mute", player_id=player_id, muted=muted)
+        elif muted and player_id not in self.emulated_mutes:
+            self.emulated_mutes[player_id] = speaker.volume or 0
+            await self._ma.call("players/cmd/volume_set", player_id=player_id, volume_level=0)
+        elif not muted and player_id in self.emulated_mutes:
+            restore = self.emulated_mutes.pop(player_id)
+            await self._ma.call("players/cmd/volume_set", player_id=player_id, volume_level=restore)
+        await self._ma.refresh()

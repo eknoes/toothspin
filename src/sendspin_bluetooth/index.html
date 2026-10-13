@@ -55,11 +55,29 @@
   .phone + .phone { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
   .phone .name { font-weight: 600; font-size: 16px; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-  .chip { border-radius: 999px; padding: 5px 12px; }
-  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-  .chip .other { opacity: .75; font-size: 12px; }
-  .chip.busy { opacity: .6; }
+  .spks { display: grid; gap: 2px; margin-top: 4px; }
+  .spk { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(70px, 150px) 2.2em auto;
+         align-items: center; gap: 10px; padding: 4px 0; }
+  .spk .spk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spk .other { color: var(--muted); font-size: 12px; }
+  .spk input[type=range] { width: 100%; accent-color: var(--accent); }
+  .spk .vol { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; text-align: right; }
+  .switch { width: 38px; height: 22px; padding: 0; border-radius: 999px; position: relative;
+            background: var(--line); border: none; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+                   border-radius: 50%; background: var(--card); transition: left .15s; }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { left: 19px; }
+  .switch.busy { opacity: .6; }
+  .icon { padding: 4px 6px; line-height: 0; }
+  .icon svg { width: 18px; height: 18px; }
+  .icon.muted { color: var(--danger); }
+  @media (max-width: 520px) {
+    /* Name on its own line, slider + volume + mute below. */
+    .spk { grid-template-columns: auto minmax(0, 1fr) 2.2em auto; row-gap: 2px; padding: 6px 0; }
+    .spk .spk-name { grid-column: 2 / -1; }
+    .spk input[type=range] { grid-column: 1 / 3; }
+  }
   .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 6px; }
 </style>
 </head>
@@ -95,6 +113,10 @@ let confirmRemove = null;
 let editing = null;
 // Speaker toggles in flight, as "address|player_id".
 const pending = new Set();
+// True while a volume slider is being dragged (pauses rendering).
+let sliding = false;
+const ICON_SOUND = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
+const ICON_MUTED = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>`;
 
 async function post(path, body) {
   const res = await fetch(path, {
@@ -163,19 +185,28 @@ function renderSpeakers(d) {
   for (const other of state.devices) if (other.source_uri) owner[other.source_uri] = other.name;
   const selected = sp.list.filter((s) => s.playing_uri === d.source_uri);
   const leader = selected.find((s) => !s.synced_to);
-  const chips = sp.list.map((s) => {
+  const rows = sp.list.map((s) => {
     const on = s.playing_uri === d.source_uri;
     const blocked = !on && leader && !leader.can_group_with.includes(s.player_id);
     const key = `${d.address}|${s.player_id}`;
     const usedBy = !on && s.playing_uri ? owner[s.playing_uri] || "another input" : null;
     const title = blocked ? `Can't play in sync with ${leader.name}`
-      : usedBy ? `Playing ${usedBy}; turning it on moves it here` : "";
-    return `<button class="chip ${on ? "on" : ""} ${pending.has(key) ? "busy" : ""}"
-        data-speaker="${esc(s.player_id)}" data-on="${on ? "0" : "1"}" data-addr="${esc(d.address)}"
-        ${blocked || pending.has(key) ? "disabled" : ""} title="${esc(title)}">
-        ${esc(s.name)}${usedBy ? ` <span class="other">· ${esc(usedBy)}</span>` : ""}</button>`;
+      : usedBy ? `Playing ${usedBy}; turning it on moves it here` : on ? "Turn off" : "Play here";
+    const vol = s.volume ?? 0;
+    return `<div class="spk">
+        <button class="switch ${on ? "on" : ""} ${pending.has(key) ? "busy" : ""}" aria-pressed="${on}"
+          aria-label="${esc(s.name)}" data-speaker="${esc(s.player_id)}" data-on="${on ? "0" : "1"}"
+          data-addr="${esc(d.address)}" ${blocked || pending.has(key) ? "disabled" : ""} title="${esc(title)}"></button>
+        <span class="spk-name ${blocked ? "muted" : ""}" title="${esc(title)}">${esc(s.name)}${usedBy ? ` <span class="other">· ${esc(usedBy)}</span>` : ""}</span>
+        <input type="range" min="0" max="100" value="${vol}" data-vol="${esc(s.player_id)}"
+          aria-label="Volume ${esc(s.name)}" ${s.has_volume ? "" : "disabled"}>
+        <span class="vol">${s.has_volume ? vol : "–"}</span>
+        <button class="icon ${s.muted ? "muted" : ""}" data-mute="${esc(s.player_id)}" data-muted="${s.muted ? "0" : "1"}"
+          aria-label="${s.muted ? "Unmute" : "Mute"} ${esc(s.name)}" title="${s.muted ? "Unmute" : "Mute"}"
+          ${s.has_volume || s.has_mute ? "" : "disabled"}>${s.muted ? ICON_MUTED : ICON_SOUND}</button>
+      </div>`;
   }).join("");
-  return `<div class="label">Speakers</div><div class="chips">${chips || '<span class="muted">No speakers available</span>'}</div>`;
+  return `<div class="label">Speakers</div><div class="spks">${rows || '<span class="muted">No speakers available</span>'}</div>`;
 }
 
 function render() {
@@ -229,6 +260,17 @@ function render() {
       }
     };
   }
+  for (const input of $("devices").querySelectorAll("input[data-vol]")) {
+    input.onpointerdown = () => { sliding = true; };
+    input.oninput = () => { input.nextElementSibling.textContent = input.value; };
+    input.onchange = async () => {
+      sliding = false;
+      await post("/api/speakers/volume", {player_id: input.dataset.vol, volume: Number(input.value)});
+    };
+  }
+  for (const b of $("devices").querySelectorAll("button[data-mute]")) {
+    b.onclick = () => post("/api/speakers/volume", {player_id: b.dataset.mute, muted: b.dataset.muted === "1"});
+  }
   for (const b of $("devices").querySelectorAll("button[data-rename]")) {
     b.onclick = () => {
       editing = b.dataset.rename; render();
@@ -256,11 +298,13 @@ async function refresh() {
   try {
     const res = await fetch("/api/state");
     state = await res.json();
-    if (!editing) render();
+    if (!editing && !sliding) render();
   } catch (e) {
     $("error").textContent = "Lost connection to the receiver.";
   }
 }
+// A click on a slider without moving it fires no change event.
+window.addEventListener("pointerup", () => setTimeout(() => { sliding = false; }, 500));
 refresh();
 setInterval(refresh, 1500);
 </script>

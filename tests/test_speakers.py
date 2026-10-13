@@ -114,3 +114,48 @@ def test_applied_reflects_ma_state() -> None:
     assert not _applied(playing, "players/cmd/set_members",
                         {"target_player": "buero", "player_ids_to_remove": ["living"]})
     assert not _applied(playing, "players/cmd/stop", {"player_id": "buero"})
+
+
+class FakeMA:
+    def __init__(self, players) -> None:
+        self.players = players
+        self.calls: list[tuple[str, dict]] = []
+
+    async def call(self, command, **args):
+        self.calls.append((command, args))
+        if command == "players/cmd/volume_set":
+            for p in self.players:
+                if p["player_id"] == args["player_id"]:
+                    p["volume_level"] = args["volume_level"]
+
+    async def refresh(self) -> None:
+        pass
+
+
+def test_mute_uses_native_mute_or_emulates_it() -> None:
+    import asyncio
+
+    from sendspin_bluetooth.speakers import Volumes
+
+    native = {**_player("couch"), "mute_control": "native", "volume_control": "native", "volume_level": 30}
+    squeeze = {**_player("buero"), "mute_control": "none", "volume_control": "native", "volume_level": 40}
+    ma = FakeMA([native, squeeze])
+    volumes = Volumes(ma)  # type: ignore[arg-type]
+
+    async def scenario() -> None:
+        await volumes.set_muted("couch", True)
+        assert ma.calls[-1] == ("players/cmd/volume_mute", {"player_id": "couch", "muted": True})
+
+        await volumes.set_muted("buero", True)
+        assert squeeze["volume_level"] == 0
+        assert [s.muted for s in speakers(ma.players, volumes.emulated_mutes)
+                if s.player_id == "buero"] == [True]
+        await volumes.set_muted("buero", False)
+        assert squeeze["volume_level"] == 40
+
+        # Changing the volume while emulated-muted ends the mute.
+        await volumes.set_muted("buero", True)
+        await volumes.set_volume("buero", 25)
+        assert squeeze["volume_level"] == 25 and "buero" not in volumes.emulated_mutes
+
+    asyncio.run(scenario())

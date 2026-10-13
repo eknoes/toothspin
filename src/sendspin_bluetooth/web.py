@@ -28,6 +28,7 @@ def create_app(
     ma: MusicAssistant | None = None,
 ) -> web.Application:
     index = files(__package__).joinpath("index.html").read_text()
+    volumes = speakers.Volumes(ma) if ma else None
 
     async def get_index(_: web.Request) -> web.Response:
         return web.Response(text=index, content_type="text/html")
@@ -66,7 +67,7 @@ def create_app(
                     "connected": ma.connected,
                     "list": [
                         {**asdict(s), "can_group_with": sorted(s.can_group_with)}
-                        for s in speakers.speakers(ma.players)
+                        for s in speakers.speakers(ma.players, volumes.emulated_mutes)
                     ],
                 },
             }
@@ -119,6 +120,19 @@ def create_app(
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
 
+    async def post_speaker_volume(request: web.Request) -> web.Response:
+        if volumes is None:
+            raise web.HTTPNotFound
+        body = await request.json()
+        try:
+            if "muted" in body:
+                await volumes.set_muted(str(body["player_id"]), bool(body["muted"]))
+            else:
+                await volumes.set_volume(str(body["player_id"]), int(body["volume"]))
+        except (MusicAssistantError, TimeoutError) as err:
+            return web.json_response({"ok": False, "error": str(err)}, status=502)
+        return web.json_response({"ok": True})
+
     async def post_sendspin_pairing(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
         if receiver is None:
@@ -134,6 +148,7 @@ def create_app(
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)
     app.router.add_post("/api/sendspin/{address}/name", post_sendspin_name)
     app.router.add_post("/api/speakers/{address}/toggle", post_speaker_toggle)
+    app.router.add_post("/api/speakers/volume", post_speaker_volume)
     return app
 
 
