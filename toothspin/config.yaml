@@ -1,0 +1,34 @@
+# https://developers.home-assistant.io/docs/apps/configuration
+name: ToothSpin
+version: "0.1.0"
+slug: toothspin
+description: Stream any phone over Bluetooth into Music Assistant
+url: https://github.com/eknoes/toothspin
+image: ghcr.io/eknoes/toothspin
+arch:
+  - aarch64
+  - amd64
+# Finds Music Assistant via mDNS and reaches it as a Sendspin client.
+host_network: true
+# Uses the host's BlueZ (bluetoothd) over D-Bus; no raw Bluetooth access.
+host_dbus: true
+# Only to read the ingress port the Supervisor assigns (ingress_port: 0).
+hassio_api: true
+ingress: true
+ingress_port: 0
+panel_icon: mdi:bluetooth-audio
+panel_title: ToothSpin
+options:
+  bluetooth_name: Music Assistant
+  input_name: "{device} (Bluetooth)"
+  adapter: hci0
+  log_level: info
+schema:
+  bluetooth_name: str
+  input_name: str
+  adapter: match(^hci[0-9]+$)
+  ma_token: password?
+  ma_url: url?
+  sendspin_url: match(^wss?://.+)?
+  lan_port: port?
+  log_level: list(debug|info|warning|error)

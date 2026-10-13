@@ -1,0 +1,38 @@
+configuration:
+  bluetooth_name:
+    name: Bluetooth name
+    description: The name phones see when they search for Bluetooth devices.
+  input_name:
+    name: Input name in Music Assistant
+    description: >-
+      Default name of each phone's input in Music Assistant. {device} is the
+      phone's Bluetooth name. Each input can also be renamed in the app.
+  adapter:
+    name: Bluetooth adapter
+    description: >-
+      The adapter phones connect to, e.g. hci0 or hci1. Use a dedicated USB
+      dongle and turn it off in Home Assistant's Bluetooth integration.
+  ma_token:
+    name: Music Assistant token
+    description: >-
+      A long-lived token from Music Assistant (your profile, Tokens). Enables
+      choosing speakers per phone in the app.
+  ma_url:
+    name: Music Assistant URL
+    description: >-
+      Only needed if Music Assistant isn't found automatically, e.g.
+      http://homeassistant.local:8095.
+  sendspin_url:
+    name: Sendspin server URL
+    description: >-
+      Only needed if Music Assistant's Sendspin server isn't found
+      automatically, e.g. ws://homeassistant.local:8927/sendspin.
+  lan_port:
+    name: LAN port
+    description: >-
+      Also serve the web interface on this port to the whole network,
+      without Home Assistant's login. Leave empty to only use it through
+      Home Assistant.
+  log_level:
+    name: Log level
+    description: How much the app logs.
