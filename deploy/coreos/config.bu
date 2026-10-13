@@ -1,0 +1,23 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - "ssh-ed25519 AAAA... your-public-key"
+storage:
+  files:
+    - path: /etc/hostname
+      mode: 0644
+      contents:
+        inline: sendspin-bt
+    - path: /etc/vconsole.conf
+      mode: 0644
+      contents:
+        inline: KEYMAP=de
+systemd:
+  units:
+    - name: podman.socket
+      enabled: true
+    - name: bluetooth.service
+      enabled: true

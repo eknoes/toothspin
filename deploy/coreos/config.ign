@@ -1,0 +1,45 @@
+{
+  "ignition": {
+    "version": "3.5.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-ed25519 AAAA... your-public-key"
+        ]
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "path": "/etc/hostname",
+        "mode": 420,
+        "contents": {
+          "source": "data:,sendspin-bt"
+        }
+      },
+      {
+        "path": "/etc/vconsole.conf",
+        "mode": 420,
+        "contents": {
+          "source": "data:,KEYMAP%3Dde"
+        }
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "name": "podman.socket",
+        "enabled": true
+      },
+      {
+        "name": "bluetooth.service",
+        "enabled": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sendspin-bluetooth"
+version = "0.1.0"
+description = "Bluetooth A2DP receiver that streams into Music Assistant as a Sendspin source"
+requires-python = ">=3.12"
+dependencies = [
+    # Pinned to what Music Assistant 2.10.6 ships (aiosendspin[server]==9.1.1):
+    # 10.x renamed the client_stream/* messages a 9.1.1 server expects.
+    "aiosendspin[source]==9.1.1",
+    "dbus-fast==5.0.9",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==9.1.1"]
+
+[project.scripts]
+sendspin-bluetooth = "sendspin_bluetooth.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sendspin_bluetooth = ["*.html"]

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bluetooth Receiver</title>
+<style>
+  :root {
+    --bg: #f5f5f4; --card: #fff; --text: #1c1917; --muted: #78716c;
+    --line: #e7e5e4; --accent: #2563eb; --accent-text: #fff;
+    --ok: #16a34a; --warn: #d97706; --danger: #dc2626;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1917; --card: #292524; --text: #f5f5f4; --muted: #a8a29e;
+      --line: #44403c; --accent: #60a5fa; --accent-text: #0c0a09;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+       color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  section { background: var(--card); border: 1px solid var(--line);
+            border-radius: 12px; padding: 16px; }
+  .muted { color: var(--muted); }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .row > .grow { flex: 1; min-width: 0; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { padding: 10px 0; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; padding-top: 0; }
+  button {
+    font: inherit; border-radius: 8px; padding: 7px 14px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; color: var(--text);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent);
+                   color: var(--accent-text); font-weight: 600; }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+         background: var(--line); margin-right: 6px; vertical-align: 1px; }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); }
+  .pin { font: 600 40px/1.1 ui-monospace, monospace; letter-spacing: .15em;
+         margin: 8px 0; }
+  .notice { border-left: 3px solid var(--accent); padding: 8px 12px; margin-top: 12px; }
+  .error { color: var(--danger); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title">Bluetooth Receiver</h1>
+    <div class="muted" id="subtitle"></div>
+  </header>
+
+  <section>
+    <h2>Phones</h2>
+    <div class="row">
+      <div class="grow" id="bt-pairing-text"></div>
+      <button class="primary" id="bt-pairing-btn"></button>
+    </div>
+    <ul id="devices" style="margin-top:16px"></ul>
+  </section>
+
+  <section>
+    <h2>Now playing</h2>
+    <div id="audio"></div>
+  </section>
+
+  <section>
+    <h2>Music Assistant</h2>
+    <div id="ma"></div>
+  </section>
+
+  <div class="error" id="error"></div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+let state = null;
+let confirmRemove = null;
+
+async function post(path, body) {
+  const res = await fetch(path, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body ?? {}),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    $("error").textContent = data.error || `Request failed (${res.status})`;
+  } else {
+    $("error").textContent = "";
+  }
+  await refresh();
+}
+
+function render() {
+  const bt = state.bluetooth, ss = state.sendspin, audio = state.audio;
+  $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
+
+  const pairing = bt.pairing_remaining !== null;
+  $("bt-pairing-text").innerHTML = pairing
+    ? `<span class="dot warn"></span>Pairing open — on the phone, connect to <b>${esc(bt.name)}</b> (${bt.pairing_remaining}s left)`
+    : `<span class="muted">Add a new phone by opening pairing for two minutes.</span>`;
+  const btn = $("bt-pairing-btn");
+  btn.textContent = pairing ? "Stop pairing" : "Add phone";
+  btn.className = pairing ? "" : "primary";
+  btn.onclick = () => post("/api/bluetooth/pairing", {open: !pairing});
+
+  $("devices").innerHTML = bt.devices.length ? bt.devices.map((d) => `
+    <li class="row">
+      <div class="grow">
+        <div><span class="dot ${d.connected ? "ok" : ""}"></span>${esc(d.name)}</div>
+        <div class="muted">${esc(d.address)} · ${d.connected ? "connected" : "not connected"}</div>
+      </div>
+      ${d.connected ? `<button data-addr="${esc(d.address)}" data-action="disconnect">Disconnect</button>` : ""}
+      <button class="danger" data-addr="${esc(d.address)}" data-action="remove">${confirmRemove === d.address ? "Really remove?" : "Remove"}</button>
+    </li>`).join("") : `<li class="muted">No phones paired yet.</li>`;
+  for (const b of $("devices").querySelectorAll("button")) {
+    b.onclick = () => {
+      if (b.dataset.action === "remove" && confirmRemove !== b.dataset.addr) {
+        confirmRemove = b.dataset.addr; render();
+        setTimeout(() => { confirmRemove = null; render(); }, 4000);
+        return;
+      }
+      confirmRemove = null;
+      post(`/api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`);
+    };
+  }
+
+  $("audio").innerHTML = audio
+    ? `<div><span class="dot ${ss.signal ? "ok" : ""}"></span>${esc(audio.device)}
+         ${ss.signal ? "is playing" : "is connected, silent"}</div>
+       <div class="muted">${esc(audio.codec || "Bluetooth")} ·
+         ${ss.streaming ? "streaming to Music Assistant" : "not requested by Music Assistant"}</div>`
+    : `<span class="muted">No phone streaming.</span>`;
+
+  let ma;
+  if (!ss.connected) {
+    ma = `<div><span class="dot"></span>Not connected</div>
+          <div class="muted">${ss.url ? esc(ss.url) : "Searching for a server…"}</div>`;
+  } else {
+    ma = `<div><span class="dot ${ss.paired ? "ok" : "warn"}"></span>
+            Connected to ${esc(ss.server_name || ss.url)}${ss.paired ? ", paired" : ", not paired"}</div>`;
+  }
+  if (ss.pin) {
+    ma += `<div class="notice">Enter this code in Music Assistant:
+             <div class="pin">${esc(ss.pin)}</div></div>`;
+  } else if (ss.pairing_requested) {
+    ma += `<div class="notice row"><div class="grow">Music Assistant wants to pair.</div>
+             <button class="primary" id="ss-allow">Allow</button></div>`;
+  } else if (!ss.paired && ss.connected) {
+    ma += `<div class="notice">To pair: in Music Assistant's settings, open the device
+             “${esc(ss.name)}” and choose <b>Pair the device</b>, then allow it here.
+             <div style="margin-top:8px"><button id="ss-allow" ${ss.pairing_window_open ? "disabled" : ""}>
+             ${ss.pairing_window_open ? "Pairing allowed — waiting for Music Assistant" : "Allow pairing"}</button></div></div>`;
+  }
+  $("ma").innerHTML = ma;
+  const allow = $("ss-allow");
+  if (allow) allow.onclick = () => post("/api/sendspin/pairing");
+}
+
+async function refresh() {
+  try {
+    const res = await fetch("/api/state");
+    state = await res.json();
+    render();
+  } catch (e) {
+    $("error").textContent = "Lost connection to the receiver.";
+  }
+}
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>
