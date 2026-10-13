@@ -17,25 +17,43 @@ phone becomes its own Live Input in Music Assistant.
 
 ## Setup
 
-On the CoreOS VM ([deploy/coreos](deploy/coreos/)), as `core`, from a copy
-of this repo:
+The container image is self-contained (its own PipeWire, ~120 MB). The host
+only needs:
 
-1. Layer BlueZ and PipeWire (once):
-   ```bash
-   sudo rpm-ostree install --apply-live bluez usbutils pipewire wireplumber pipewire-utils
-   ```
-2. Install our BlueZ config (speaker device class):
-   ```bash
-   deploy/bluetooth/install.sh
-   ```
-3. Configure WirePlumber, then build and start the service:
-   ```bash
-   deploy/service/install.sh
-   ```
-   `wpctl status` lists a connected phone under Devices; its capture node
-   only appears under Sources while the phone is playing.
+- **BlueZ** (`bluetoothd`) running with the USB dongle. Recommended: our
+  [main.conf](deploy/bluetooth/main.conf), so phones see a speaker and BlueZ
+  doesn't reconnect phones by itself.
+- **No other Bluetooth audio stack** on the host (a desktop PipeWire or
+  PulseAudio with Bluetooth would compete for the phones).
 
-The web UI is then on `http://<vm>:8080/`. It has no login — keep it on the
+### Any Linux host (Docker / Podman)
+
+```bash
+docker build -t sendspin-bluetooth .
+docker run -d --name sendspin-bluetooth --restart unless-stopped \
+  --network host \
+  -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
+  -v sendspin-bluetooth-data:/data \
+  --security-opt label=disable \
+  -e MA_URL=http://<music-assistant>:8095 -e MA_TOKEN=<token> \
+  sendspin-bluetooth
+```
+
+`--network host` is for finding Music Assistant via mDNS and the web UI on
+:8080; `label=disable` only matters on SELinux hosts. Rootless Podman also
+needs `--userns keep-id`, so D-Bus sees your own uid.
+
+### The CoreOS VM
+
+On the VM ([deploy/coreos](deploy/coreos/)), as `core`, from a copy of this
+repo:
+
+1. Layer BlueZ (once): `sudo rpm-ostree install --apply-live bluez usbutils`
+2. Install our BlueZ config: `deploy/bluetooth/install.sh`
+3. Build and start the rootless Quadlet unit: `deploy/service/install.sh`
+   (it also masks a host PipeWire, if one is installed).
+
+The web UI is then on `http://<host>:8080/`. It has no login — keep it on the
 home LAN.
 
 ### Configuration
