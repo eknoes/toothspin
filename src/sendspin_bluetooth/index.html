@@ -66,6 +66,9 @@
   .phone .title .icon { border: none; padding: 4px; color: var(--muted); }
   .phone .title .icon svg { width: 15px; height: 15px; }
   .phone .sub { color: var(--muted); font-size: 12px; margin-top: -2px; }
+  .phone.mine { border-left: 3px solid var(--accent); padding-left: 12px; margin-left: -15px; }
+  .phone .title .star { margin-left: auto; }
+  .phone .title .star.on { color: var(--accent); }
   .name-input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line);
                 background: transparent; color: inherit; flex: 1; min-width: 0; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
@@ -125,6 +128,15 @@ let confirmRemove = null;
 // Address of the phone whose Music Assistant name is being edited. Rendering
 // pauses meanwhile so the 1.5 s refresh doesn't wipe the text field.
 let editing = null;
+// The phone this browser/app belongs to, chosen with the star. A web page
+// can't tell which Bluetooth phone it runs on, so it's remembered here.
+let myPhone = null;
+try { myPhone = localStorage.getItem("myPhone"); } catch (e) {}
+function setMyPhone(address) {
+  myPhone = myPhone === address ? null : address;
+  try { myPhone ? localStorage.setItem("myPhone", myPhone) : localStorage.removeItem("myPhone"); } catch (e) {}
+  render();
+}
 // Speaker toggles in flight, as "address|player_id".
 const pending = new Set();
 // True while a volume slider is being dragged (pauses rendering).
@@ -217,6 +229,7 @@ function renderSpeakers(d) {
   return `<div class="label">Speakers</div><div class="spks">${rows || '<span class="muted">No speakers available</span>'}</div>`;
 }
 
+const ICON_STAR = (on) => `<svg viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>`;
 const ICON_PENCIL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>`;
 
 function renderTitle(d) {
@@ -229,7 +242,10 @@ function renderTitle(d) {
          <button data-cancel="1">Cancel</button></div>`
     : `<div class="title"><span class="dot ${d.connected ? "ok" : ""}"></span><b>${esc(title)}</b>
          ${ss ? `<button class="icon" data-rename="${esc(d.address)}" title="Rename in Music Assistant"
-           aria-label="Rename">${ICON_PENCIL}</button>` : ""}</div>`;
+           aria-label="Rename">${ICON_PENCIL}</button>` : ""}
+         <button class="icon star ${myPhone === d.address ? "on" : ""}" data-mine="${esc(d.address)}"
+           title="${myPhone === d.address ? "This is my phone" : "Mark as my phone (shown first)"}"
+           aria-pressed="${myPhone === d.address}" aria-label="This is my phone">${ICON_STAR(myPhone === d.address)}</button></div>`;
   return `${head}<div class="sub">${esc(d.name)} · ${esc(d.address)}</div>`;
 }
 
@@ -246,8 +262,9 @@ function render() {
   btn.className = pairing ? "" : "primary";
   btn.onclick = () => post("/api/bluetooth/pairing", {open: !pairing});
 
-  $("devices").innerHTML = state.devices.length ? state.devices.map((d) => `
-    <div class="phone">
+  const devices = [...state.devices].sort((a, b) => (b.address === myPhone) - (a.address === myPhone));
+  $("devices").innerHTML = devices.length ? devices.map((d) => `
+    <div class="phone ${d.address === myPhone ? "mine" : ""}">
       ${renderTitle(d)}
       ${renderAudio(d)}
       ${renderSpeakers(d)}
@@ -291,6 +308,9 @@ function render() {
         pending.delete(key); render();
       }
     };
+  }
+  for (const b of $("devices").querySelectorAll("button[data-mine]")) {
+    b.onclick = () => setMyPhone(b.dataset.mine);
   }
   for (const input of $("devices").querySelectorAll("input[data-vol]")) {
     input.onpointerdown = () => { sliding = true; };
