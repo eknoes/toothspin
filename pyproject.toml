@@ -1,11 +1,13 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "toothspin"
 version = "0.1.0"
 description = "Bluetooth audio input for Sendspin and Music Assistant"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     # Pinned to what Music Assistant 2.10.6 ships (aiosendspin[server]==9.1.1):
