@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if page.title %}{{ site.title }} · {{ page.title }}{% else %}{{ site.title }}{% endif %}</title>
+<meta name="description" content="{{ page.description | default: site.description }}">
+<link rel="icon" href="{{ '/assets/logo.svg' | relative_url }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+</head>
+<body>
+<header>
+  <a class="home" href="{{ '/' | relative_url }}"><img src="{{ '/assets/logo.svg' | relative_url }}" alt="">{{ site.title }}</a>
+  <nav>
+    {%- for item in site.nav %}
+    <a href="{{ item.url | relative_url }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.title }}</a>
+    {%- endfor %}
+    <a href="https://github.com/{{ site.repository }}">Source</a>
+  </nav>
+</header>
+
+<main>
+  {%- if page.hero %}
+  <div class="hero">
+    <img src="{{ '/assets/logo.svg' | relative_url }}" alt="{{ site.title }} logo">
+    <h1>{{ site.title }}</h1>
+    <p class="lede">{{ page.hero }}</p>
+  </div>
+  {%- else %}
+  <h1>{{ page.title }}</h1>
+  {%- if page.lede %}
+  <p class="lede">{{ page.lede }}</p>
+  {%- endif %}
+  {%- endif %}
+
+  {%- if page.alpha %}
+  <div class="alpha"><strong>Alpha.</strong> {{ page.alpha }}</div>
+  {%- endif %}
+
+  {{ content }}
+</main>
+
+<footer>
+  {{ site.title }} is an independent project, not affiliated with Music
+  Assistant or Sendspin. · <a href="https://github.com/{{ site.repository }}">GitHub</a>
+</footer>
+</body>
+</html>

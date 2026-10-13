@@ -1,0 +1,13 @@
+title: ToothSpin
+description: Bluetooth A2DP receiver that feeds phone audio into Music Assistant as a Sendspin source.
+repository: eknoes/toothspin
+
+# GitHub Pages fills in baseurl for project sites; set it when building elsewhere.
+
+markdown: kramdown
+
+nav:
+  - title: Overview
+    url: /overview.html
+  - title: Install
+    url: /install.html
