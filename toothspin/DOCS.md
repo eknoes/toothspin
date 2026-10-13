@@ -72,6 +72,10 @@ instead: select a player, open **Browse**, pick the phone's input and press
 - Phones may list the dongle as a computer rather than a speaker: the
   device class is set in the host's BlueZ configuration, which the app
   doesn't change. Audio works either way.
+- ToothSpin's audio stack offers to receive Bluetooth audio on every
+  adapter of the host, not only the configured one. Phones can only pair
+  through ToothSpin's pairing window on its own adapter, so in practice only
+  that one is used.
 - Music Assistant identifies each phone's input by a key stored in the
   app's data. Removing a phone in ToothSpin also removes that key; remove
   the matching device in Music Assistant too. App backups include the keys.
