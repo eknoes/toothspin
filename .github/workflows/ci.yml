@@ -29,8 +29,24 @@ jobs:
           PY
           node --check /tmp/page.js
 
+  app:
+    # The Home Assistant App in toothspin/: lint like HA's example repo does,
+    # and keep its version (the image tag HA pulls) in step with the package.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint the Home Assistant App
+        uses: frenck/action-app-linter@v2.21.1
+        with:
+          path: ./toothspin
+      - name: App version matches the package version
+        run: |
+          package=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          app=$(python3 -c "import yaml; print(yaml.safe_load(open('toothspin/config.yaml'))['version'])")
+          test "$package" = "$app" || { echo "pyproject.toml has $package, toothspin/config.yaml has $app"; exit 1; }
+
   image:
-    needs: test
+    needs: [test, app]
     runs-on: ubuntu-latest
     permissions:
       contents: read
