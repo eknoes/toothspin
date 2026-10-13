@@ -53,7 +53,12 @@
   .track { font-size: 16px; margin: 6px 0 2px; }
   .phone { display: grid; gap: 4px; }
   .phone + .phone { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
-  .phone .name { font-weight: 600; font-size: 16px; }
+  .phone .title { display: flex; align-items: center; gap: 4px; font-size: 16px; }
+  .phone .title .icon { border: none; padding: 4px; color: var(--muted); }
+  .phone .title .icon svg { width: 15px; height: 15px; }
+  .phone .sub { color: var(--muted); font-size: 12px; margin-top: -2px; }
+  .name-input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line);
+                background: transparent; color: inherit; flex: 1; min-width: 0; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .spks { display: grid; gap: 2px; margin-top: 4px; }
   .spk { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(70px, 150px) 2.2em auto;
@@ -156,13 +161,6 @@ function renderSendspin(d) {
   } else {
     html = `<div><span class="dot warn"></span>Music Assistant: not paired yet</div>`;
   }
-  html += editing === d.address
-    ? `<div class="row"><input id="name-input" value="${esc(ss.name)}" maxlength="64"
-         style="font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:inherit;flex:1;min-width:0">
-         <button class="primary" data-save="${esc(d.address)}">Save</button>
-         <button data-cancel="1">Cancel</button></div>`
-    : `<div class="muted">Input name: “${esc(ss.name)}”
-         <button data-rename="${esc(d.address)}" style="padding:2px 10px;margin-left:6px">Rename</button></div>`;
   if (ss.pin) {
     html += `<div class="notice">Enter this code in Music Assistant:<div class="pin">${esc(ss.pin)}</div></div>`;
   } else if (ss.pairing_requested) {
@@ -209,6 +207,22 @@ function renderSpeakers(d) {
   return `<div class="label">Speakers</div><div class="spks">${rows || '<span class="muted">No speakers available</span>'}</div>`;
 }
 
+const ICON_PENCIL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>`;
+
+function renderTitle(d) {
+  const ss = d.sendspin;
+  const title = ss ? ss.name : d.name;
+  const head = editing === d.address
+    ? `<div class="row"><input id="name-input" class="name-input" value="${esc(title)}" maxlength="64"
+         aria-label="Name in Music Assistant">
+         <button class="primary" data-save="${esc(d.address)}">Save</button>
+         <button data-cancel="1">Cancel</button></div>`
+    : `<div class="title"><span class="dot ${d.connected ? "ok" : ""}"></span><b>${esc(title)}</b>
+         ${ss ? `<button class="icon" data-rename="${esc(d.address)}" title="Rename in Music Assistant"
+           aria-label="Rename">${ICON_PENCIL}</button>` : ""}</div>`;
+  return `${head}<div class="sub">${esc(d.name)} · ${esc(d.address)}</div>`;
+}
+
 function render() {
   const bt = state.bluetooth;
   $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
@@ -224,8 +238,7 @@ function render() {
 
   $("devices").innerHTML = state.devices.length ? state.devices.map((d) => `
     <div class="phone">
-      <div class="name"><span class="dot ${d.connected ? "ok" : ""}"></span>${esc(d.name)}
-        <span class="muted" style="font-weight:400;font-size:13px">${esc(d.address)}</span></div>
+      ${renderTitle(d)}
       ${renderAudio(d)}
       ${renderSpeakers(d)}
       ${renderSendspin(d)}
