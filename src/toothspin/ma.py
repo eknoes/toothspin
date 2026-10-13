@@ -24,8 +24,8 @@ class MusicAssistantError(Exception):
 
 
 class MusicAssistant:
-    def __init__(self, url: str, token: str) -> None:
-        self._url = url.rstrip("/") + "/ws"
+    def __init__(self, url: str | None, token: str) -> None:
+        self._url = url.rstrip("/") + "/ws" if url else None
         self._token = token
         self._session: aiohttp.ClientSession | None = None
         self._ws: aiohttp.ClientWebSocketResponse | None = None
@@ -44,6 +44,14 @@ class MusicAssistant:
         try:
             backoff = 1.0
             while True:
+                if self._url is None:
+                    base_url = await discover_url()
+                    if base_url is None:
+                        logger.warning("Music Assistant not found via mDNS; retrying in %.0fs", backoff)
+                        await asyncio.sleep(backoff)
+                        backoff = min(backoff * 2, 60.0)
+                        continue
+                    self._url = base_url.rstrip("/") + "/ws"
                 try:
                     async with self._session.ws_connect(self._url, heartbeat=30) as ws:
                         self._ws = ws
@@ -107,3 +115,32 @@ class MusicAssistant:
                 )
             else:
                 future.set_result(data.get("result"))
+
+
+async def discover_url(timeout: float = 3.0) -> str | None:
+    """Music Assistant's base URL from its mDNS announcement (``_mass._tcp``)."""
+    from zeroconf import ServiceStateChange
+    from zeroconf.asyncio import AsyncServiceBrowser, AsyncServiceInfo, AsyncZeroconf
+
+    service_type = "_mass._tcp.local."
+    found: list[str] = []
+
+    def on_change(zeroconf, service_type, name, state_change):  # noqa: ANN001
+        if state_change is ServiceStateChange.Added:
+            found.append(name)
+
+    async with AsyncZeroconf() as azc:
+        browser = AsyncServiceBrowser(azc.zeroconf, service_type, handlers=[on_change])
+        await asyncio.sleep(timeout)
+        await browser.async_cancel()
+        for name in found:
+            info = AsyncServiceInfo(service_type, name)
+            if not await info.async_request(azc.zeroconf, 3000):
+                continue
+            base_url = (info.properties.get(b"base_url") or b"").decode()
+            if base_url:
+                return base_url
+            addresses = info.parsed_addresses()
+            if addresses and info.port:
+                return f"http://{addresses[0]}:{info.port}"
+    return None
