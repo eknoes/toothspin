@@ -49,11 +49,24 @@ def test_one_receiver_per_paired_phone(tmp_path: Path, monkeypatch) -> None:
         assert renamed.source.client.identity.peer_id == iphone.source.client.identity.peer_id
         iphone = renamed
 
-        bluetooth.paired = bluetooth.paired[1:]
+        # A phone vanishing from BlueZ (e.g. bluetoothd restarting) only stops
+        # its client: its identity and MA pairing survive.
+        pixel_id = pixel.source.client.identity.peer_id
+        paired = bluetooth.paired
+        bluetooth.paired = paired[1:]
         await receivers.sync()
         assert receivers.get("AA:AA:AA:AA:AA:AA") is None
-        assert not (tmp_path / "devices" / "AA_AA_AA_AA_AA_AA").exists()
+        assert (tmp_path / "devices" / "AA_AA_AA_AA_AA_AA" / "identity.json").exists()
         assert receivers.get("BB:BB:BB:BB:BB:BB") is iphone
+        bluetooth.paired = paired
+        await receivers.sync()
+        assert receivers.get("AA:AA:AA:AA:AA:AA").source.client.identity.peer_id == pixel_id
+
+        # Removing it in the web UI forgets the identity.
+        bluetooth.paired = paired[1:]
+        await receivers.forget("aa:aa:aa:aa:aa:aa")
+        assert receivers.get("AA:AA:AA:AA:AA:AA") is None
+        assert not (tmp_path / "devices" / "AA_AA_AA_AA_AA_AA").exists()
 
         await receivers.close()
 

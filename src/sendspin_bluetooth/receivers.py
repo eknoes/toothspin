@@ -1,7 +1,9 @@
 """One Sendspin source per paired phone, so each is its own input in Music Assistant.
 
 Each phone gets its own Sendspin identity and pairing store, so it's paired
-with Music Assistant once, separately. Removing the phone deletes both.
+with Music Assistant once, separately. Only removing the phone in the web
+UI deletes both (``forget``); a phone merely vanishing from BlueZ, as on a
+bluetoothd restart, just stops its client.
 """
 
 from __future__ import annotations
@@ -76,7 +78,7 @@ class Receivers:
             self._sync_pending = False
             paired = {d.address.upper(): d for d in self._bluetooth.devices()}
             for address in set(self._receivers) - set(paired):
-                await self._remove(address)
+                await self._stop(address)
             for address, device in paired.items():
                 if address not in self._receivers:
                     await self._add(address, device.name)
@@ -144,11 +146,14 @@ class Receivers:
         with contextlib.suppress(asyncio.CancelledError):
             await receiver.task
 
-    async def _remove(self, address: str) -> None:
-        await self._stop(address)
-        # The phone was unpaired: forget its Sendspin identity too, so pairing
-        # it again starts fresh on both layers.
-        shutil.rmtree(self._device_dir(address), ignore_errors=True)
+    async def forget(self, address: str) -> None:
+        """The user removed this phone: drop its client and Sendspin identity."""
+        address = address.upper()
+        async with self._sync_lock:
+            if address in self._receivers:
+                await self._stop(address)
+            # Pairing the phone again then starts fresh on both layers.
+            shutil.rmtree(self._device_dir(address), ignore_errors=True)
         logger.info("Removed Sendspin source for %s", address)
 
 
