@@ -3,6 +3,8 @@
 **Bluetooth audio input for Sendspin and Music Assistant.** Stream any
 phone over Bluetooth into Music Assistant.
 
+<img src="assets/toothspin.svg" width="96" alt="ToothSpin icon">
+
 Turns a Bluetooth dongle into a speaker that phones can pair with. Whatever
 a phone plays shows up in Music Assistant as a live input (a Sendspin
 **source**), which you can play on any player or group.

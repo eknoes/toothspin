@@ -17,7 +17,7 @@ def test_serves_pwa_files() -> None:
             assert manifest["display"] == "standalone"
             for icon in manifest["icons"]:
                 res = await client.get(icon["src"])
-                assert res.status == 200 and res.content_type == "image/png"
+                assert res.status == 200 and res.content_type.startswith("image/")
 
             sw = await client.get("/sw.js")
             assert sw.status == 200 and sw.content_type == "application/javascript"
