@@ -1,5 +1,6 @@
 import asyncio
 import json
+from urllib.parse import urljoin
 
 from aiohttp.test_utils import TestClient, TestServer
 
@@ -16,7 +17,8 @@ def test_serves_pwa_files() -> None:
             manifest = json.loads(await (await client.get("/static/manifest.webmanifest")).text())
             assert manifest["display"] == "standalone"
             for icon in manifest["icons"]:
-                res = await client.get(icon["src"])
+                # Relative to the manifest, as browsers resolve them.
+                res = await client.get(urljoin("/static/manifest.webmanifest", icon["src"]))
                 assert res.status == 200 and res.content_type.startswith("image/")
 
             sw = await client.get("/sw.js")

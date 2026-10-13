@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="manifest" href="static/manifest.webmanifest">
 <!-- PNG only, with sizes: Firefox for Android picks an SVG "any" icon for
      home-screen shortcuts and then falls back to a generic one. -->
-<link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="icon" href="/static/icon-192.png" sizes="192x192" type="image/png">
-<link rel="icon" href="/static/icon-512.png" sizes="512x512" type="image/png">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png" sizes="180x180">
+<link rel="icon" href="static/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="static/icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="static/icon-512.png" sizes="512x512" type="image/png">
+<link rel="apple-touch-icon" href="static/apple-touch-icon.png" sizes="180x180">
 <meta name="theme-color" content="#0F1B2D">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -113,7 +113,7 @@
 <body>
 <main>
   <header class="brand">
-    <img src="/static/icon.svg" alt="" width="44" height="44">
+    <img src="static/icon.svg" alt="" width="44" height="44">
     <div>
       <h1>ToothSpin</h1>
       <div class="muted tagline">Bluetooth audio input for Music Assistant</div>
@@ -276,7 +276,7 @@ function render() {
   const btn = $("bt-pairing-btn");
   btn.textContent = pairing ? "Stop pairing" : "Add phone";
   btn.className = pairing ? "" : "primary";
-  btn.onclick = () => post("/api/bluetooth/pairing", {open: !pairing});
+  btn.onclick = () => post("api/bluetooth/pairing", {open: !pairing});
 
   const devices = [...state.devices].sort((a, b) => (b.address === myPhone) - (a.address === myPhone));
   $("devices").innerHTML = devices.length ? devices.map((d) => `
@@ -301,7 +301,7 @@ function render() {
         return;
       }
       confirmRemove = null;
-      const url = `/api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`;
+      const url = `api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`;
       if (b.dataset.action === "connect") {
         pending.add(b.dataset.addr); render();
         post(url).finally(() => { pending.delete(b.dataset.addr); render(); });
@@ -311,14 +311,14 @@ function render() {
     };
   }
   for (const b of $("devices").querySelectorAll("button[data-pair]")) {
-    b.onclick = () => post(`/api/sendspin/${encodeURIComponent(b.dataset.pair)}/pairing`);
+    b.onclick = () => post(`api/sendspin/${encodeURIComponent(b.dataset.pair)}/pairing`);
   }
   for (const b of $("devices").querySelectorAll("button[data-speaker]")) {
     b.onclick = async () => {
       const key = `${b.dataset.addr}|${b.dataset.speaker}`;
       pending.add(key); render();
       try {
-        await post(`/api/speakers/${encodeURIComponent(b.dataset.addr)}/toggle`,
+        await post(`api/speakers/${encodeURIComponent(b.dataset.addr)}/toggle`,
                    {player_id: b.dataset.speaker, on: b.dataset.on === "1"});
       } finally {
         pending.delete(key); render();
@@ -333,11 +333,11 @@ function render() {
     input.oninput = () => { input.nextElementSibling.textContent = input.value; };
     input.onchange = async () => {
       sliding = false;
-      await post("/api/speakers/volume", {player_id: input.dataset.vol, volume: Number(input.value)});
+      await post("api/speakers/volume", {player_id: input.dataset.vol, volume: Number(input.value)});
     };
   }
   for (const b of $("devices").querySelectorAll("button[data-mute]")) {
-    b.onclick = () => post("/api/speakers/volume", {player_id: b.dataset.mute, muted: b.dataset.muted === "1"});
+    b.onclick = () => post("api/speakers/volume", {player_id: b.dataset.mute, muted: b.dataset.muted === "1"});
   }
   for (const b of $("devices").querySelectorAll("button[data-rename]")) {
     b.onclick = () => {
@@ -351,7 +351,7 @@ function render() {
     const submit = () => {
       const address = save.dataset.save;
       editing = null;
-      post(`/api/sendspin/${encodeURIComponent(address)}/name`, {name: input.value});
+      post(`api/sendspin/${encodeURIComponent(address)}/name`, {name: input.value});
     };
     save.onclick = submit;
     input.onkeydown = (e) => {
@@ -364,15 +364,18 @@ function render() {
 
 async function refresh() {
   try {
-    const res = await fetch("/api/state");
+    const res = await fetch("api/state");
     state = await res.json();
     if (!editing && !sliding) render();
   } catch (e) {
     $("error").textContent = "Lost connection to the receiver.";
   }
 }
-// Only takes effect over HTTPS (or localhost); harmless otherwise.
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+// Only takes effect over HTTPS (or localhost); harmless otherwise. Not inside
+// Home Assistant's ingress, where the page lives in HA's own origin.
+if ("serviceWorker" in navigator && !location.pathname.includes("/hassio_ingress/")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 // A click on a slider without moving it fires no change event.
 window.addEventListener("pointerup", () => setTimeout(() => { sliding = false; }, 500));
 refresh();
