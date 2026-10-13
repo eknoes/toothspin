@@ -28,6 +28,10 @@ SIGNAL_HOLD_S = 5.0
 RESYNC_US = 200_000
 # How often to look for a phone node appearing or disappearing.
 POLL_S = 2.0
+# After a Bluetooth change, look this often for this long: PipeWire creates
+# the node only once the phone starts its stream.
+BURST_POLL_S = 0.25
+BURST_S = 4.0
 
 
 class Capture:
@@ -43,6 +47,7 @@ class Capture:
         self._find_source = find_source
         self._record = record
         self._changed = asyncio.Event()
+        self._burst_until = 0.0
         self._last_loud_us: int | None = None
         self.active: Source | None = None
 
@@ -71,9 +76,15 @@ class Capture:
             signal_task.cancel()
 
     async def _wait_change(self) -> None:
+        loop = asyncio.get_running_loop()
+        if loop.time() < self._burst_until:
+            await asyncio.sleep(BURST_POLL_S)
+            return
         self._changed.clear()
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(self._changed.wait(), POLL_S)
+        if self._changed.is_set():
+            self._burst_until = loop.time() + BURST_S
 
     async def _capture(self, found: Source) -> None:
         fmt = CAPTURE_FORMAT

@@ -206,6 +206,9 @@ class BluetoothManager:
                 if changed.get("Paired"):
                     asyncio.ensure_future(self._on_paired(msg.path))
                 self._on_change()
+            elif iface == "org.bluez.MediaTransport1":
+                # A phone starting its stream: lets capture pick it up at once.
+                self._on_change()
         elif msg.member == "InterfacesAdded" and msg.interface == dbus.OBJECT_MANAGER:
             path, ifaces = msg.body
             if DEVICE in ifaces and path.startswith(self._adapter_path + "/"):
