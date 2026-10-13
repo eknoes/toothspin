@@ -38,6 +38,8 @@ class Speaker:
     members: tuple[str, ...]
     """Group members incl. itself, when this speaker leads a group."""
     volume: int | None
+    group_volume: int | None
+    """Volume of the group this speaker leads (MA averages its members)."""
     muted: bool
     has_volume: bool
     has_mute: bool
@@ -66,6 +68,7 @@ def speakers(
                 synced_to=p.get("synced_to"),
                 members=tuple(p.get("group_members") or ()),
                 volume=p.get("volume_level"),
+                group_volume=p.get("group_volume"),
                 muted=bool(p.get("volume_muted")) or p["player_id"] in emulated_mutes,
                 has_volume=p.get("volume_control") not in (None, "none"),
                 has_mute=p.get("mute_control") not in (None, "none"),

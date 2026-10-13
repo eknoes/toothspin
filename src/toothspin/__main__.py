@@ -20,6 +20,7 @@ from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant
 from .receivers import Receivers
+from .volume_sync import VolumeSync
 from .web import create_app
 
 logger = logging.getLogger(__name__)
@@ -81,9 +82,13 @@ async def _run(args: argparse.Namespace) -> None:
         await audio.start()
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 
-    bluetooth = BluetoothManager(
-        bus, args.adapter, alias=args.bt_name, on_change=lambda: receivers.notify()
-    )
+    def on_bluetooth_change() -> None:
+        receivers.notify()
+        if volume_sync:
+            volume_sync.notify()
+
+    volume_sync: VolumeSync | None = None
+    bluetooth = BluetoothManager(bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change)
     receivers = Receivers(
         bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name, args.manufacturer
     )
@@ -121,6 +126,9 @@ async def _run(args: argparse.Namespace) -> None:
     if audio:
         tasks.append(asyncio.create_task(audio.exited.wait()))
     ma_task = asyncio.create_task(ma.run()) if ma else None
+    if ma:
+        volume_sync = VolumeSync(bluetooth, receivers, ma)
+        tasks.append(asyncio.create_task(volume_sync.run()))
     if ma_task:
         # Speaker control is optional: log a crash instead of taking the service down.
         ma_task.add_done_callback(
