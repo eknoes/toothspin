@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="icon" href="/static/icon-192.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BT Receiver">
 <title>Bluetooth Receiver</title>
 <style>
   :root {
@@ -20,7 +27,9 @@
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text);
+    margin: 0; background: var(--bg); color: var(--text);
+    /* Room for the status bar / home indicator when installed as an app. */
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   main { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
@@ -326,6 +335,8 @@ async function refresh() {
     $("error").textContent = "Lost connection to the receiver.";
   }
 }
+// Only takes effect over HTTPS (or localhost); harmless otherwise.
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 // A click on a slider without moving it fires no change event.
 window.addEventListener("pointerup", () => setTimeout(() => { sliding = false; }, 500));
 refresh();

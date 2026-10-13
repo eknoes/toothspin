@@ -146,6 +146,16 @@ def create_app(
 
     app = web.Application()
     app.router.add_get("/", get_index)
+    static = files(__package__).joinpath("static")
+    app.router.add_static("/static/", str(static))
+
+    async def get_sw(_: web.Request) -> web.Response:
+        # Served from the root so its scope covers the whole app.
+        return web.Response(
+            text=static.joinpath("sw.js").read_text(), content_type="application/javascript"
+        )
+
+    app.router.add_get("/sw.js", get_sw)
     app.router.add_get("/api/state", get_state)
     app.router.add_post("/api/bluetooth/pairing", post_bt_pairing)
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)

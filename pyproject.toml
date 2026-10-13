@@ -25,4 +25,4 @@ sendspin-bluetooth = "sendspin_bluetooth.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-sendspin_bluetooth = ["*.html"]
+sendspin_bluetooth = ["*.html", "static/*"]
