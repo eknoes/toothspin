@@ -86,3 +86,25 @@ def test_phone_connecting_on_its_own_is_disconnected() -> None:
         return refused
 
     assert asyncio.run(scenario()) == [path]
+
+
+def test_agent_only_applies_its_policy_to_its_own_adapter() -> None:
+    from dbus_fast.errors import DBusError
+
+    from toothspin.bluez import _Agent
+
+    manager = BluetoothManager(bus=None, adapter="hci1")  # type: ignore[arg-type]
+    agent = _Agent(manager)
+    ours = "/org/bluez/hci1/dev_34_39_16_5D_41_B9"
+    others = "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF"
+
+    # Pairing window closed: our adapter refuses, HA's adapter is left alone.
+    for call in (lambda d: agent.RequestConfirmation.__wrapped__(agent, d, 123456),
+                 lambda d: agent.RequestAuthorization.__wrapped__(agent, d)):
+        try:
+            call(ours)
+            raise AssertionError("pairing on our adapter should be refused")
+        except DBusError:
+            pass
+        call(others)
+    agent.AuthorizeService.__wrapped__(agent, others, "0000110a-0000-1000-8000-00805f9b34fb")

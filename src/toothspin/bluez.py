@@ -184,6 +184,10 @@ class BluetoothManager:
                 )
         return None
 
+    def owns(self, device_path: str) -> bool:
+        """Whether the device belongs to our adapter (the agent is host-wide)."""
+        return device_path.startswith(self._adapter_path + "/")
+
     def connection_allowed(self, path: str) -> bool:
         return path in self._connect_allowed or self.pairing_remaining is not None
 
@@ -331,13 +335,21 @@ def _unwrap_player(props: dict[str, Variant]) -> dict[str, Any]:
 
 
 class _Agent(ServiceInterface):
-    """Accepts pairing only while the window is open, and connections we started."""
+    """Accepts pairing only while the window is open, and connections we started.
+
+    BlueZ's default agent serves every adapter on the host. Devices on other
+    adapters (e.g. the one Home Assistant uses for its own Bluetooth devices)
+    are left alone: they're accepted, as BlueZ does when no agent is
+    registered, so pairings the host starts there keep working.
+    """
 
     def __init__(self, manager: BluetoothManager) -> None:
         super().__init__("org.bluez.Agent1")
         self._manager = manager
 
     def _require_window(self, device: str) -> None:
+        if not self._manager.owns(device):
+            return
         if self._manager.pairing_remaining is None:
             logger.warning("Rejected pairing from %s: pairing window closed", device)
             raise DBusError("org.bluez.Error.Rejected", "Pairing window closed")
@@ -374,7 +386,7 @@ class _Agent(ServiceInterface):
 
     @method()
     def AuthorizeService(self, device: "o", uuid: "s"):  # noqa: F821, N802
-        if not self._manager.connection_allowed(device):
+        if self._manager.owns(device) and not self._manager.connection_allowed(device):
             logger.info("Rejected connection from %s: not started from here", device)
             asyncio.ensure_future(self._manager.refuse(device))
             raise DBusError("org.bluez.Error.Rejected", "Connect from the receiver")
