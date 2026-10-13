@@ -50,6 +50,7 @@
          margin: 8px 0; }
   .notice { border-left: 3px solid var(--accent); padding: 8px 12px; margin-top: 12px; }
   .error { color: var(--danger); }
+  .track { font-size: 17px; margin-bottom: 8px; }
 </style>
 </head>
 <body>
@@ -135,8 +136,13 @@ function render() {
     };
   }
 
+  const np = audio && audio.now_playing;
+  const track = np && np.title
+    ? `<div class="track"><b>${esc(np.title)}</b>${np.artist ? ` — ${esc(np.artist)}` : ""}
+         ${np.album ? `<div class="muted">${esc(np.album)}</div>` : ""}</div>`
+    : "";
   $("audio").innerHTML = audio
-    ? `<div><span class="dot ${ss.signal ? "ok" : ""}"></span>${esc(audio.device)}
+    ? `${track}<div><span class="dot ${ss.signal ? "ok" : ""}"></span>${esc(audio.device)}
          ${ss.signal ? "is playing" : "is connected, silent"}</div>
        <div class="muted">${esc(audio.codec || "Bluetooth")} ·
          ${ss.streaming ? "streaming to Music Assistant" : "not requested by Music Assistant"}</div>`

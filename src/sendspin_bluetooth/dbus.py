@@ -67,5 +67,9 @@ async def managed_objects(
     }
 
 
-def unwrap(props: dict[str, Variant]) -> dict[str, Any]:
-    return {key: value.value for key, value in props.items()}
+def unwrap(props: dict[str, Any]) -> dict[str, Any]:
+    """Unwrap variants; values that are already plain pass through."""
+    return {
+        key: value.value if isinstance(value, Variant) else value
+        for key, value in props.items()
+    }

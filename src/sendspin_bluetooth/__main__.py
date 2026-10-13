@@ -1,4 +1,4 @@
-"""Entry point: wire BlueZ, bluealsa, the Sendspin source and the web UI."""
+"""Entry point: wire BlueZ, PipeWire capture, the Sendspin source and the web UI."""
 
 from __future__ import annotations
 

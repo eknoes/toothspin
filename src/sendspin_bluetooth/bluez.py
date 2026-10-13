@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 BLUEZ = "org.bluez"
 ADAPTER = "org.bluez.Adapter1"
 DEVICE = "org.bluez.Device1"
+PLAYER = "org.bluez.MediaPlayer1"
 AGENT_PATH = "/org/sendspin/bluetooth/agent"
 
 
@@ -35,6 +36,18 @@ class BluetoothDevice:
     paired: bool
     trusted: bool
     connected: bool
+
+
+@dataclass(frozen=True, slots=True)
+class NowPlaying:
+    """What the phone reports over AVRCP."""
+
+    status: str
+    title: str | None
+    artist: str | None
+    album: str | None
+    duration_ms: int | None
+    position_ms: int | None
 
 
 class BluetoothManager:
@@ -51,6 +64,8 @@ class BluetoothManager:
         self._on_change = on_change or (lambda: None)
         self._adapter: dict[str, Any] = {}
         self._devices: dict[str, dict[str, Any]] = {}
+        # AVRCP players, keyed by object path (below their device's path).
+        self._players: dict[str, dict[str, Any]] = {}
         self._pairing_deadline: float | None = None
         self._pairing_close: asyncio.TimerHandle | None = None
         # Set when the adapter vanishes (dongle reset/unplug) or bluetoothd
@@ -101,6 +116,11 @@ class BluetoothManager:
             for path, ifaces in objects.items()
             if DEVICE in ifaces and path.startswith(self._adapter_path + "/")
         }
+        self._players = {
+            path: _unwrap_player(ifaces[PLAYER])
+            for path, ifaces in objects.items()
+            if PLAYER in ifaces and path.startswith(self._adapter_path + "/")
+        }
 
     # --- state ---
 
@@ -139,6 +159,22 @@ class BluetoothManager:
         if props is None:
             return None
         return props.get("Alias") or props.get("Name") or props.get("Address")
+
+    def now_playing(self, address: str) -> NowPlaying | None:
+        """AVRCP track info for the device with this address, if it has a player."""
+        device = f"{self._adapter_path}/dev_{address.upper().replace(':', '_')}/"
+        for path, props in self._players.items():
+            if path.startswith(device):
+                track = props.get("Track") or {}
+                return NowPlaying(
+                    status=props.get("Status", ""),
+                    title=track.get("Title") or None,
+                    artist=track.get("Artist") or None,
+                    album=track.get("Album") or None,
+                    duration_ms=track.get("Duration"),
+                    position_ms=props.get("Position"),
+                )
+        return None
 
     def _is_trusted(self, path: str) -> bool:
         return bool(self._devices.get(path, {}).get("Trusted"))
@@ -206,6 +242,8 @@ class BluetoothManager:
                 if changed.get("Paired"):
                     asyncio.ensure_future(self._on_paired(msg.path))
                 self._on_change()
+            elif iface == PLAYER and msg.path in self._players:
+                self._players[msg.path].update(_unwrap_player(changed))
             elif iface == "org.bluez.MediaTransport1":
                 # A phone starting its stream: lets capture pick it up at once.
                 self._on_change()
@@ -214,6 +252,8 @@ class BluetoothManager:
             if DEVICE in ifaces and path.startswith(self._adapter_path + "/"):
                 self._devices[path] = dbus.unwrap(ifaces[DEVICE])
                 self._on_change()
+            if PLAYER in ifaces and path.startswith(self._adapter_path + "/"):
+                self._players[path] = _unwrap_player(ifaces[PLAYER])
         elif msg.member == "InterfacesRemoved" and msg.interface == dbus.OBJECT_MANAGER:
             path, ifaces = msg.body
             if path == self._adapter_path and ADAPTER in ifaces:
@@ -221,6 +261,8 @@ class BluetoothManager:
                 self.lost.set()
             elif DEVICE in ifaces and self._devices.pop(path, None) is not None:
                 self._on_change()
+            if PLAYER in ifaces:
+                self._players.pop(path, None)
 
     async def _on_paired(self, path: str) -> None:
         logger.info("Paired with %s; trusting it", self.device_name(path))
@@ -230,6 +272,14 @@ class BluetoothManager:
             logger.exception("Could not trust %s", path)
         if self._pairing_deadline is not None:
             await self.close_pairing()
+
+
+def _unwrap_player(props: dict[str, Variant]) -> dict[str, Any]:
+    """Unwrap MediaPlayer1 properties, including the nested Track dict."""
+    unwrapped = dbus.unwrap(props)
+    if isinstance(unwrapped.get("Track"), dict):
+        unwrapped["Track"] = dbus.unwrap(unwrapped["Track"])
+    return unwrapped
 
 
 class _Agent(ServiceInterface):

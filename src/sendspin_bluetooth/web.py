@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import asdict
+from typing import Any
 from importlib.resources import files
 
 from aiohttp import web
@@ -43,7 +44,11 @@ def create_app(
                 },
                 "audio": None
                 if active is None
-                else {"device": active.description, "codec": active.codec},
+                else {
+                    "device": active.description,
+                    "codec": active.codec,
+                    "now_playing": _asdict_or_none(bluetooth.now_playing(active.address)),
+                },
                 "sendspin": asdict(source.status()),
             }
         )
@@ -83,3 +88,7 @@ def create_app(
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)
     app.router.add_post("/api/sendspin/pairing", post_sendspin_pairing)
     return app
+
+
+def _asdict_or_none(value: Any) -> dict[str, Any] | None:
+    return None if value is None else asdict(value)
