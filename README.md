@@ -10,9 +10,9 @@ a phone plays shows up in Music Assistant as a live input (a Sendspin
 **source**), which you can play on any player or group.
 
 ```
-Phone ─A2DP─> bluetoothd (host) ─> PipeWire/WirePlumber (core's user session)
-      ─pw-record over the PipeWire socket─> toothspin (rootless podman)
-      ─Sendspin source@v1 over WebSocket─> Music Assistant (sendspin_source provider)
+Phone ─A2DP─> bluetoothd (host) ─D-Bus─> PipeWire/WirePlumber (in the container)
+      ─pw-record─> toothspin ─Sendspin source@v1 over WebSocket─>
+      Music Assistant (sendspin_source provider)
 ```
 
 Needs Music Assistant **2.10.6 or newer** (it ships the `sendspin_source`
@@ -21,6 +21,18 @@ provider; the service pins `aiosendspin==9.1.1` to match). See
 phone becomes its own Live Input in Music Assistant.
 
 ## Setup
+
+### As a Home Assistant App
+
+[![Add the repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feknoes%2Ftoothspin)
+
+Add `https://github.com/eknoes/toothspin` as an app repository (**Settings →
+Apps → App store → ⋮ → Repositories**) and install **ToothSpin**. The app
+runs the same image (see [toothspin/DOCS.md](toothspin/DOCS.md) for setup:
+use a dedicated dongle and disable it in HA's Bluetooth integration). Its
+web UI opens through Home Assistant (ingress).
+
+### Requirements outside Home Assistant
 
 The container image is self-contained (its own PipeWire, ~120 MB). The host
 only needs:
