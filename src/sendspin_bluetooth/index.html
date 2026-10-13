@@ -84,6 +84,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 let state = null;
 let confirmRemove = null;
+// Address of the phone whose Music Assistant name is being edited. Rendering
+// pauses meanwhile so the 1.5 s refresh doesn't wipe the text field.
+let editing = null;
 
 async function post(path, body) {
   const res = await fetch(path, {
@@ -119,10 +122,17 @@ function renderSendspin(d) {
     html = `<div class="muted"><span class="dot"></span>Music Assistant: not connected
               ${ss.url ? "(" + esc(ss.url) + ")" : "(searching…)"}</div>`;
   } else if (ss.paired) {
-    html = `<div class="muted"><span class="dot ok"></span>Music Assistant: input “${esc(ss.name)}”</div>`;
+    html = `<div class="muted"><span class="dot ok"></span>Music Assistant: paired</div>`;
   } else {
     html = `<div><span class="dot warn"></span>Music Assistant: not paired yet</div>`;
   }
+  html += editing === d.address
+    ? `<div class="row"><input id="name-input" value="${esc(ss.name)}" maxlength="64"
+         style="font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:inherit;flex:1;min-width:0">
+         <button class="primary" data-save="${esc(d.address)}">Save</button>
+         <button data-cancel="1">Cancel</button></div>`
+    : `<div class="muted">Input name: “${esc(ss.name)}”
+         <button data-rename="${esc(d.address)}" style="padding:2px 10px;margin-left:6px">Rename</button></div>`;
   if (ss.pin) {
     html += `<div class="notice">Enter this code in Music Assistant:<div class="pin">${esc(ss.pin)}</div></div>`;
   } else if (ss.pairing_requested) {
@@ -175,13 +185,34 @@ function render() {
   for (const b of $("devices").querySelectorAll("button[data-pair]")) {
     b.onclick = () => post(`/api/sendspin/${encodeURIComponent(b.dataset.pair)}/pairing`);
   }
+  for (const b of $("devices").querySelectorAll("button[data-rename]")) {
+    b.onclick = () => {
+      editing = b.dataset.rename; render();
+      const input = $("name-input"); input.focus(); input.select();
+    };
+  }
+  const save = $("devices").querySelector("button[data-save]");
+  if (save) {
+    const input = $("name-input");
+    const submit = () => {
+      const address = save.dataset.save;
+      editing = null;
+      post(`/api/sendspin/${encodeURIComponent(address)}/name`, {name: input.value});
+    };
+    save.onclick = submit;
+    input.onkeydown = (e) => {
+      if (e.key === "Enter") submit();
+      if (e.key === "Escape") { editing = null; render(); }
+    };
+    $("devices").querySelector("button[data-cancel]").onclick = () => { editing = null; render(); };
+  }
 }
 
 async function refresh() {
   try {
     const res = await fetch("/api/state");
     state = await res.json();
-    render();
+    if (!editing) render();
   } catch (e) {
     $("error").textContent = "Lost connection to the receiver.";
   }

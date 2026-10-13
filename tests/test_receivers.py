@@ -42,6 +42,13 @@ def test_one_receiver_per_paired_phone(tmp_path: Path, monkeypatch) -> None:
         assert pixel.source.client.identity.peer_id != iphone.source.client.identity.peer_id
         assert (tmp_path / "devices" / "AA_AA_AA_AA_AA_AA" / "identity.json").exists()
 
+        # A name chosen in the web UI sticks, and the client reconnects with it.
+        await receivers.rename("bb:bb:bb:bb:bb:bb", "Kitchen phone")
+        renamed = receivers.get("BB:BB:BB:BB:BB:BB")
+        assert renamed is not iphone and renamed.source.status().name == "Kitchen phone"
+        assert renamed.source.client.identity.peer_id == iphone.source.client.identity.peer_id
+        iphone = renamed
+
         bluetooth.paired = bluetooth.paired[1:]
         await receivers.sync()
         assert receivers.get("AA:AA:AA:AA:AA:AA") is None

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 import shutil
 from importlib.metadata import version
@@ -80,6 +81,22 @@ class Receivers:
                 if address not in self._receivers:
                     await self._add(address, device.name)
 
+    async def rename(self, address: str, name: str) -> None:
+        """Rename a phone's input; its client reconnects with the new name."""
+        address = address.upper()
+        if address not in self._receivers:
+            raise KeyError(address)
+        async with self._sync_lock:
+            settings = self._settings_path(address)
+            settings.write_text(json.dumps({"name": name}))
+            await self._stop(address)
+            device_name = next(
+                (d.name for d in self._bluetooth.devices() if d.address.upper() == address),
+                address,
+            )
+            await self._add(address, device_name)
+        logger.info("Renamed Sendspin source for %s to %s", address, name)
+
     async def close(self) -> None:
         for receiver in self._receivers.values():
             receiver.task.cancel()
@@ -96,9 +113,19 @@ class Receivers:
     def _device_dir(self, address: str) -> Path:
         return self._data_dir / address.replace(":", "_")
 
+    def _settings_path(self, address: str) -> Path:
+        return self._device_dir(address) / "settings.json"
+
+    def _name_for(self, address: str, device_name: str) -> str:
+        """The name chosen in the web UI, else one derived from the phone's."""
+        try:
+            return json.loads(self._settings_path(address).read_text())["name"]
+        except (FileNotFoundError, KeyError, ValueError):
+            return self._name_format.format(device=device_name)
+
     async def _add(self, address: str, device_name: str) -> None:
         source = SendspinSource(
-            self._name_format.format(device=device_name),
+            self._name_for(address, device_name),
             self._url,
             self._device_dir(address),
             self._codec,
@@ -111,11 +138,14 @@ class Receivers:
         self._receivers[address] = Receiver(address, source, capture, task)
         logger.info("Added Sendspin source for %s (%s)", device_name, address)
 
-    async def _remove(self, address: str) -> None:
+    async def _stop(self, address: str) -> None:
         receiver = self._receivers.pop(address)
         receiver.task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await receiver.task
+
+    async def _remove(self, address: str) -> None:
+        await self._stop(address)
         # The phone was unpaired: forget its Sendspin identity too, so pairing
         # it again starts fresh on both layers.
         shutil.rmtree(self._device_dir(address), ignore_errors=True)

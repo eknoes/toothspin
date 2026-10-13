@@ -81,6 +81,16 @@ def create_app(
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
 
+    async def post_sendspin_name(request: web.Request) -> web.Response:
+        name = str((await request.json()).get("name", "")).strip()
+        if not name or len(name) > 64:
+            return web.json_response({"ok": False, "error": "Name must be 1-64 characters"}, status=400)
+        try:
+            await receivers.rename(request.match_info["address"], name)
+        except KeyError:
+            raise web.HTTPNotFound from None
+        return web.json_response({"ok": True})
+
     async def post_sendspin_pairing(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
         if receiver is None:
@@ -94,6 +104,7 @@ def create_app(
     app.router.add_post("/api/bluetooth/pairing", post_bt_pairing)
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)
+    app.router.add_post("/api/sendspin/{address}/name", post_sendspin_name)
     return app
 
 
