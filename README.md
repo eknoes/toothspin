@@ -128,3 +128,8 @@ python -m venv .venv && .venv/bin/pip install -e '.[test]'
 in-process aiosendspin server (the library Music Assistant uses): pairing,
 line-sense, server-requested start/stop and bit-exact PCM delivery. Phone
 capture itself can only be tested with real hardware.
+
+## License
+
+GPL-3.0-or-later, see [LICENSE](LICENSE). Third-party components in the
+container image and where to get their source: [LICENSING.md](LICENSING.md).
