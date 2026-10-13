@@ -16,20 +16,21 @@
 <meta name="apple-mobile-web-app-title" content="ToothSpin">
 <title>ToothSpin</title>
 <style>
-  /* Palette from the ToothSpin icon: ground #0F1B2D, bluetooth #4C9BFF,
-     sound #E25C4C, hub #F5F4EC. Light mode uses the darker blue/coral
-     variants so text on them stays readable. */
+  /* Palette from the ToothSpin icon / Pages site: ground #0F1B2D, hub
+     #F5F4EC, Bluetooth blue for connection state, Sendspin red as the
+     accent for controls. Light mode uses the darker blue/red so text on
+     them stays readable. */
   :root {
     --bg: #F4F4F2; --card: #FFFFFF; --text: #0F1B2D; --muted: #5B6575;
-    --line: #E3E3DE; --accent: #3B82F6; --accent-text: #FFFFFF;
-    --ok: #3B82F6; --warn: #E25C4C; --danger: #BF493A;
+    --line: #E3E3DE; --accent: #C4473A; --accent-text: #FFFFFF;
+    --ok: #2A6FD1; --warn: #D97706; --danger: #C4473A;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0F1B2D; --card: #16253B; --text: #F5F4EC; --muted: #9AA6B8;
-      --line: #26364F; --accent: #4C9BFF; --accent-text: #0F1B2D;
-      --ok: #4C9BFF; --warn: #E25C4C; --danger: #EF958A;
+      --line: #26364F; --accent: #E25C4C; --accent-text: #0F1B2D;
+      --ok: #4C9BFF; --warn: #F0A848; --danger: #EF958A;
       color-scheme: dark;
     }
   }
