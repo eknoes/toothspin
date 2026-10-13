@@ -233,6 +233,16 @@ class BluetoothManager:
             raise
         logger.info("Connected %s", self.device_name(path))
 
+    async def refuse(self, path: str) -> None:
+        """Disconnect a phone that connected on its own."""
+        if self.connection_allowed(path):
+            return
+        logger.info("Disconnecting %s: connections start from the receiver", self.device_name(path))
+        try:
+            await dbus.call(self._bus, BLUEZ, path, DEVICE, "Disconnect")
+        except DBusError as err:
+            logger.warning("Could not disconnect %s: %s", path, err)
+
     async def _untrust_all(self) -> None:
         """Phones paired before this policy were trusted, which bypasses the agent."""
         for path, props in self._devices.items():
@@ -277,6 +287,10 @@ class BluetoothManager:
                     asyncio.ensure_future(self._on_paired(msg.path))
                 if changed.get("Connected") is False:
                     self._connect_allowed.discard(msg.path)
+                elif changed.get("Connected") and not self.connection_allowed(msg.path):
+                    # Only some profiles (A2DP) ask the agent; the link itself and
+                    # AVRCP don't. Drop connections we didn't start.
+                    asyncio.ensure_future(self.refuse(msg.path))
                 self._on_change()
             elif iface == PLAYER and msg.path in self._players:
                 self._players[msg.path].update(_unwrap_player(changed))
@@ -362,6 +376,7 @@ class _Agent(ServiceInterface):
     def AuthorizeService(self, device: "o", uuid: "s"):  # noqa: F821, N802
         if not self._manager.connection_allowed(device):
             logger.info("Rejected connection from %s: not started from here", device)
+            asyncio.ensure_future(self._manager.refuse(device))
             raise DBusError("org.bluez.Error.Rejected", "Connect from the receiver")
 
     @method()

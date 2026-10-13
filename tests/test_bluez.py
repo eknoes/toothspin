@@ -57,3 +57,32 @@ def test_unwrap_player_accepts_already_unwrapped_props() -> None:
 
     props = {"Status": "paused", "Track": {"Title": Variant("s", "Numb")}}
     assert _unwrap_player(props) == {"Status": "paused", "Track": {"Title": "Numb"}}
+
+
+def test_phone_connecting_on_its_own_is_disconnected() -> None:
+    import asyncio
+
+    path = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+
+    async def scenario() -> list[str]:
+        manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+        refused: list[str] = []
+
+        async def refuse(p: str) -> None:
+            refused.append(p)
+
+        manager.refuse = refuse  # type: ignore[method-assign]
+        manager._devices[path] = {"Address": "34:39:16:5D:41:B9", "Paired": True}
+        connected = _signal(
+            "PropertiesChanged", "org.freedesktop.DBus.Properties", path, "sa{sv}as",
+            ["org.bluez.Device1", {"Connected": Variant("b", True)}, []],
+        )
+        manager._on_message(connected)
+        await asyncio.sleep(0)
+        # A connection started from the receiver is kept.
+        manager._connect_allowed.add(path)
+        manager._on_message(connected)
+        await asyncio.sleep(0)
+        return refused
+
+    assert asyncio.run(scenario()) == [path]
