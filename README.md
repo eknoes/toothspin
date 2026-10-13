@@ -46,7 +46,8 @@ Optional, in `~/.config/sendspin-bluetooth.env` (then
 | Variable | Default | |
 |---|---|---|
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
-| `SENDSPIN_NAME` | `{device} (Bluetooth)` | name of each phone's input in Music Assistant |
+| `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
+| `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
 | `BT_PAIRING_SECONDS` | `120` | how long "Add phone" keeps pairing open |
