@@ -1,6 +1,8 @@
 """Minimal management web UI: pair phones, pair with Music Assistant, see status.
 
-No authentication — it's meant for the home LAN only.
+No authentication of its own: on the plain container it's meant for the home
+LAN; as a Home Assistant App it sits behind HA's ingress, which only the
+Supervisor's ingress proxy may reach.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from dbus_fast.errors import DBusError
 
 from . import speakers
 from .bluez import BluetoothManager
+from .ha import INGRESS_PROXY_IP
 from .ma import MusicAssistant, MusicAssistantError
 from .receivers import Receivers
 
@@ -26,6 +29,7 @@ def create_app(
     receivers: Receivers,
     pairing_seconds: float,
     ma: MusicAssistant | None = None,
+    ingress_port: int | None = None,
 ) -> web.Application:
     index = files(__package__).joinpath("index.html").read_text()
     volumes = speakers.Volumes(ma) if ma else None
@@ -144,7 +148,16 @@ def create_app(
         receiver.source.open_pairing_window()
         return web.json_response({"ok": True})
 
-    app = web.Application()
+    @web.middleware
+    async def ingress_only(request: web.Request, handler: Any) -> web.StreamResponse:
+        # HA ingress handles authentication; the ingress port must therefore
+        # only answer the Supervisor's proxy, not anyone on the network.
+        sockname = request.transport.get_extra_info("sockname") if request.transport else None
+        if sockname and sockname[1] == ingress_port and request.remote != INGRESS_PROXY_IP:
+            raise web.HTTPForbidden(text="Use Home Assistant to open ToothSpin.")
+        return await handler(request)
+
+    app = web.Application(middlewares=[ingress_only] if ingress_port else [])
     app.router.add_get("/", get_index)
     static = files(__package__).joinpath("static")
     app.router.add_static("/static/", str(static))

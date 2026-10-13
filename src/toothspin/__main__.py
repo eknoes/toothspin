@@ -15,6 +15,7 @@ from aiosendspin.models.types import AudioCodec
 from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 
+from . import ha
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant
@@ -52,6 +53,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--web-host", default=env("WEB_HOST", "0.0.0.0"))
     parser.add_argument("--web-port", type=int, default=int(env("WEB_PORT", "8080")))
     parser.add_argument(
+        "--lan-port", type=int, default=int(env("LAN_PORT")) if env("LAN_PORT") else None,
+        help="As a Home Assistant App: also serve the web UI on this port to the LAN",
+    )
+    parser.add_argument(
         "--pairing-seconds", type=float, default=float(env("BT_PAIRING_SECONDS", "120"))
     )
     parser.add_argument(
@@ -85,14 +90,24 @@ async def _run(args: argparse.Namespace) -> None:
     await bluetooth.start()
     await receivers.sync()
 
-    ma = MusicAssistant(args.ma_url, args.ma_token) if args.ma_url and args.ma_token else None
+    # Without MA_URL the API is found via mDNS, so in HA only the token is needed.
+    ma = MusicAssistant(args.ma_url, args.ma_token) if args.ma_token else None
     if ma is None:
-        logger.info("MA_URL/MA_TOKEN not set; speaker control disabled")
+        logger.info("MA_TOKEN not set; speaker control disabled")
 
-    runner = web.AppRunner(create_app(bluetooth, receivers, args.pairing_seconds, ma))
+    ingress_port = await ha.ingress_port() if ha.running_as_app() else None
+    runner = web.AppRunner(
+        create_app(bluetooth, receivers, args.pairing_seconds, ma, ingress_port=ingress_port)
+    )
     await runner.setup()
-    await web.TCPSite(runner, args.web_host, args.web_port).start()
-    logger.info("Web UI on http://%s:%d/", args.web_host, args.web_port)
+    if ingress_port:
+        ports = [ingress_port] + ([args.lan_port] if args.lan_port else [])
+    else:
+        ports = [args.web_port]
+    for port in ports:
+        await web.TCPSite(runner, args.web_host, port).start()
+        label = "ingress" if port == ingress_port else "web UI"
+        logger.info("Serving %s on http://%s:%d/", label, args.web_host, port)
 
     # We run as PID 1 in the container, where SIGTERM has no default action.
     stop = asyncio.Event()
@@ -134,6 +149,8 @@ async def _run(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    if ha.apply_options():
+        logging.getLogger(__name__).info("Running as a Home Assistant App")
     args = _parse_args()
     logging.basicConfig(
         level=args.log_level.upper(),
