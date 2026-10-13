@@ -88,14 +88,18 @@ def create_app(
             if action == "remove":
                 await bluetooth.remove_device(address)
                 await receivers.forget(address)
+            elif action == "connect":
+                await bluetooth.connect_device(address)
             elif action == "disconnect":
                 await bluetooth.disconnect_device(address)
             else:
                 raise web.HTTPNotFound
         except KeyError:
             raise web.HTTPNotFound from None
-        except DBusError as err:
-            return web.json_response({"ok": False, "error": str(err)}, status=502)
+        except (DBusError, TimeoutError) as err:
+            return web.json_response(
+                {"ok": False, "error": f"{action.title()} failed: {err or 'timed out'}"}, status=502
+            )
         return web.json_response({"ok": True})
 
     async def post_sendspin_name(request: web.Request) -> web.Response:

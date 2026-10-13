@@ -230,7 +230,10 @@ function render() {
       ${renderSpeakers(d)}
       ${renderSendspin(d)}
       <div class="actions">
-        ${d.connected ? `<button data-addr="${esc(d.address)}" data-action="disconnect">Disconnect</button>` : ""}
+        ${d.connected
+          ? `<button data-addr="${esc(d.address)}" data-action="disconnect">Disconnect</button>`
+          : `<button class="primary" data-addr="${esc(d.address)}" data-action="connect"
+               ${pending.has(d.address) ? "disabled" : ""}>${pending.has(d.address) ? "Connecting…" : "Connect"}</button>`}
         <button class="danger" data-addr="${esc(d.address)}" data-action="remove">${confirmRemove === d.address ? "Really remove?" : "Remove"}</button>
       </div>
     </div>`).join("") : `<div class="muted">No phones paired yet.</div>`;
@@ -242,7 +245,13 @@ function render() {
         return;
       }
       confirmRemove = null;
-      post(`/api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`);
+      const url = `/api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`;
+      if (b.dataset.action === "connect") {
+        pending.add(b.dataset.addr); render();
+        post(url).finally(() => { pending.delete(b.dataset.addr); render(); });
+      } else {
+        post(url);
+      }
     };
   }
   for (const b of $("devices").querySelectorAll("button[data-pair]")) {
