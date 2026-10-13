@@ -12,8 +12,8 @@ Phone ─A2DP─> bluetoothd (host) ─> PipeWire/WirePlumber (core's user sessi
 
 Needs Music Assistant **2.10.6 or newer** (it ships the `sendspin_source`
 provider; the service pins `aiosendspin==9.1.1` to match). See
-[CLAUDE.md](CLAUDE.md) for background and scope: one dongle, one phone
-connected at a time.
+[CLAUDE.md](CLAUDE.md) for background and scope: one dongle; every paired
+phone becomes its own Live Input in Music Assistant.
 
 ## Setup
 
@@ -46,7 +46,7 @@ Optional, in `~/.config/sendspin-bluetooth.env` (then
 | Variable | Default | |
 |---|---|---|
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
-| `SENDSPIN_NAME` | `Bluetooth` | name of the input in Music Assistant |
+| `SENDSPIN_NAME` | `{device} (Bluetooth)` | name of each phone's input in Music Assistant |
 | `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
 | `BT_PAIRING_SECONDS` | `120` | how long "Add phone" keeps pairing open |
@@ -55,30 +55,33 @@ Optional, in `~/.config/sendspin-bluetooth.env` (then
 
 ## Pairing
 
-Two separate one-time pairings.
+Each phone is paired twice, once per layer.
 
-**Music Assistant ↔ this service** (once per MA server):
-
-1. The service connects to MA on its own and shows up unpaired. Music
-   Assistant only accepts audio from paired sources.
-2. In Music Assistant's settings, open the device (named `SENDSPIN_NAME`)
-   and choose **Pair the device**, using the dynamic pairing code.
-3. In the web UI, press **Allow** (or **Allow pairing** beforehand). A
-   pairing code appears; type it into Music Assistant.
-
-**Phone ↔ Bluetooth** (once per phone):
+**Phone ↔ Bluetooth:**
 
 1. In the web UI, press **Add phone**. The dongle is discoverable for two
    minutes.
 2. On the phone, connect to `BT_NAME`. The first phone that pairs is trusted
    and pairing closes again; outside that window pairing is refused.
-3. Play something. The input appears under Music Assistant's live inputs.
 
-To play automatically, set a target under the device's **Automatically play
-line-in on** setting in Music Assistant: the service reports a signal while
-the phone plays non-silent audio, and MA stops a minute after it goes quiet.
+**That phone ↔ Music Assistant:** pairing the phone creates its own
+Sendspin source, e.g. "Pixel 10 (Bluetooth)", which connects to MA
+unpaired. Music Assistant only accepts audio from paired sources.
 
-Phones are listed in the web UI with **Disconnect** and **Remove**.
+1. In Music Assistant's settings, open that device and choose **Pair the
+   device**, using the dynamic pairing code.
+2. On the phone's card in the web UI, press **Allow**. A pairing code
+   appears; type it into Music Assistant.
+
+**Playing:** select a player in Music Assistant, open **Browse**, pick the
+phone's input and press **Play**. Or set the device's **Automatically play
+line-in on** setting: the service reports a signal while the phone plays
+non-silent audio, and MA stops a minute after it goes quiet.
+
+Each phone's card in the web UI shows what it plays (title/artist from the
+phone), its Music Assistant state, and **Disconnect** / **Remove**.
+Removing a phone also forgets its Sendspin identity; remove the matching
+device in Music Assistant too.
 
 ## Development
 
