@@ -86,6 +86,7 @@ def create_app(
         try:
             if action == "remove":
                 await bluetooth.remove_device(address)
+                await receivers.forget(address)
             elif action == "disconnect":
                 await bluetooth.disconnect_device(address)
             else:
