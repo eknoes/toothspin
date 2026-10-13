@@ -48,6 +48,8 @@ Optional, in `~/.config/sendspin-bluetooth.env` (then
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
+| `MA_URL` | – | Music Assistant URL, e.g. `http://192.168.178.91:8095`; enables speaker control |
+| `MA_TOKEN` | – | long-lived Music Assistant API token (MA profile → tokens); keep the env file `chmod 600` |
 | `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
 | `BT_PAIRING_SECONDS` | `120` | how long "Add phone" keeps pairing open |
@@ -74,8 +76,12 @@ unpaired. Music Assistant only accepts audio from paired sources.
 2. On the phone's card in the web UI, press **Allow**. A pairing code
    appears; type it into Music Assistant.
 
-**Playing:** select a player in Music Assistant, open **Browse**, pick the
-phone's input and press **Play**. Or set the device's **Automatically play
+**Playing:** with `MA_URL`/`MA_TOKEN` set, each paired phone's card lists
+Music Assistant's speakers as toggles. Turning one on plays the phone there
+right away; turning on more groups them on the fly (only speakers that can
+play in sync are offered); turning one off takes it out. A speaker playing
+another phone is taken over. Without the token: select a player in Music
+Assistant, open **Browse**, pick the phone's input and press **Play**. Or set the device's **Automatically play
 line-in on** setting: the service reports a signal while the phone plays
 non-silent audio, and MA stops a minute after it goes quiet.
 
