@@ -50,33 +50,30 @@
          margin: 8px 0; }
   .notice { border-left: 3px solid var(--accent); padding: 8px 12px; margin-top: 12px; }
   .error { color: var(--danger); }
-  .track { font-size: 17px; margin-bottom: 8px; }
+  .track { font-size: 16px; margin: 6px 0 2px; }
+  .phone { display: grid; gap: 4px; }
+  .phone + .phone { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+  .phone .name { font-weight: 600; font-size: 16px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 </style>
 </head>
 <body>
 <main>
   <header>
-    <h1 id="title">Bluetooth Receiver</h1>
+    <h1>Bluetooth Receiver</h1>
     <div class="muted" id="subtitle"></div>
   </header>
 
   <section>
-    <h2>Phones</h2>
     <div class="row">
       <div class="grow" id="bt-pairing-text"></div>
       <button class="primary" id="bt-pairing-btn"></button>
     </div>
-    <ul id="devices" style="margin-top:16px"></ul>
   </section>
 
   <section>
-    <h2>Now playing</h2>
-    <div id="audio"></div>
-  </section>
-
-  <section>
-    <h2>Music Assistant</h2>
-    <div id="ma"></div>
+    <h2>Phones</h2>
+    <div id="devices"></div>
   </section>
 
   <div class="error" id="error"></div>
@@ -102,29 +99,69 @@ async function post(path, body) {
   await refresh();
 }
 
+function renderAudio(d) {
+  if (!d.connected) return `<div class="muted">Not connected</div>`;
+  if (!d.audio) return `<div class="muted">Connected, not streaming</div>`;
+  const np = d.audio.now_playing, ss = d.sendspin;
+  const track = np && np.title
+    ? `<div class="track"><b>${esc(np.title)}</b>${np.artist ? ` — ${esc(np.artist)}` : ""}</div>`
+    : "";
+  return `${track}<div><span class="dot ${ss && ss.signal ? "ok" : ""}"></span>
+      ${ss && ss.signal ? "Playing" : "Silent"} · ${esc(d.audio.codec || "Bluetooth")} ·
+      ${ss && ss.streaming ? "streaming to Music Assistant" : "not requested by Music Assistant"}</div>`;
+}
+
+function renderSendspin(d) {
+  const ss = d.sendspin;
+  if (!ss) return "";
+  let html;
+  if (!ss.connected) {
+    html = `<div class="muted"><span class="dot"></span>Music Assistant: not connected
+              ${ss.url ? "(" + esc(ss.url) + ")" : "(searching…)"}</div>`;
+  } else if (ss.paired) {
+    html = `<div class="muted"><span class="dot ok"></span>Music Assistant: input “${esc(ss.name)}”</div>`;
+  } else {
+    html = `<div><span class="dot warn"></span>Music Assistant: not paired yet</div>`;
+  }
+  if (ss.pin) {
+    html += `<div class="notice">Enter this code in Music Assistant:<div class="pin">${esc(ss.pin)}</div></div>`;
+  } else if (ss.pairing_requested) {
+    html += `<div class="notice row"><div class="grow">Music Assistant wants to pair “${esc(ss.name)}”.</div>
+               <button class="primary" data-pair="${esc(d.address)}">Allow</button></div>`;
+  } else if (ss.connected && !ss.paired) {
+    html += `<div class="notice">In Music Assistant's settings, open “${esc(ss.name)}” and choose
+               <b>Pair the device</b>, then allow it here.
+               <div style="margin-top:8px"><button data-pair="${esc(d.address)}" ${ss.pairing_window_open ? "disabled" : ""}>
+               ${ss.pairing_window_open ? "Pairing allowed — waiting for Music Assistant" : "Allow pairing"}</button></div></div>`;
+  }
+  return html;
+}
+
 function render() {
-  const bt = state.bluetooth, ss = state.sendspin, audio = state.audio;
+  const bt = state.bluetooth;
   $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
 
   const pairing = bt.pairing_remaining !== null;
   $("bt-pairing-text").innerHTML = pairing
     ? `<span class="dot warn"></span>Pairing open — on the phone, connect to <b>${esc(bt.name)}</b> (${bt.pairing_remaining}s left)`
-    : `<span class="muted">Add a new phone by opening pairing for two minutes.</span>`;
+    : `<span class="muted">Add a new phone by opening Bluetooth pairing for two minutes.</span>`;
   const btn = $("bt-pairing-btn");
   btn.textContent = pairing ? "Stop pairing" : "Add phone";
   btn.className = pairing ? "" : "primary";
   btn.onclick = () => post("/api/bluetooth/pairing", {open: !pairing});
 
-  $("devices").innerHTML = bt.devices.length ? bt.devices.map((d) => `
-    <li class="row">
-      <div class="grow">
-        <div><span class="dot ${d.connected ? "ok" : ""}"></span>${esc(d.name)}</div>
-        <div class="muted">${esc(d.address)} · ${d.connected ? "connected" : "not connected"}</div>
+  $("devices").innerHTML = state.devices.length ? state.devices.map((d) => `
+    <div class="phone">
+      <div class="name"><span class="dot ${d.connected ? "ok" : ""}"></span>${esc(d.name)}
+        <span class="muted" style="font-weight:400;font-size:13px">${esc(d.address)}</span></div>
+      ${renderAudio(d)}
+      ${renderSendspin(d)}
+      <div class="actions">
+        ${d.connected ? `<button data-addr="${esc(d.address)}" data-action="disconnect">Disconnect</button>` : ""}
+        <button class="danger" data-addr="${esc(d.address)}" data-action="remove">${confirmRemove === d.address ? "Really remove?" : "Remove"}</button>
       </div>
-      ${d.connected ? `<button data-addr="${esc(d.address)}" data-action="disconnect">Disconnect</button>` : ""}
-      <button class="danger" data-addr="${esc(d.address)}" data-action="remove">${confirmRemove === d.address ? "Really remove?" : "Remove"}</button>
-    </li>`).join("") : `<li class="muted">No phones paired yet.</li>`;
-  for (const b of $("devices").querySelectorAll("button")) {
+    </div>`).join("") : `<div class="muted">No phones paired yet.</div>`;
+  for (const b of $("devices").querySelectorAll("button[data-action]")) {
     b.onclick = () => {
       if (b.dataset.action === "remove" && confirmRemove !== b.dataset.addr) {
         confirmRemove = b.dataset.addr; render();
@@ -135,42 +172,9 @@ function render() {
       post(`/api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`);
     };
   }
-
-  const np = audio && audio.now_playing;
-  const track = np && np.title
-    ? `<div class="track"><b>${esc(np.title)}</b>${np.artist ? ` — ${esc(np.artist)}` : ""}
-         ${np.album ? `<div class="muted">${esc(np.album)}</div>` : ""}</div>`
-    : "";
-  $("audio").innerHTML = audio
-    ? `${track}<div><span class="dot ${ss.signal ? "ok" : ""}"></span>${esc(audio.device)}
-         ${ss.signal ? "is playing" : "is connected, silent"}</div>
-       <div class="muted">${esc(audio.codec || "Bluetooth")} ·
-         ${ss.streaming ? "streaming to Music Assistant" : "not requested by Music Assistant"}</div>`
-    : `<span class="muted">No phone streaming.</span>`;
-
-  let ma;
-  if (!ss.connected) {
-    ma = `<div><span class="dot"></span>Not connected</div>
-          <div class="muted">${ss.url ? esc(ss.url) : "Searching for a server…"}</div>`;
-  } else {
-    ma = `<div><span class="dot ${ss.paired ? "ok" : "warn"}"></span>
-            Connected to ${esc(ss.server_name || ss.url)}${ss.paired ? ", paired" : ", not paired"}</div>`;
+  for (const b of $("devices").querySelectorAll("button[data-pair]")) {
+    b.onclick = () => post(`/api/sendspin/${encodeURIComponent(b.dataset.pair)}/pairing`);
   }
-  if (ss.pin) {
-    ma += `<div class="notice">Enter this code in Music Assistant:
-             <div class="pin">${esc(ss.pin)}</div></div>`;
-  } else if (ss.pairing_requested) {
-    ma += `<div class="notice row"><div class="grow">Music Assistant wants to pair.</div>
-             <button class="primary" id="ss-allow">Allow</button></div>`;
-  } else if (!ss.paired && ss.connected) {
-    ma += `<div class="notice">To pair: in Music Assistant's settings, open the device
-             “${esc(ss.name)}” and choose <b>Pair the device</b>, then allow it here.
-             <div style="margin-top:8px"><button id="ss-allow" ${ss.pairing_window_open ? "disabled" : ""}>
-             ${ss.pairing_window_open ? "Pairing allowed — waiting for Music Assistant" : "Allow pairing"}</button></div></div>`;
-  }
-  $("ma").innerHTML = ma;
-  const allow = $("ss-allow");
-  if (allow) allow.onclick = () => post("/api/sendspin/pairing");
 }
 
 async function refresh() {

@@ -14,8 +14,7 @@ from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 
 from .bluez import BluetoothManager
-from .capture import Capture
-from .source import SendspinSource
+from .receivers import Receivers
 from .web import create_app
 
 logger = logging.getLogger(__name__)
@@ -29,8 +28,8 @@ def _parse_args() -> argparse.Namespace:
         help="Sendspin server URL, e.g. ws://ma:8927/sendspin (default: discover via mDNS)",
     )
     parser.add_argument(
-        "--name", default=env("SENDSPIN_NAME", "Bluetooth"),
-        help="Name of this source in Music Assistant",
+        "--name", default=env("SENDSPIN_NAME", "{device} (Bluetooth)"),
+        help="Name of each phone's input in Music Assistant; {device} is the phone's name",
     )
     parser.add_argument(
         "--bt-name", default=env("BT_NAME", "Music Assistant"),
@@ -54,33 +53,29 @@ def _parse_args() -> argparse.Namespace:
 async def _run(args: argparse.Namespace) -> None:
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 
-    source = SendspinSource(args.name, args.url, args.data_dir, AudioCodec(args.codec))
-    await source.setup()
-
-    capture = Capture(source, source.client.now_us)
-
-    bluetooth = BluetoothManager(bus, args.adapter, alias=args.bt_name, on_change=capture.notify)
+    bluetooth = BluetoothManager(
+        bus, args.adapter, alias=args.bt_name, on_change=lambda: receivers.notify()
+    )
+    receivers = Receivers(bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name)
     await bluetooth.start()
+    await receivers.sync()
 
-    runner = web.AppRunner(create_app(bluetooth, source, capture, args.pairing_seconds))
+    runner = web.AppRunner(create_app(bluetooth, receivers, args.pairing_seconds))
     await runner.setup()
     await web.TCPSite(runner, args.web_host, args.web_port).start()
     logger.info("Web UI on http://%s:%d/", args.web_host, args.web_port)
 
     tasks = [
-        asyncio.create_task(source.run()),
-        asyncio.create_task(capture.run()),
         asyncio.create_task(bluetooth.lost.wait()),
+        asyncio.create_task(receivers.failed.wait()),
     ]
     try:
-        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-        for task in done:
-            task.result()
-        raise SystemExit("Bluetooth stack lost; exiting so the service restarts")
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        raise SystemExit("Bluetooth stack lost or a receiver failed; exiting to restart")
     finally:
         for task in tasks:
             task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await receivers.close()
         await runner.cleanup()
         bus.disconnect()
 

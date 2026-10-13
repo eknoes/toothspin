@@ -37,7 +37,7 @@ def _run(arrivals: list[int]) -> list[int]:
             clock[0] = arrival
             yield bytes(frames * CAPTURE_FORMAT.frame_bytes)
 
-    capture = Capture(source, lambda: clock[0], record=record)  # type: ignore[arg-type]
+    capture = Capture(PHONE.address, source, lambda: clock[0], record=record)  # type: ignore[arg-type]
     asyncio.run(capture._capture(PHONE))
     return source.timestamps
 
@@ -61,7 +61,8 @@ def test_stops_recording_when_node_disappears() -> None:
     present = [True]
     stopped = asyncio.Event()
 
-    async def find():
+    async def find(address: str):
+        assert address == PHONE.address
         return PHONE if present[0] else None
 
     async def record(found: Source, frames: int):
@@ -73,7 +74,9 @@ def test_stops_recording_when_node_disappears() -> None:
             stopped.set()
 
     async def scenario() -> None:
-        capture = Capture(FakeSource(), lambda: 0, find_source=find, record=record)  # type: ignore[arg-type]
+        capture = Capture(
+            PHONE.address, FakeSource(), lambda: 0, find_source=find, record=record  # type: ignore[arg-type]
+        )
         task = asyncio.create_task(capture.run())
         await asyncio.sleep(0.1)
         assert capture.active == PHONE

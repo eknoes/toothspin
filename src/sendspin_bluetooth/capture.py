@@ -1,6 +1,6 @@
 """Capture backend: the phone's PipeWire node -> Sendspin source.
 
-Records whichever phone is currently connected, timestamps the audio on the
+Records one phone's PipeWire node, timestamps the audio on the
 Sendspin client clock and derives line-sense (signal present) from its level.
 """
 
@@ -11,6 +11,7 @@ import contextlib
 import logging
 import math
 from collections.abc import AsyncIterator, Awaitable, Callable
+from functools import partial
 
 import numpy as np
 
@@ -35,16 +36,19 @@ BURST_S = 4.0
 
 
 class Capture:
+    """Records one phone, identified by its Bluetooth address."""
+
     def __init__(
         self,
+        address: str,
         source: SendspinSource,
         now_us: Callable[[], int],
-        find_source: Callable[[], Awaitable[Source | None]] = pipewire.find_source,
+        find_source: Callable[[str], Awaitable[Source | None]] = pipewire.find_source,
         record: Callable[[Source, int], AsyncIterator[bytes]] = pipewire.record,
     ) -> None:
         self._source = source
         self._now_us = now_us
-        self._find_source = find_source
+        self._find_source = partial(find_source, address)
         self._record = record
         self._changed = asyncio.Event()
         self._burst_until = 0.0

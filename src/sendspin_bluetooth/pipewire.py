@@ -60,8 +60,8 @@ def parse_sources(dump: list[dict]) -> list[Source]:
     return sources
 
 
-async def find_source() -> Source | None:
-    """The phone currently exposed as a capture node (we serve one at a time)."""
+async def find_source(address: str) -> Source | None:
+    """The capture node of the phone with this Bluetooth address, if it's streaming."""
     proc = await asyncio.create_subprocess_exec(
         "pw-dump",
         stdout=asyncio.subprocess.PIPE,
@@ -71,8 +71,10 @@ async def find_source() -> Source | None:
     if proc.returncode != 0:
         logger.warning("pw-dump failed: %s", err.decode(errors="replace").strip())
         return None
-    sources = parse_sources(json.loads(out or b"[]"))
-    return sources[0] if sources else None
+    for source in parse_sources(json.loads(out or b"[]")):
+        if source.address.upper() == address.upper():
+            return source
+    return None
 
 
 async def record(source: Source, chunk_frames: int) -> AsyncIterator[bytes]:
