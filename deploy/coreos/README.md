@@ -50,18 +50,11 @@ layered on. This isn't declarative in Ignition (rpm-ostree package layering
 needs a reboot to apply), so it's a one-time manual step after first boot:
 
 ```bash
-sudo rpm-ostree install --apply-live bluez usbutils alsa-lib bluez-libs libsbc fdk-aac-free
+sudo rpm-ostree install --apply-live bluez usbutils pipewire wireplumber pipewire-utils
 ```
 
 (`usbutils` is just for `lsusb`-based diagnostics, not required to run
-anything. The last four are bluealsa's runtime libraries. `--apply-live`
-avoids the reboot for package additions.) After rebooting, confirm with `systemctl is-enabled
-bluetooth.service` — if Ignition's first boot ran before the package
-existed, the enablement may need to be set manually once:
-`sudo systemctl enable --now bluetooth.service`.
-
-`bluez-alsa` (`bluealsad`) isn't packaged for Fedora, so
-[`deploy/bluealsa/install.sh`](../bluealsa/install.sh) builds it in a
-Fedora container matching the host release and installs it to
-`/usr/local/bin`. Rebuild it if a CoreOS update ever bumps one of those
-libraries' sonames.
+anything. `--apply-live` avoids the reboot for package additions.) Then
+confirm with `systemctl is-enabled bluetooth.service` — if Ignition's
+first boot ran before the package existed, the enablement may need to be
+set manually once: `sudo systemctl enable --now bluetooth.service`.

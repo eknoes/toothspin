@@ -5,7 +5,8 @@ a phone plays shows up in Music Assistant as a live input (a Sendspin
 **source**), which you can play on any player or group.
 
 ```
-Phone ─A2DP─> bluetoothd + bluealsa (host) ─PCM fd over D-Bus─> sendspin-bluetooth (rootless podman)
+Phone ─A2DP─> bluetoothd (host) ─> PipeWire/WirePlumber (core's user session)
+      ─pw-record over the PipeWire socket─> sendspin-bluetooth (rootless podman)
       ─Sendspin source@v1 over WebSocket─> Music Assistant (sendspin_source provider)
 ```
 
@@ -19,19 +20,20 @@ connected at a time.
 On the CoreOS VM ([deploy/coreos](deploy/coreos/)), as `core`, from a copy
 of this repo:
 
-1. Layer the Bluetooth packages and bluealsa's runtime libraries (once):
+1. Layer BlueZ and PipeWire (once):
    ```bash
-   sudo rpm-ostree install --apply-live bluez usbutils alsa-lib bluez-libs libsbc fdk-aac-free
+   sudo rpm-ostree install --apply-live bluez usbutils pipewire wireplumber pipewire-utils
    ```
-2. Build and install bluealsa, our BlueZ config and the D-Bus policy:
+2. Install our BlueZ config (speaker device class):
    ```bash
-   deploy/bluealsa/install.sh
+   deploy/bluetooth/install.sh
    ```
-   `bluealsactl status` should list `A2DP-sink : SBC AAC`.
-3. Build and start the service:
+3. Configure WirePlumber, then build and start the service:
    ```bash
    deploy/service/install.sh
    ```
+   `wpctl status` lists a connected phone under Devices; its capture node
+   only appears under Sources while the phone is playing.
 
 The web UI is then on `http://<vm>:8080/`. It has no login — keep it on the
 home LAN.
