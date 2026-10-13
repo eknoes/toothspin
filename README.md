@@ -129,6 +129,19 @@ in-process aiosendspin server (the library Music Assistant uses): pairing,
 line-sense, server-requested start/stop and bit-exact PCM delivery. Phone
 capture itself can only be tested with real hardware.
 
+## Releasing
+
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests and
+builds the amd64/arm64 image on every push and pull request. Pushes to
+`main` publish `ghcr.io/<owner>/toothspin:edge`. To release:
+
+1. Bump `version` in `pyproject.toml` and commit.
+2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+
+The tag must match the version; CI then publishes
+`ghcr.io/<owner>/toothspin:0.2.0` (and `:0.2`) and creates a GitHub release
+with generated notes.
+
 ## License
 
 GPL-3.0-or-later, see [LICENSE](LICENSE). Third-party components in the
