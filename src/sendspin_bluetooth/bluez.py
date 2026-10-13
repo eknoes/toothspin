@@ -1,7 +1,12 @@
 """BlueZ adapter control: pairing window, paired-device list, pairing agent.
 
 Phones pair "Just Works" (no PIN) but only while the pairing window is open;
-the first device that pairs in a window is trusted and the window closes.
+the window closes once a device has paired.
+
+Connections are only ever started from here: paired phones stay *untrusted*,
+so BlueZ asks our agent before it accepts a phone's own profile connections,
+and the agent only allows them while the pairing window is open or after
+``connect_device()`` — until that connection ends.
 """
 
 # No ``from __future__ import annotations``: dbus-fast reads the agent's
@@ -68,6 +73,8 @@ class BluetoothManager:
         self._players: dict[str, dict[str, Any]] = {}
         self._pairing_deadline: float | None = None
         self._pairing_close: asyncio.TimerHandle | None = None
+        # Device paths whose current connection we started (or that just paired).
+        self._connect_allowed: set[str] = set()
         # Set when the adapter vanishes (dongle reset/unplug) or bluetoothd
         # restarts: our agent and adapter settings are gone, so the service
         # exits and systemd restarts it once the adapter is back.
@@ -101,6 +108,7 @@ class BluetoothManager:
             self._bus, BLUEZ, "/org/bluez", manager, "RequestDefaultAgent", "o", [AGENT_PATH]
         )
 
+        await self._untrust_all()
         await self._set_adapter("Powered", Variant("b", True))
         if self._alias:
             await self._set_adapter("Alias", Variant("s", self._alias))
@@ -176,8 +184,8 @@ class BluetoothManager:
                 )
         return None
 
-    def _is_trusted(self, path: str) -> bool:
-        return bool(self._devices.get(path, {}).get("Trusted"))
+    def connection_allowed(self, path: str) -> bool:
+        return path in self._connect_allowed or self.pairing_remaining is not None
 
     # --- actions ---
 
@@ -211,6 +219,32 @@ class BluetoothManager:
         await dbus.call(self._bus, BLUEZ, self._adapter_path, ADAPTER, "RemoveDevice", "o", [path])
         logger.info("Removed Bluetooth device %s", address)
 
+    async def connect_device(self, address: str) -> None:
+        """Connect a paired phone; its connections are accepted until it disconnects."""
+        path = self._path_for(address)
+        self._connect_allowed.add(path)
+        try:
+            await asyncio.wait_for(
+                dbus.call(self._bus, BLUEZ, path, DEVICE, "Connect"), timeout=30
+            )
+        except (DBusError, TimeoutError):
+            if not self._devices.get(path, {}).get("Connected"):
+                self._connect_allowed.discard(path)
+            raise
+        logger.info("Connected %s", self.device_name(path))
+
+    async def _untrust_all(self) -> None:
+        """Phones paired before this policy were trusted, which bypasses the agent."""
+        for path, props in self._devices.items():
+            if props.get("Trusted"):
+                await dbus.set_property(
+                    self._bus, BLUEZ, path, DEVICE, "Trusted", Variant("b", False)
+                )
+                logger.info("Untrusted %s: connections now start from here", props.get("Alias"))
+            if props.get("Connected"):
+                # Keep an existing connection alive across a service restart.
+                self._connect_allowed.add(path)
+
     async def disconnect_device(self, address: str) -> None:
         await dbus.call(self._bus, BLUEZ, self._path_for(address), DEVICE, "Disconnect")
 
@@ -241,6 +275,8 @@ class BluetoothManager:
                 self._devices[msg.path].update(changed)
                 if changed.get("Paired"):
                     asyncio.ensure_future(self._on_paired(msg.path))
+                if changed.get("Connected") is False:
+                    self._connect_allowed.discard(msg.path)
                 self._on_change()
             elif iface == PLAYER and msg.path in self._players:
                 self._players[msg.path].update(_unwrap_player(changed))
@@ -265,11 +301,9 @@ class BluetoothManager:
                 self._players.pop(path, None)
 
     async def _on_paired(self, path: str) -> None:
-        logger.info("Paired with %s; trusting it", self.device_name(path))
-        try:
-            await dbus.set_property(self._bus, BLUEZ, path, DEVICE, "Trusted", Variant("b", True))
-        except DBusError:
-            logger.exception("Could not trust %s", path)
+        logger.info("Paired with %s", self.device_name(path))
+        # Let the phone finish the connection it paired over.
+        self._connect_allowed.add(path)
         if self._pairing_deadline is not None:
             await self.close_pairing()
 
@@ -283,7 +317,7 @@ def _unwrap_player(props: dict[str, Variant]) -> dict[str, Any]:
 
 
 class _Agent(ServiceInterface):
-    """Accepts pairing only while the window is open; services only for trusted devices."""
+    """Accepts pairing only while the window is open, and connections we started."""
 
     def __init__(self, manager: BluetoothManager) -> None:
         super().__init__("org.bluez.Agent1")
@@ -326,8 +360,9 @@ class _Agent(ServiceInterface):
 
     @method()
     def AuthorizeService(self, device: "o", uuid: "s"):  # noqa: F821, N802
-        if not self._manager._is_trusted(device):  # noqa: SLF001
-            self._require_window(device)
+        if not self._manager.connection_allowed(device):
+            logger.info("Rejected connection from %s: not started from here", device)
+            raise DBusError("org.bluez.Error.Rejected", "Connect from the receiver")
 
     @method()
     def Cancel(self):  # noqa: N802
