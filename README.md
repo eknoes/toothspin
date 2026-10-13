@@ -64,8 +64,12 @@ Each phone is paired twice, once per layer.
 
 1. In the web UI, press **Add phone**. The dongle is discoverable for two
    minutes.
-2. On the phone, connect to `BT_NAME`. The first phone that pairs is trusted
-   and pairing closes again; outside that window pairing is refused.
+2. On the phone, connect to `BT_NAME`. Pairing closes again once a phone has
+   paired; outside that window pairing is refused.
+
+Connections always start from the receiver: press **Connect** on the
+phone's card. A phone trying to connect on its own is refused, and the
+receiver doesn't reconnect by itself after the link drops.
 
 **That phone ↔ Music Assistant:** pairing the phone creates its own
 Sendspin source, e.g. "Pixel 10 (Bluetooth)", which connects to MA
