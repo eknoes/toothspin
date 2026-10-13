@@ -17,7 +17,7 @@ from aiosendspin.client import PairingSupport, SendspinClient
 from aiosendspin.models.core import DeviceInfo
 from aiosendspin.models.player import SupportedAudioFormat
 from aiosendspin.models.source import ClientHelloSourceFeatures, ClientHelloSourceSupport
-from aiosendspin.models.types import AudioCodec, Roles, SignalState
+from aiosendspin.models.types import AudioCodec, GoodbyeReason, Roles, SignalState
 from aiosendspin.noise import FileClientPairingStore, Identity, b64url_decode, b64url_encode
 
 from .pipewire import CAPTURE_FORMAT, PcmFormat
@@ -130,7 +130,10 @@ class SendspinSource:
                 backoff = min(backoff * 2, 60.0)
         finally:
             signal_task.cancel()
-            await self.client.disconnect()
+            # RESTART, not SHUTDOWN: the service always comes back, and on
+            # SHUTDOWN the server drops the client, so Music Assistant forgets
+            # it was playing this input and never asks for it again.
+            await self.client.disconnect(GoodbyeReason.RESTART)
 
     async def _reset(self) -> None:
         async with self._lock:

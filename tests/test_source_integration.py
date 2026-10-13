@@ -134,6 +134,14 @@ async def _scenario(tmp_path: Path) -> None:
         source_role().request_stop()
         await _until(lambda: not source.status().streaming)
         drain_task.cancel()
+
+        # Stopping the service says goodbye with RESTART: the server keeps the
+        # client around (warm) so Music Assistant re-requests the stream once
+        # it reconnects, instead of forgetting it.
+        run_task.cancel()
+        await asyncio.gather(run_task, return_exceptions=True)
+        await asyncio.sleep(0.2)
+        assert server.get_client(client_id) is not None
     finally:
         run_task.cancel()
         await asyncio.gather(run_task, return_exceptions=True)
