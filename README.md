@@ -1,4 +1,7 @@
-# sendspin-bluetooth
+# ToothSpin
+
+**Bluetooth audio input for Sendspin and Music Assistant.** Stream any
+phone over Bluetooth into Music Assistant.
 
 Turns a Bluetooth dongle into a speaker that phones can pair with. Whatever
 a phone plays shows up in Music Assistant as a live input (a Sendspin
@@ -6,7 +9,7 @@ a phone plays shows up in Music Assistant as a live input (a Sendspin
 
 ```
 Phone ─A2DP─> bluetoothd (host) ─> PipeWire/WirePlumber (core's user session)
-      ─pw-record over the PipeWire socket─> sendspin-bluetooth (rootless podman)
+      ─pw-record over the PipeWire socket─> toothspin (rootless podman)
       ─Sendspin source@v1 over WebSocket─> Music Assistant (sendspin_source provider)
 ```
 
@@ -29,14 +32,14 @@ only needs:
 ### Any Linux host (Docker / Podman)
 
 ```bash
-docker build -t sendspin-bluetooth .
-docker run -d --name sendspin-bluetooth --restart unless-stopped \
+docker build -t toothspin .
+docker run -d --name toothspin --restart unless-stopped \
   --network host \
   -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
-  -v sendspin-bluetooth-data:/data \
+  -v toothspin-data:/data \
   --security-opt label=disable \
   -e MA_URL=http://<music-assistant>:8095 -e MA_TOKEN=<token> \
-  sendspin-bluetooth
+  toothspin
 ```
 
 `--network host` is for finding Music Assistant via mDNS and the web UI on
@@ -58,8 +61,8 @@ home LAN.
 
 ### Configuration
 
-Optional, in `~/.config/sendspin-bluetooth.env` (then
-`systemctl --user restart sendspin-bluetooth`):
+Optional, in `~/.config/toothspin.env` (then
+`systemctl --user restart toothspin`):
 
 | Variable | Default | |
 |---|---|---|

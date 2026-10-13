@@ -1,7 +1,7 @@
 import pytest
 
-from sendspin_bluetooth.ma import MusicAssistantError
-from sendspin_bluetooth.speakers import plan, source_uri, speakers
+from toothspin.ma import MusicAssistantError
+from toothspin.speakers import plan, source_uri, speakers
 
 PIXEL = source_uri("pixel")
 IPHONE = source_uri("iphone")
@@ -103,7 +103,7 @@ def test_toggling_to_the_current_state_does_nothing() -> None:
 
 
 def test_applied_reflects_ma_state() -> None:
-    from sendspin_bluetooth.speakers import _applied
+    from toothspin.speakers import _applied
 
     playing = [_player("buero", playing=PIXEL, members=["buero", "living"]),
                _player("living", playing=PIXEL, synced_to="buero")]
@@ -135,7 +135,7 @@ class FakeMA:
 def test_mute_uses_native_mute_or_emulates_it() -> None:
     import asyncio
 
-    from sendspin_bluetooth.speakers import Volumes
+    from toothspin.speakers import Volumes
 
     native = {**_player("couch"), "mute_control": "native", "volume_control": "native", "volume_level": 30}
     squeeze = {**_player("buero"), "mute_control": "none", "volume_control": "native", "volume_level": 40}

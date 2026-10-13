@@ -20,8 +20,8 @@ from aiosendspin.server.roles.source.events import (
 )
 from aiosendspin.server.server import SendspinServer
 
-from sendspin_bluetooth.pipewire import PcmFormat
-from sendspin_bluetooth.source import SendspinSource
+from toothspin.pipewire import PcmFormat
+from toothspin.source import SendspinSource
 
 
 async def _until(predicate, timeout: float = 10.0) -> None:  # noqa: ANN001

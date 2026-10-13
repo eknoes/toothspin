@@ -1,6 +1,6 @@
 from dbus_fast import Message, MessageType, Variant
 
-from sendspin_bluetooth.bluez import BluetoothManager, NowPlaying
+from toothspin.bluez import BluetoothManager, NowPlaying
 
 PLAYER_PATH = "/org/bluez/hci0/dev_84_0F_4C_90_46_AF/avrcp/player0"
 
@@ -53,7 +53,7 @@ def test_now_playing_from_avrcp() -> None:
 
 def test_unwrap_player_accepts_already_unwrapped_props() -> None:
     # GetManagedObjects results arrive with the top level already unwrapped.
-    from sendspin_bluetooth.bluez import _unwrap_player
+    from toothspin.bluez import _unwrap_player
 
     props = {"Status": "paused", "Track": {"Title": Variant("s", "Numb")}}
     assert _unwrap_player(props) == {"Status": "paused", "Track": {"Title": "Numb"}}

@@ -3,9 +3,9 @@ from pathlib import Path
 
 from aiosendspin.models.types import AudioCodec
 
-from sendspin_bluetooth import receivers as receivers_module
-from sendspin_bluetooth.bluez import BluetoothDevice
-from sendspin_bluetooth.receivers import Receivers
+from toothspin import receivers as receivers_module
+from toothspin.bluez import BluetoothDevice
+from toothspin.receivers import Receivers
 
 
 class FakeBluetooth:

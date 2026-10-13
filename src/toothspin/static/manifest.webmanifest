@@ -1,7 +1,7 @@
 {
-  "name": "Bluetooth Receiver",
-  "short_name": "BT Receiver",
-  "description": "Stream phones into Music Assistant and pick their speakers",
+  "name": "ToothSpin",
+  "short_name": "ToothSpin",
+  "description": "Stream any phone over Bluetooth into Music Assistant",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

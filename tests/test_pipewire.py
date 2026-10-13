@@ -1,4 +1,4 @@
-from sendspin_bluetooth.pipewire import Source, parse_sources
+from toothspin.pipewire import Source, parse_sources
 
 
 def _node(props: dict) -> dict:

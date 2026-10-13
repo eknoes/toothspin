@@ -52,8 +52,8 @@ class Receivers:
         self._name_format = name_format
         self._device_info = DeviceInfo(
             manufacturer=manufacturer,
-            product_name="Bluetooth receiver",
-            software_version=version("sendspin-bluetooth"),
+            product_name="ToothSpin",
+            software_version=version("toothspin"),
         )
         self._receivers: dict[str, Receiver] = {}
         self._sync_lock = asyncio.Lock()

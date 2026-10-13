@@ -3,8 +3,8 @@ import math
 
 import numpy as np
 
-from sendspin_bluetooth.capture import CHUNK_MS, Capture, _dbfs
-from sendspin_bluetooth.pipewire import CAPTURE_FORMAT, PcmFormat, Source
+from toothspin.capture import CHUNK_MS, Capture, _dbfs
+from toothspin.pipewire import CAPTURE_FORMAT, PcmFormat, Source
 
 CHUNK_US = CHUNK_MS * 1000
 PHONE = Source("bluez_input.AA", "Pixel", "AA:BB:CC:DD:EE:FF", "AAC")

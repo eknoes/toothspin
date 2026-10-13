@@ -31,7 +31,7 @@ BLUEZ = "org.bluez"
 ADAPTER = "org.bluez.Adapter1"
 DEVICE = "org.bluez.Device1"
 PLAYER = "org.bluez.MediaPlayer1"
-AGENT_PATH = "/org/sendspin/bluetooth/agent"
+AGENT_PATH = "/org/toothspin/agent"
 
 
 @dataclass(frozen=True, slots=True)

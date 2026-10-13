@@ -88,7 +88,7 @@ async def record(source: Source, chunk_frames: int) -> AsyncIterator[bytes]:
         f"--channels={fmt.channels}",
         "--format=s16",
         "--latency=20ms",
-        "-P", "{ node.name = sendspin-bluetooth }",
+        "-P", "{ node.name = toothspin }",
         "-",
         stdout=asyncio.subprocess.PIPE,
     )

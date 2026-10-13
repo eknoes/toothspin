@@ -27,4 +27,4 @@ ENV PATH=/opt/venv/bin:$PATH \
     XDG_RUNTIME_DIR=/tmp/runtime \
     XDG_STATE_HOME=/tmp/runtime/state
 VOLUME /data
-CMD ["sendspin-bluetooth"]
+CMD ["toothspin"]

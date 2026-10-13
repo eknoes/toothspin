@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class AudioStack:
     def __init__(self) -> None:
-        runtime = os.environ.setdefault("XDG_RUNTIME_DIR", "/tmp/sendspin-bluetooth-runtime")
+        runtime = os.environ.setdefault("XDG_RUNTIME_DIR", "/tmp/toothspin-runtime")
         self._runtime = Path(runtime)
         self._procs: list[asyncio.subprocess.Process] = []
         self.exited = asyncio.Event()

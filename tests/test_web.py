@@ -3,7 +3,7 @@ import json
 
 from aiohttp.test_utils import TestClient, TestServer
 
-from sendspin_bluetooth.web import create_app
+from toothspin.web import create_app
 
 
 def test_serves_pwa_files() -> None:

@@ -1,5 +1,5 @@
 # Rootless Quadlet unit for the `core` user:
-# ~/.config/containers/systemd/sendspin-bluetooth.container
+# ~/.config/containers/systemd/toothspin.container
 [Unit]
 Description=Sendspin Bluetooth source
 
@@ -10,8 +10,8 @@ Description=Sendspin Bluetooth source
 DefaultDependencies=false
 
 [Container]
-Image=localhost/sendspin-bluetooth:latest
-ContainerName=sendspin-bluetooth
+Image=localhost/toothspin:latest
+ContainerName=toothspin
 # Host network: mDNS discovery of Music Assistant and the web UI on :8080.
 Network=host
 # Run as core's own uid inside the container: D-Bus EXTERNAL auth compares
@@ -21,9 +21,9 @@ UserNS=keep-id
 # SELinux would otherwise deny container_t access to the bus socket.
 Volume=/run/dbus/system_bus_socket:/run/dbus/system_bus_socket
 SecurityLabelDisable=true
-Volume=sendspin-bluetooth-data:/data
+Volume=toothspin-data:/data
 # Optional overrides (SENDSPIN_URL, SENDSPIN_NAME, BT_NAME, ...).
-EnvironmentFile=%h/.config/sendspin-bluetooth.env
+EnvironmentFile=%h/.config/toothspin.env
 
 [Service]
 Restart=always

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def _parse_args() -> argparse.Namespace:
     env = os.environ.get
-    parser = argparse.ArgumentParser(prog="sendspin-bluetooth", description=__doc__)
+    parser = argparse.ArgumentParser(prog="toothspin", description=__doc__)
     parser.add_argument(
         "--url", default=env("SENDSPIN_URL"),
         help="Sendspin server URL, e.g. ws://ma:8927/sendspin (default: discover via mDNS)",
