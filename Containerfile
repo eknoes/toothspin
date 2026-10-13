@@ -5,6 +5,7 @@
 ARG ALPINE_RELEASE=3.22
 
 FROM docker.io/library/alpine:${ALPINE_RELEASE} AS build
+# All dependencies ship musl wheels for amd64 and arm64, so no compilers.
 RUN apk add --no-cache python3
 COPY pyproject.toml /src/
 COPY src /src/src
