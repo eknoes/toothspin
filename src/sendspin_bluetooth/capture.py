@@ -10,10 +10,12 @@ import asyncio
 import contextlib
 import logging
 import math
+import operator
+import sys
 from collections.abc import AsyncIterator, Awaitable, Callable
 from functools import partial
 
-import numpy as np
+from array import array
 
 from . import pipewire
 from .pipewire import CAPTURE_FORMAT, Source
@@ -134,10 +136,12 @@ class Capture:
 
 def _dbfs(pcm: bytes) -> float:
     """RMS level of interleaved S16LE PCM in dBFS."""
-    samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32)
-    if not samples.size:
+    samples = array("h", pcm)
+    if sys.byteorder != "little":
+        samples.byteswap()
+    if not samples:
         return -math.inf
-    mean_square = float(np.mean(samples * samples))
+    mean_square = sum(map(operator.mul, samples, samples)) / len(samples)
     if mean_square == 0:
         return -math.inf
     return 10 * math.log10(mean_square / (32768.0 * 32768.0))
