@@ -50,7 +50,7 @@ layered on. This isn't declarative in Ignition (rpm-ostree package layering
 needs a reboot to apply), so it's a one-time manual step after first boot:
 
 ```bash
-sudo rpm-ostree install --apply-live bluez usbutils pipewire wireplumber pipewire-utils
+sudo rpm-ostree install --apply-live bluez usbutils
 ```
 
 (`usbutils` is just for `lsusb`-based diagnostics, not required to run
