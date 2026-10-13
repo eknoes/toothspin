@@ -149,13 +149,14 @@ async def _run(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    if ha.apply_options():
-        logging.getLogger(__name__).info("Running as a Home Assistant App")
+    as_app = ha.apply_options()
     args = _parse_args()
     logging.basicConfig(
         level=args.log_level.upper(),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    if as_app:
+        logger.info("Running as a Home Assistant App")
     try:
         asyncio.run(_run(args))
     except KeyboardInterrupt:

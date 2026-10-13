@@ -61,5 +61,5 @@ async def ingress_port() -> int:
         session.get(f"{api}/addons/self/info", headers=headers) as response,
     ):
         response.raise_for_status()
-        data = await response.json()
+        data = await response.json(content_type=None)
     return int(data["data"]["ingress_port"])
