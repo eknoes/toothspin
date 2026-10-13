@@ -31,6 +31,7 @@ BLUEZ = "org.bluez"
 ADAPTER = "org.bluez.Adapter1"
 DEVICE = "org.bluez.Device1"
 PLAYER = "org.bluez.MediaPlayer1"
+TRANSPORT = "org.bluez.MediaTransport1"
 AGENT_PATH = "/org/toothspin/agent"
 
 
@@ -41,6 +42,17 @@ class BluetoothDevice:
     paired: bool
     trusted: bool
     connected: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Transport:
+    """A phone's A2DP stream as BlueZ sees it."""
+
+    path: str
+    state: str
+    """idle, pending or active (streaming)."""
+    volume: int | None
+    """The phone's absolute volume, 0-127; None if the phone doesn't support it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +83,8 @@ class BluetoothManager:
         self._devices: dict[str, dict[str, Any]] = {}
         # AVRCP players, keyed by object path (below their device's path).
         self._players: dict[str, dict[str, Any]] = {}
+        # A2DP transports (the phones' streams), keyed by object path.
+        self._transports: dict[str, dict[str, Any]] = {}
         self._pairing_deadline: float | None = None
         self._pairing_close: asyncio.TimerHandle | None = None
         # Device paths whose current connection we started (or that just paired).
@@ -124,6 +138,11 @@ class BluetoothManager:
             for path, ifaces in objects.items()
             if DEVICE in ifaces and path.startswith(self._adapter_path + "/")
         }
+        self._transports = {
+            path: ifaces[TRANSPORT]
+            for path, ifaces in objects.items()
+            if TRANSPORT in ifaces and path.startswith(self._adapter_path + "/")
+        }
         self._players = {
             path: _unwrap_player(ifaces[PLAYER])
             for path, ifaces in objects.items()
@@ -167,6 +186,21 @@ class BluetoothManager:
         if props is None:
             return None
         return props.get("Alias") or props.get("Name") or props.get("Address")
+
+    def transport(self, address: str) -> Transport | None:
+        """The A2DP stream of the phone with this address, if one exists."""
+        device = f"{self._adapter_path}/dev_{address.upper().replace(':', '_')}/"
+        for path, props in self._transports.items():
+            if path.startswith(device):
+                return Transport(path, props.get("State", ""), props.get("Volume"))
+        return None
+
+    async def set_phone_volume(self, transport_path: str, level: int) -> None:
+        """Tell the phone its new absolute volume (0-127) over AVRCP."""
+        await dbus.set_property(
+            self._bus, BLUEZ, transport_path, TRANSPORT, "Volume",
+            Variant("q", max(0, min(127, level))),
+        )
 
     def now_playing(self, address: str) -> NowPlaying | None:
         """AVRCP track info for the device with this address, if it has a player."""
@@ -298,8 +332,10 @@ class BluetoothManager:
                 self._on_change()
             elif iface == PLAYER and msg.path in self._players:
                 self._players[msg.path].update(_unwrap_player(changed))
-            elif iface == "org.bluez.MediaTransport1":
-                # A phone starting its stream: lets capture pick it up at once.
+            elif iface == TRANSPORT and msg.path in self._transports:
+                # A phone starting its stream (capture picks it up at once) or
+                # changing its volume.
+                self._transports[msg.path].update(dbus.unwrap(changed))
                 self._on_change()
         elif msg.member == "InterfacesAdded" and msg.interface == dbus.OBJECT_MANAGER:
             path, ifaces = msg.body
@@ -308,6 +344,9 @@ class BluetoothManager:
                 self._on_change()
             if PLAYER in ifaces and path.startswith(self._adapter_path + "/"):
                 self._players[path] = _unwrap_player(ifaces[PLAYER])
+            if TRANSPORT in ifaces and path.startswith(self._adapter_path + "/"):
+                self._transports[path] = dbus.unwrap(ifaces[TRANSPORT])
+                self._on_change()
         elif msg.member == "InterfacesRemoved" and msg.interface == dbus.OBJECT_MANAGER:
             path, ifaces = msg.body
             if path == self._adapter_path and ADAPTER in ifaces:
@@ -317,6 +356,8 @@ class BluetoothManager:
                 self._on_change()
             if PLAYER in ifaces:
                 self._players.pop(path, None)
+            if TRANSPORT in ifaces and self._transports.pop(path, None) is not None:
+                self._on_change()
 
     async def _on_paired(self, path: str) -> None:
         logger.info("Paired with %s", self.device_name(path))
