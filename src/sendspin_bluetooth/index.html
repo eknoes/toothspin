@@ -55,6 +55,12 @@
   .phone + .phone { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
   .phone .name { font-weight: 600; font-size: 16px; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .chip { border-radius: 999px; padding: 5px 12px; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .chip .other { opacity: .75; font-size: 12px; }
+  .chip.busy { opacity: .6; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -87,6 +93,8 @@ let confirmRemove = null;
 // Address of the phone whose Music Assistant name is being edited. Rendering
 // pauses meanwhile so the 1.5 s refresh doesn't wipe the text field.
 let editing = null;
+// Speaker toggles in flight, as "address|player_id".
+const pending = new Set();
 
 async function post(path, body) {
   const res = await fetch(path, {
@@ -147,6 +155,29 @@ function renderSendspin(d) {
   return html;
 }
 
+function renderSpeakers(d) {
+  const sp = state.speakers;
+  if (!sp || !d.sendspin || !d.sendspin.paired) return "";
+  if (!sp.connected) return `<div class="label">Speakers</div><div class="muted">Music Assistant API not reachable</div>`;
+  const owner = {};
+  for (const other of state.devices) if (other.source_uri) owner[other.source_uri] = other.name;
+  const selected = sp.list.filter((s) => s.playing_uri === d.source_uri);
+  const leader = selected.find((s) => !s.synced_to);
+  const chips = sp.list.map((s) => {
+    const on = s.playing_uri === d.source_uri;
+    const blocked = !on && leader && !leader.can_group_with.includes(s.player_id);
+    const key = `${d.address}|${s.player_id}`;
+    const usedBy = !on && s.playing_uri ? owner[s.playing_uri] || "another input" : null;
+    const title = blocked ? `Can't play in sync with ${leader.name}`
+      : usedBy ? `Playing ${usedBy}; turning it on moves it here` : "";
+    return `<button class="chip ${on ? "on" : ""} ${pending.has(key) ? "busy" : ""}"
+        data-speaker="${esc(s.player_id)}" data-on="${on ? "0" : "1"}" data-addr="${esc(d.address)}"
+        ${blocked || pending.has(key) ? "disabled" : ""} title="${esc(title)}">
+        ${esc(s.name)}${usedBy ? ` <span class="other">· ${esc(usedBy)}</span>` : ""}</button>`;
+  }).join("");
+  return `<div class="label">Speakers</div><div class="chips">${chips || '<span class="muted">No speakers available</span>'}</div>`;
+}
+
 function render() {
   const bt = state.bluetooth;
   $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
@@ -165,6 +196,7 @@ function render() {
       <div class="name"><span class="dot ${d.connected ? "ok" : ""}"></span>${esc(d.name)}
         <span class="muted" style="font-weight:400;font-size:13px">${esc(d.address)}</span></div>
       ${renderAudio(d)}
+      ${renderSpeakers(d)}
       ${renderSendspin(d)}
       <div class="actions">
         ${d.connected ? `<button data-addr="${esc(d.address)}" data-action="disconnect">Disconnect</button>` : ""}
@@ -184,6 +216,18 @@ function render() {
   }
   for (const b of $("devices").querySelectorAll("button[data-pair]")) {
     b.onclick = () => post(`/api/sendspin/${encodeURIComponent(b.dataset.pair)}/pairing`);
+  }
+  for (const b of $("devices").querySelectorAll("button[data-speaker]")) {
+    b.onclick = async () => {
+      const key = `${b.dataset.addr}|${b.dataset.speaker}`;
+      pending.add(key); render();
+      try {
+        await post(`/api/speakers/${encodeURIComponent(b.dataset.addr)}/toggle`,
+                   {player_id: b.dataset.speaker, on: b.dataset.on === "1"});
+      } finally {
+        pending.delete(key); render();
+      }
+    };
   }
   for (const b of $("devices").querySelectorAll("button[data-rename]")) {
     b.onclick = () => {

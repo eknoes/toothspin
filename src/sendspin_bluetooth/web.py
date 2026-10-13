@@ -13,7 +13,9 @@ from importlib.resources import files
 from aiohttp import web
 from dbus_fast.errors import DBusError
 
+from . import speakers
 from .bluez import BluetoothManager
+from .ma import MusicAssistant, MusicAssistantError
 from .receivers import Receivers
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,7 @@ def create_app(
     bluetooth: BluetoothManager,
     receivers: Receivers,
     pairing_seconds: float,
+    ma: MusicAssistant | None = None,
 ) -> web.Application:
     index = files(__package__).joinpath("index.html").read_text()
 
@@ -42,6 +45,9 @@ def create_app(
             }
         )
         state["sendspin"] = asdict(receiver.source.status()) if receiver else None
+        state["source_uri"] = (
+            speakers.source_uri(receiver.source.client.identity.peer_id) if receiver else None
+        )
         return state
 
     async def get_state(_: web.Request) -> web.Response:
@@ -54,6 +60,15 @@ def create_app(
                     "pairing_remaining": None if remaining is None else round(remaining),
                 },
                 "devices": [device_state(d) for d in bluetooth.devices()],
+                "speakers": None
+                if ma is None
+                else {
+                    "connected": ma.connected,
+                    "list": [
+                        {**asdict(s), "can_group_with": sorted(s.can_group_with)}
+                        for s in speakers.speakers(ma.players)
+                    ],
+                },
             }
         )
 
@@ -91,6 +106,18 @@ def create_app(
             raise web.HTTPNotFound from None
         return web.json_response({"ok": True})
 
+    async def post_speaker_toggle(request: web.Request) -> web.Response:
+        receiver = receivers.get(request.match_info["address"])
+        if receiver is None or ma is None:
+            raise web.HTTPNotFound
+        body = await request.json()
+        uri = speakers.source_uri(receiver.source.client.identity.peer_id)
+        try:
+            await speakers.toggle(ma, uri, str(body["player_id"]), bool(body["on"]))
+        except (MusicAssistantError, TimeoutError) as err:
+            return web.json_response({"ok": False, "error": str(err)}, status=502)
+        return web.json_response({"ok": True})
+
     async def post_sendspin_pairing(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
         if receiver is None:
@@ -105,6 +132,7 @@ def create_app(
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)
     app.router.add_post("/api/sendspin/{address}/name", post_sendspin_name)
+    app.router.add_post("/api/speakers/{address}/toggle", post_speaker_toggle)
     return app
 
 
