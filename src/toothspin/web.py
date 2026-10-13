@@ -50,6 +50,7 @@ def create_app(
             }
         )
         state["sendspin"] = asdict(receiver.source.status()) if receiver else None
+        state["hidden_speakers"] = receivers.hidden_speakers(device.address) if receiver else []
         state["source_uri"] = (
             speakers.source_uri(receiver.source.client.identity.peer_id) if receiver else None
         )
@@ -128,6 +129,16 @@ def create_app(
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
 
+    async def post_speaker_hidden(request: web.Request) -> web.Response:
+        body = await request.json()
+        try:
+            receivers.set_speaker_hidden(
+                request.match_info["address"], str(body["player_id"]), bool(body["hidden"])
+            )
+        except KeyError:
+            raise web.HTTPNotFound from None
+        return web.json_response({"ok": True})
+
     async def post_speaker_volume(request: web.Request) -> web.Response:
         if volumes is None:
             raise web.HTTPNotFound
@@ -176,6 +187,7 @@ def create_app(
     app.router.add_post("/api/sendspin/{address}/name", post_sendspin_name)
     app.router.add_post("/api/speakers/{address}/toggle", post_speaker_toggle)
     app.router.add_post("/api/speakers/volume", post_speaker_volume)
+    app.router.add_post("/api/speakers/{address}/hidden", post_speaker_hidden)
     return app
 
 

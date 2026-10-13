@@ -71,3 +71,44 @@ def test_one_receiver_per_paired_phone(tmp_path: Path, monkeypatch) -> None:
         await receivers.close()
 
     asyncio.run(scenario())
+
+
+def test_hidden_speakers_are_kept_per_phone(tmp_path: Path, monkeypatch) -> None:
+    async def idle(source, capture) -> None:
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(receivers_module, "_run", idle)
+
+    async def scenario() -> None:
+        bluetooth = FakeBluetooth()
+        bluetooth.paired = [_device("AA:AA:AA:AA:AA:AA", "Pixel"), _device("BB:BB:BB:BB:BB:BB", "iPhone")]
+        receivers = Receivers(
+            bluetooth, tmp_path, "ws://127.0.0.1:1/sendspin", AudioCodec.PCM,  # type: ignore[arg-type]
+            "{device} (Bluetooth)", "sendspin-bt",
+        )
+        await receivers.sync()
+
+        receivers.set_speaker_hidden("aa:aa:aa:aa:aa:aa", "kitchen", True)
+        receivers.set_speaker_hidden("AA:AA:AA:AA:AA:AA", "office", True)
+        assert receivers.hidden_speakers("AA:AA:AA:AA:AA:AA") == ["kitchen", "office"]
+        assert receivers.hidden_speakers("BB:BB:BB:BB:BB:BB") == []  # per phone
+
+        # Renaming used to overwrite the settings file.
+        await receivers.rename("AA:AA:AA:AA:AA:AA", "Work phone")
+        assert receivers.hidden_speakers("AA:AA:AA:AA:AA:AA") == ["kitchen", "office"]
+
+        receivers.set_speaker_hidden("AA:AA:AA:AA:AA:AA", "kitchen", False)
+        assert receivers.hidden_speakers("AA:AA:AA:AA:AA:AA") == ["office"]
+
+        # Survives a restart.
+        await receivers.close()
+        again = Receivers(
+            bluetooth, tmp_path, "ws://127.0.0.1:1/sendspin", AudioCodec.PCM,  # type: ignore[arg-type]
+            "{device} (Bluetooth)", "sendspin-bt",
+        )
+        await again.sync()
+        assert again.hidden_speakers("AA:AA:AA:AA:AA:AA") == ["office"]
+        assert again.get("AA:AA:AA:AA:AA:AA").source.status().name == "Work phone"
+        await again.close()
+
+    asyncio.run(scenario())

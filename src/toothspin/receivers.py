@@ -89,8 +89,7 @@ class Receivers:
         if address not in self._receivers:
             raise KeyError(address)
         async with self._sync_lock:
-            settings = self._settings_path(address)
-            settings.write_text(json.dumps({"name": name}))
+            self._update_settings(address, name=name)
             await self._stop(address)
             device_name = next(
                 (d.name for d in self._bluetooth.devices() if d.address.upper() == address),
@@ -98,6 +97,17 @@ class Receivers:
             )
             await self._add(address, device_name)
         logger.info("Renamed Sendspin source for %s to %s", address, name)
+
+    def hidden_speakers(self, address: str) -> list[str]:
+        """Speakers this phone's card shows faded at the bottom."""
+        return list(self._settings(address.upper()).get("hidden_speakers", []))
+
+    def set_speaker_hidden(self, address: str, player_id: str, hidden: bool) -> None:
+        address = address.upper()
+        if address not in self._receivers:
+            raise KeyError(address)
+        current = [p for p in self.hidden_speakers(address) if p != player_id]
+        self._update_settings(address, hidden_speakers=current + [player_id] if hidden else current)
 
     async def close(self) -> None:
         for receiver in self._receivers.values():
@@ -118,12 +128,24 @@ class Receivers:
     def _settings_path(self, address: str) -> Path:
         return self._device_dir(address) / "settings.json"
 
+    def _settings(self, address: str) -> dict:
+        """Per-phone settings chosen in the web UI (name, hidden speakers)."""
+        try:
+            settings = json.loads(self._settings_path(address).read_text())
+        except (FileNotFoundError, ValueError):
+            return {}
+        return settings if isinstance(settings, dict) else {}
+
+    def _update_settings(self, address: str, **changes: object) -> None:
+        path = self._settings_path(address)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({**self._settings(address), **changes}))
+        tmp.replace(path)
+
     def _name_for(self, address: str, device_name: str) -> str:
         """The name chosen in the web UI, else one derived from the phone's."""
-        try:
-            return json.loads(self._settings_path(address).read_text())["name"]
-        except (FileNotFoundError, KeyError, ValueError):
-            return self._name_format.format(device=device_name)
+        return self._settings(address).get("name") or self._name_format.format(device=device_name)
 
     async def _add(self, address: str, device_name: str) -> None:
         source = SendspinSource(
