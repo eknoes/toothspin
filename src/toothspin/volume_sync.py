@@ -3,9 +3,9 @@
 While a phone streams to a speaker (or group), its volume buttons set that
 speaker's volume, and volume changes made elsewhere (web UI, Music
 Assistant) are sent to the phone. When a phone starts streaming to a
-speaker, the speaker's current volume wins, capped at the start volume: it's
-sent to the phone rather than taking over whatever volume the phone happened
-to have, and a speaker left loud doesn't start loud.
+speaker, the speaker's current volume wins: it's sent to the phone rather
+than taking over whatever volume the phone happened to have. Optionally it's
+capped at a start volume, so a speaker left loud doesn't start loud.
 
 Phones report absolute volume as 0-127 (AVRCP); speakers use 0-100. The
 captured audio itself stays at full scale (PipeWire's Bluetooth hardware
@@ -35,7 +35,9 @@ POLL_S = 0.5
 ECHO_WINDOW_S = 3.0
 ECHO_TOLERANCE = 9  # one Android volume step on the 0-127 scale
 # The loudest a speaker starts at when a phone starts playing on it (0-100).
-DEFAULT_START_VOLUME = 20
+# 100: leave speakers as they are; cap loud ones on the speaker itself or with
+# Music Assistant's per-player maximum volume instead.
+DEFAULT_START_VOLUME = 100
 
 
 def to_phone(percent: int) -> int:

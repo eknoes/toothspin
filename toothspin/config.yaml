@@ -22,7 +22,7 @@ options:
   bluetooth_name: Music Assistant
   input_name: "{device} (Bluetooth)"
   adapter: hci0
-  start_volume: 20
+  start_volume: 100
   allow_phone_connect: false
   log_level: info
 schema:

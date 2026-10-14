@@ -56,8 +56,9 @@ there, in one go.
 **Volume from the phone:** while a phone plays, its volume buttons control
 the speaker, or the whole group if it plays on several. When it starts
 playing, the phone takes over the speaker's volume instead of imposing its
-own, and a speaker left loud starts at the **Start volume** (20 by default),
-so nothing suddenly gets loud.
+own, so nothing suddenly gets loud. To keep a speaker from ever getting too
+loud, set its **Maximum volume** in Music Assistant's player settings, or
+have speakers start no louder than the **Start volume**.
 
 **Hide speakers:** the eye icon next to a speaker hides it on that phone's
 card: it is dimmed and moved to the end of the list. Each phone has its own
@@ -77,7 +78,7 @@ instead: select a player, open **Browse**, pick the phone's input and press
 | Music Assistant token | Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |
 | Music Assistant URL | Only needed if Music Assistant isn't found automatically, e.g. `http://homeassistant.local:8095`. |
 | Sendspin server URL | Only needed if Music Assistant's Sendspin server isn't found automatically, e.g. `ws://homeassistant.local:8927/sendspin`. |
-| Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it. Quieter speakers keep their volume; `100` always keeps it. Default: `20`. |
+| Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker left loud doesn't blast. Quieter speakers keep their volume; `100` (default) always keeps it. |
 | Phones may connect by themselves | Off (default): connections only start from the app. On: paired phones may also connect by themselves. |
 | LAN port | Also serves the web interface on this port to your whole network, **without** Home Assistant's login. Handy for adding it to a phone's home screen; leave it empty otherwise. |
 | Log level | `debug`, `info`, `warning` or `error`. |

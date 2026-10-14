@@ -16,8 +16,8 @@ configuration:
     name: Start volume
     description: >-
       The loudest a speaker starts at (0-100) when a phone starts playing on
-      it, so a speaker left loud doesn't blast. Quieter speakers keep their
-      volume; 100 always keeps the speaker's volume.
+      it, so a speaker left loud doesn't blast; quieter speakers keep their
+      volume. 100 (default) always keeps the speaker's volume.
   allow_phone_connect:
     name: Phones may connect by themselves
     description: >-

@@ -31,8 +31,7 @@ The phone's volume buttons control those speakers.
 
 By default, connections only start from ToothSpin, never from the phone:
 walking in the front door with your phone won't suddenly blast your
-playlist through the whole house. And when a phone starts on a speaker
-someone left loud, the speaker starts at 20% instead (both configurable).
+playlist through the whole house (configurable).
 
 > [!NOTE]
 > ToothSpin is in an early state. It was put together over a couple of
@@ -130,7 +129,7 @@ are optional:
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
-| `START_VOLUME` | `20` | the loudest a speaker starts at (0-100) when a phone starts playing on it; quieter speakers keep their volume, `100` always keeps it |
+| `START_VOLUME` | `100` | the loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker someone left loud doesn't blast; quieter speakers keep their volume, `100` always keeps it |
 | `ALLOW_PHONE_CONNECT` | `false` | `true` lets paired phones connect by themselves instead of only from the web UI |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
@@ -154,10 +153,16 @@ Assistant.
 phone, then switch on speakers on its card. Several speakers form a group
 on the fly (only speakers that can play in sync are offered together), each
 with its own volume and mute. To switch rooms, the arrow next to a speaker
-moves the phone there in one go, off all the others. On connecting, the phone takes over the
-speaker's volume (at most `START_VOLUME`), so nothing suddenly gets loud; after that, its
-volume buttons control the speaker or group. The eye icon hides speakers
-you don't need on that phone's card.
+moves the phone there in one go, off all the others. On connecting, the
+phone takes over the speaker's volume instead of imposing its own, so
+nothing suddenly gets loud; after that, its volume buttons control the
+speaker or group. The eye icon hides speakers you don't need on that phone's
+card.
+
+**Speakers that get too loud:** cap them where the sound is made, e.g. the
+amplifier's hardware volume on the speaker, or Music Assistant's per-player
+**Maximum volume** (which rescales 0-100% to that maximum). Or have speakers
+start no louder than `START_VOLUME` when a phone starts on them.
 
 Without a Music Assistant token, start the input from Music Assistant
 instead: select a player, open **Browse**, pick the phone's input and press
