@@ -3,11 +3,12 @@
 Phones pair "Just Works" (no PIN) but only while the pairing window is open;
 the window closes once a device has paired.
 
-By default, connections are only ever started from here: paired phones stay
-*untrusted*, so BlueZ asks our agent before it accepts a phone's own profile
-connections, and the agent only allows them while the pairing window is open
-or after ``connect_device()`` — until that connection ends. With
-``allow_phone_connect``, phones may connect by themselves too.
+Paired phones may connect by themselves, like to any Bluetooth speaker.
+Without ``allow_phone_connect``, connections are only ever started from here:
+paired phones stay *untrusted*, so BlueZ asks our agent before it accepts a
+phone's own profile connections, and the agent only allows them while the
+pairing window is open or after ``connect_device()`` — until that connection
+ends.
 """
 
 # No ``from __future__ import annotations``: dbus-fast reads the agent's
@@ -84,7 +85,7 @@ class BluetoothManager:
         adapter: str = "hci0",
         alias: str | None = None,
         on_change: Callable[[], None] | None = None,
-        allow_phone_connect: bool = False,
+        allow_phone_connect: bool = True,
         pin: str | None = None,
     ) -> None:
         self._bus = bus
@@ -399,7 +400,7 @@ class BluetoothManager:
     async def _untrust_all(self) -> None:
         """Phones paired before this policy were trusted, which bypasses the agent."""
         for path, props in self._devices.items():
-            if props.get("Trusted"):
+            if props.get("Trusted") and not self._allow_phone_connect:
                 await dbus.set_property(
                     self._bus, BLUEZ, path, DEVICE, "Trusted", Variant("b", False)
                 )

@@ -25,13 +25,10 @@ live input, and ToothSpin's web UI plays it on any speaker or group.
 
 After pairing your phone with ToothSpin over Bluetooth, it needs one pairing
 with Music Assistant to set it up, which ToothSpin does by itself when it has
-a token for Music Assistant's API. From then on: press **Connect** in
-ToothSpin, play something on the phone and switch on the speakers you want.
-The phone's volume buttons control those speakers.
-
-By default, connections only start from ToothSpin, never from the phone:
-walking in the front door with your phone won't suddenly blast your
-playlist through the whole house (configurable).
+a token for Music Assistant's API. From then on: connect the phone like to
+any Bluetooth speaker (or press **Connect** in ToothSpin), play something
+and switch on the speakers you want. The phone's volume buttons control
+those speakers.
 
 > [!NOTE]
 > ToothSpin is in an early state. It was put together over a couple of
@@ -130,7 +127,7 @@ are optional:
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
 | `START_VOLUME` | `100` | the loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker someone left loud doesn't blast; quieter speakers keep their volume, `100` always keeps it |
-| `ALLOW_PHONE_CONNECT` | `false` | `true` lets paired phones connect by themselves instead of only from the web UI |
+| `ALLOW_PHONE_CONNECT` | `true` | `false` only accepts connections started from the web UI's **Connect**, never from the phone |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
 | `LOG_LEVEL` | `INFO` | |
@@ -176,12 +173,14 @@ otherwise remove the matching device there yourself.
 
 ## Design decisions
 
-**Why do connections have to be started from ToothSpin?** Phones reconnect
-to known Bluetooth devices on their own, e.g. right after being switched on
-or when you come home. With ToothSpin that could start whatever the phone
-plays on every speaker in the house, by accident. So a phone only connects
-when someone presses **Connect**. If you'd rather have the usual Bluetooth
-behaviour, set `ALLOW_PHONE_CONNECT=true`.
+**Can connections be limited to ToothSpin?** Phones reconnect to known
+Bluetooth devices on their own, e.g. right after being switched on or when
+you come home, which is what people expect from a Bluetooth speaker. If you
+worry that this could start whatever a phone plays on every speaker in the
+house by accident, set `ALLOW_PHONE_CONNECT=false`: then a phone only
+connects when someone presses **Connect** in ToothSpin. Either way, a phone
+only plays on speakers switched on for it, unless Music Assistant is set to
+start its input automatically.
 
 **Why pair manually, instead of a "free for all"?** To stay in control of
 who plays on your speakers. Someone walking past your home shouldn't be able

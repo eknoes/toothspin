@@ -54,8 +54,10 @@ passthrough works fine, because it has its own kernel.
 - Capture stays at full scale (`bluez5.enable-hw-volume = false`); the
   phone's volume buttons control the speakers instead, see below.
 - The service runs its own BlueZ pairing agent (Just Works). Pairing is
-  refused outside the window you open in the web UI, and connections are
-  started from the receiver, not the phone.
+  refused outside the window you open in the web UI (or without the PIN,
+  with `BT_PIN`). Paired phones connect by themselves; with
+  `ALLOW_PHONE_CONNECT=false` only the web UI's **Connect** starts a
+  connection, and the agent refuses the phone's own.
 
 ## Music Assistant side
 

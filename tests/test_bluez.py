@@ -65,7 +65,7 @@ def test_phone_connecting_on_its_own_is_disconnected() -> None:
     path = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
 
     async def scenario() -> list[str]:
-        manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+        manager = BluetoothManager(bus=None, allow_phone_connect=False)  # type: ignore[arg-type]
         refused: list[str] = []
 
         async def refuse(p: str) -> None:
@@ -110,12 +110,12 @@ def test_agent_only_applies_its_policy_to_its_own_adapter() -> None:
     agent.AuthorizeService.__wrapped__(agent, others, "0000110a-0000-1000-8000-00805f9b34fb")
 
 
-def test_phones_may_connect_on_their_own_when_allowed() -> None:
+def test_phones_may_connect_on_their_own_unless_restricted() -> None:
     from toothspin.bluez import _Agent
 
     path = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
-    strict = BluetoothManager(bus=None)  # type: ignore[arg-type]
-    allowing = BluetoothManager(bus=None, allow_phone_connect=True)  # type: ignore[arg-type]
+    strict = BluetoothManager(bus=None, allow_phone_connect=False)  # type: ignore[arg-type]
+    allowing = BluetoothManager(bus=None)  # type: ignore[arg-type]  # the default
     assert not strict.connection_allowed(path)
     assert allowing.connection_allowed(path)
     # The agent accepts the phone's own A2DP connection without raising.

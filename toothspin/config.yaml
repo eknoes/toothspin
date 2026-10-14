@@ -23,7 +23,7 @@ options:
   input_name: "{device} (Bluetooth)"
   adapter: hci0
   start_volume: 100
-  allow_phone_connect: false
+  allow_phone_connect: true
   log_level: info
 schema:
   bluetooth_name: str

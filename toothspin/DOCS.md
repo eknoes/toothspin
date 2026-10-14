@@ -45,9 +45,9 @@ Assistant's settings and choose **Pair the device**; then press **Allow** on
 the phone's card in ToothSpin and type the code it shows into Music
 Assistant.
 
-**Connect and play:** connections start from ToothSpin: press **Connect**
-on the phone's card. A phone trying to connect by itself is refused, unless
-you allow it in the configuration. Play something on the phone, then switch
+**Connect and play:** connect the phone to ToothSpin like to any Bluetooth
+speaker, or press **Connect** on its card. Play something on the phone, then
+switch
 on one or more speakers on its card. Several speakers form a group on the fly; only speakers that
 can play in sync are offered together. Each speaker has its own volume and
 mute. To switch rooms, the arrow next to a speaker plays the phone only
@@ -79,7 +79,7 @@ instead: select a player, open **Browse**, pick the phone's input and press
 | Music Assistant URL | Only needed if Music Assistant isn't found automatically, e.g. `http://homeassistant.local:8095`. |
 | Sendspin server URL | Only needed if Music Assistant's Sendspin server isn't found automatically, e.g. `ws://homeassistant.local:8927/sendspin`. |
 | Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker left loud doesn't blast. Quieter speakers keep their volume; `100` (default) always keeps it. |
-| Phones may connect by themselves | Off (default): connections only start from the app. On: paired phones may also connect by themselves. |
+| Phones may connect by themselves | On (default): paired phones connect by themselves, like to any Bluetooth speaker. Off: connections only start from the app. |
 | LAN port | Also serves the web interface on this port to your whole network, **without** Home Assistant's login. Handy for adding it to a phone's home screen; leave it empty otherwise. |
 | Log level | `debug`, `info`, `warning` or `error`. |
 

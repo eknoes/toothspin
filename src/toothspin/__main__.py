@@ -64,8 +64,8 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--allow-phone-connect", action=argparse.BooleanOptionalAction,
-        default=_flag(env("ALLOW_PHONE_CONNECT", "")),
-        help="Accept connections phones start themselves (default: only from the web UI)",
+        default=_flag(env("ALLOW_PHONE_CONNECT", "true")),
+        help="Accept connections phones start themselves (default); without, only the web UI's Connect",
     )
     parser.add_argument(
         "--bt-pin", default=env("BT_PIN"),

@@ -21,9 +21,9 @@ configuration:
   allow_phone_connect:
     name: Phones may connect by themselves
     description: >-
-      Off: connections only start from the app, so a phone coming home
-      doesn't start playing through the house. On: paired phones may also
-      connect by themselves, like to any Bluetooth speaker.
+      On (default): paired phones connect by themselves, like to any
+      Bluetooth speaker. Off: connections only start from the app, so a
+      phone coming home doesn't start playing through the house.
   ma_token:
     name: Music Assistant token
     description: >-
