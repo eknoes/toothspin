@@ -57,8 +57,9 @@ def apply_options(path: Path = OPTIONS_PATH) -> bool:
     return True
 
 
-async def ingress_port() -> int:
-    """The port the Supervisor assigned for ingress (``ingress_port: 0``)."""
+async def app_info() -> tuple[int, str]:
+    """The ingress port the Supervisor assigned (``ingress_port: 0``) and our
+    slug, which Home Assistant's pages for the App are named after."""
     api = os.environ.get("SUPERVISOR_API", "http://supervisor")
     headers = {"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"}
     async with (
@@ -67,7 +68,7 @@ async def ingress_port() -> int:
     ):
         response.raise_for_status()
         data = await response.json(content_type=None)
-    return int(data["data"]["ingress_port"])
+    return int(data["data"]["ingress_port"]), str(data["data"]["slug"])
 
 
 SIDEBAR_MARKER = Path("/data/.sidebar_shown")
@@ -130,6 +131,31 @@ async def bluetooth_adapter_usage() -> dict[str, str]:
             state = USED
         usage[match.group(1).upper()] = state
     return usage
+
+
+async def ignore_discovered(address: str) -> bool:
+    """Ignore Home Assistant's offer to add the adapter, like its Ignore button.
+
+    The title keeps the address, which is how bluetooth_adapter_usage()
+    recognises the ignored entry. False if there was no such offer.
+    """
+    (flows,) = await _websocket({"type": "config_entries/flow/progress"})
+    flow = next(
+        (
+            f for f in flows or []
+            if f.get("handler") == "bluetooth"
+            and str((f.get("context") or {}).get("unique_id", "")).upper() == address.upper()
+        ),
+        None,
+    )
+    if flow is None:
+        return False
+    await _websocket({
+        "type": "config_entries/ignore_flow",
+        "flow_id": flow["flow_id"],
+        "title": f"ToothSpin ({address.upper()})",
+    })
+    return True
 
 
 async def notify(notification_id: str, title: str, message: str) -> None:

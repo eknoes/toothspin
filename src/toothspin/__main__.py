@@ -166,7 +166,7 @@ async def _report(
         return
     if problem is not None:
         log = logger.error if problem.fatal else logger.warning
-        log("%s. %s", problem.title, problem.as_markdown().replace("**", ""))
+        log("%s. %s", problem.title, problem.as_markdown().replace("**", "").replace("`", ""))
     else:
         logger.info("Solved: %s", previous)
     if not status.app:
@@ -178,7 +178,7 @@ async def _report(
             await ha.notify(
                 SETUP_NOTIFICATION,
                 f"ToothSpin: {problem.title}",
-                problem.as_markdown() + "\n\nDetails: open ToothSpin from the sidebar. "
+                problem.as_markdown(status.app_slug) + "\n\nDetails: open ToothSpin from the sidebar. "
                 f"Help: [FAQ]({FAQ_URL}).",
             )
     except (aiohttp.ClientError, OSError) as err:
@@ -216,7 +216,9 @@ async def _watch_adapter(
 
 async def _run(args: argparse.Namespace) -> None:
     status = setup_check.Status(app=ha.running_as_app(), ma_token=bool(args.ma_token))
-    ingress_port = await ha.ingress_port() if status.app else None
+    ingress_port = None
+    if status.app:
+        ingress_port, status.app_slug = await ha.app_info()
     if ingress_port:
         ports = [ingress_port] + ([args.lan_port] if args.lan_port else [])
     else:

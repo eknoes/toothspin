@@ -22,6 +22,14 @@ from . import dbus, ha
 
 AUTO = "auto"
 ADAPTER = "org.bluez.Adapter1"
+# Links in problem texts are written [label](ha:page); the web UI, the
+# notification and the log each turn them into what works there.
+HA_PAGES = {
+    "integrations": "/config/integrations/dashboard",
+    "bluetooth": "/config/integrations/integration/bluetooth",
+    "app-config": "/config/app/{slug}/config",
+}
+_HA_LINK = re.compile(r"\[([^\]]+)\]\(ha:([a-z-]+)\)")
 
 
 @dataclass(slots=True)
@@ -44,10 +52,21 @@ class Problem:
     text: str
     steps: list[str] = field(default_factory=list)
     fatal: bool = True
+    action: str | None = None
+    """Something ToothSpin can fix itself when asked: the web UI offers a button."""
 
-    def as_markdown(self) -> str:
+    def as_markdown(self, app_slug: str | None = None) -> str:
+        """Markdown with links into Home Assistant, or plain labels without a slug."""
         steps = "\n".join(f"{n}. {step}" for n, step in enumerate(self.steps, start=1))
-        return f"{self.text}\n\n{steps}" if steps else self.text
+        text = f"{self.text}\n\n{steps}" if steps else self.text
+
+        def link(match: re.Match[str]) -> str:
+            label, page = match.groups()
+            if not app_slug or page not in HA_PAGES:
+                return label
+            return f"[{label}]({HA_PAGES[page].format(slug=app_slug)})"
+
+        return _HA_LINK.sub(link, text)
 
 
 @dataclass(slots=True)
@@ -102,8 +121,8 @@ def choose(configured: str, found: list[Adapter], usage: dict[str, str] | None) 
                 f"The configuration names the adapter **{configured}**, but there is no "
                 f"such adapter. Available: {_list(found, usage)}.",
                 [
-                    "Set **Bluetooth adapter** in ToothSpin's configuration to one of "
-                    "the adapters above.",
+                    "Set **Bluetooth adapter** in [ToothSpin's configuration](ha:app-config) "
+                    "(`BT_ADAPTER` outside Home Assistant) to one of the adapters above.",
                     "Restart ToothSpin.",
                 ],
             ))
@@ -121,11 +140,11 @@ def _shared(adapter: Adapter) -> Problem:
         "dongle of its own.",
         [
             "Plug in a second USB Bluetooth dongle.",
-            "In Home Assistant, open **Settings → Devices & services → Bluetooth**. "
+            "In Home Assistant, open [Settings → Devices & services → Bluetooth](ha:bluetooth). "
             "Choose **Ignore** for the new dongle if it's listed under *Discovered*, "
             "or **disable** it (⋮ menu → Disable).",
-            "Set **Bluetooth adapter** in ToothSpin's configuration to the new dongle "
-            "(e.g. `hci1`, or `auto`) and restart ToothSpin.",
+            "Set **Bluetooth adapter** in [ToothSpin's configuration](ha:app-config) to "
+            "the new dongle (e.g. `hci1`, or `auto`) and restart ToothSpin.",
         ],
         fatal=False,
     )
@@ -135,14 +154,17 @@ def _offered(adapter: Adapter, usage: dict[str, str] | None) -> Problem | None:
     if not usage or usage.get(adapter.address) != ha.OFFERED:
         return None
     return Problem(
-        "Don't add ToothSpin's adapter to Home Assistant",
-        f"Home Assistant discovered {adapter.label} and offers to add it to its "
-        "Bluetooth integration. ToothSpin uses this adapter; adding it would break both.",
+        "Let Home Assistant ignore ToothSpin's adapter",
+        f"Home Assistant found ToothSpin's adapter ({adapter.address}) and offers to "
+        "add it to its Bluetooth integration. ToothSpin works best when Home "
+        "Assistant leaves it alone.",
         [
-            "In **Settings → Devices & services**, find the discovered *Bluetooth* entry "
-            f"for {adapter.address} and choose **Ignore**.",
+            "Press **Ignore in Home Assistant**, or in [Settings → Devices & "
+            "services](ha:integrations) choose **Ignore** on the discovered *Bluetooth* "
+            f"entry for {adapter.address}.",
         ],
         fatal=False,
+        action="ignore-adapter",
     )
 
 
@@ -172,6 +194,8 @@ class Status:
     app: bool
     """Running as a Home Assistant App."""
     ma_token: bool
+    app_slug: str = ""
+    """The App's slug, for links to its pages in Home Assistant."""
     adapter: Adapter | None = None
     problem: Problem | None = None
     """Blocks ToothSpin from starting: the web UI shows only this."""

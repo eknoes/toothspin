@@ -13,10 +13,11 @@ from dataclasses import asdict
 from typing import Any
 from importlib.resources import files
 
+import aiohttp
 from aiohttp import web
 from dbus_fast.errors import DBusError
 
-from . import setup_check, speakers
+from . import ha, setup_check, speakers
 from .bluez import BluetoothManager
 from .ha import INGRESS_PROXY_IP
 from .backend import BackendError, PlayerBackend
@@ -183,8 +184,29 @@ def create_app(
         receiver.source.open_pairing_window()
         return web.json_response({"ok": True})
 
+    async def post_setup_ignore_adapter(_: web.Request) -> web.Response:
+        # The "Ignore" Home Assistant offers for a discovered adapter, done for
+        # the user on their click.
+        if status is None or status.adapter is None or not status.app:
+            raise web.HTTPNotFound
+        try:
+            ignored = await ha.ignore_discovered(status.adapter.address)
+        except (aiohttp.ClientError, OSError, RuntimeError, TimeoutError) as err:
+            return web.json_response(
+                {"ok": False, "error": f"Home Assistant: {err}"}, status=502
+            )
+        if status.warning is not None and status.warning.action == "ignore-adapter":
+            status.warning = None
+        if not ignored:
+            return web.json_response(
+                {"ok": False, "error": "Home Assistant no longer offers that adapter."},
+                status=409,
+            )
+        return web.json_response({"ok": True})
+
     app = _base_app(ingress_port)
     app.router.add_get("/api/state", get_state)
+    app.router.add_post("/api/setup/ignore-adapter", post_setup_ignore_adapter)
     app.router.add_post("/api/bluetooth/pairing", post_bt_pairing)
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)
@@ -240,7 +262,10 @@ def _base_app(ingress_port: int | None) -> web.Application:
 def _problem(problem: setup_check.Problem | None) -> dict[str, Any] | None:
     if problem is None:
         return None
-    return {"title": problem.title, "text": problem.text, "steps": problem.steps}
+    return {
+        "title": problem.title, "text": problem.text, "steps": problem.steps,
+        "action": problem.action,
+    }
 
 
 def _setup_state(
@@ -248,28 +273,26 @@ def _setup_state(
     backend: PlayerBackend | None,
     bluetooth: BluetoothManager | None,
 ) -> dict[str, Any]:
-    """The blocking problem, a warning, and the first-run checklist."""
-    checks: list[dict[str, Any]] = []
-    if status.adapter is not None:
-        checks.append({
-            "ok": True if status.warning is None else None,
-            "title": "Bluetooth adapter",
-            "text": f"Using {status.adapter.label}"
-            + ("" if status.warning is None else " (see the note above)"),
-        })
+    """A blocking problem, or what's left to finish setup.
+
+    ``todo`` only holds what still needs the user (or is on its way):
+    finished steps drop out, and once it's empty the web UI shows nothing.
+    """
+    todo: list[dict[str, Any]] = []
+    if status.warning is not None:
+        todo.append(_problem(status.warning) | {"kind": "todo"})
     if not status.ma_token:
-        checks.append({
-            "ok": False,
-            "title": "Music Assistant token",
-            "text": "Not set. Without it you can't pick speakers here, phones aren't "
-            "paired with Music Assistant automatically, and the phone's volume buttons "
-            "don't control the speakers.",
+        todo.append({
+            "kind": "todo",
+            "title": "Add a Music Assistant token",
+            "text": "To pick speakers here, pair phones with Music Assistant by "
+            "themselves, and control the speakers with the phone's volume buttons.",
             "steps": [
-                "Open Music Assistant, click your profile (bottom left) → **Tokens** → "
+                "In Music Assistant, click your profile (bottom left) → **Tokens** → "
                 "**Create token**, and copy it.",
                 (
-                    "In Home Assistant: **Settings → Apps → ToothSpin → Configuration**, "
-                    "paste it as **Music Assistant token**, save and restart ToothSpin."
+                    "Paste it as **Music Assistant token** in [ToothSpin's "
+                    "configuration](ha:app-config), save and restart ToothSpin."
                     if status.app else
                     "Set it as `MA_TOKEN` (e.g. in `~/.config/toothspin.env`) and restart "
                     "ToothSpin."
@@ -278,38 +301,42 @@ def _setup_state(
         })
     elif backend is not None and not backend.connected:
         problem = getattr(backend, "problem", None)
-        text, steps = {
+        title, text, steps = {
             "auth": (
+                "Replace the Music Assistant token",
                 "Music Assistant rejected the token.",
                 ["Create a new token in Music Assistant (profile → **Tokens**) and "
-                 "replace the one in ToothSpin's configuration, then restart ToothSpin."],
+                 "replace the one in [ToothSpin's configuration](ha:app-config), then "
+                 "restart ToothSpin."],
             ),
             "not_found": (
-                "Music Assistant wasn't found on the network.",
+                "Music Assistant not found",
+                "ToothSpin couldn't find Music Assistant on the network.",
                 ["Make sure Music Assistant (2.10.6 or newer) is installed and running.",
-                 "If it runs elsewhere, set **Music Assistant URL**, e.g. "
-                 "`http://192.168.1.10:8095`."],
+                 "If it runs elsewhere, set **Music Assistant URL** in [ToothSpin's "
+                 "configuration](ha:app-config), e.g. `http://192.168.1.10:8095`."],
             ),
             "unreachable": (
-                "Music Assistant can't be reached right now.",
-                ["Check that Music Assistant is running; ToothSpin keeps retrying."],
+                "Music Assistant unreachable",
+                "Music Assistant can't be reached right now; ToothSpin keeps retrying.",
+                ["Check that Music Assistant is running."],
             ),
-        }.get(problem or "", ("Connecting to Music Assistant…", []))
-        checks.append({"ok": None if problem is None else False,
-                       "title": "Music Assistant", "text": text, "steps": steps})
-    elif backend is not None:
-        checks.append({"ok": True, "title": "Music Assistant", "text": "Connected"})
+        }.get(problem or "", ("Connecting to Music Assistant…", "", []))
+        todo.append({"kind": "wait" if problem is None else "todo",
+                     "title": title, "text": text, "steps": steps})
     if bluetooth is not None and not bluetooth.devices():
-        checks.append({
-            "ok": None,
-            "title": "First phone",
-            "text": "No phone paired yet: press **Add phone** below and connect to "
-            f"“{bluetooth.alias}” on your phone.",
+        todo.append({
+            "kind": "hint",
+            "title": "Pair your first phone",
+            "text": f"Press **Add phone** below, then connect to “{bluetooth.alias}” "
+            "in the phone's Bluetooth settings.",
+            "steps": [],
         })
     return {
         "problem": _problem(status.problem),
-        "warning": _problem(status.warning),
-        "checks": checks,
+        "todo": todo,
+        "app": status.app,
+        "app_slug": status.app_slug,
     }
 
 

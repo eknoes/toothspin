@@ -65,7 +65,9 @@ def _fake_home_assistant(entries, flows, calls):  # noqa: ANN001, ANN202
         await ws.send_json({"type": "auth_ok"})
         async for msg in ws:
             command = msg.json()
-            result = {"config_entries/get": entries, "config_entries/flow/progress": flows}
+            calls.append(command)
+            result = {"config_entries/get": entries, "config_entries/flow/progress": flows,
+                      "config_entries/ignore_flow": None}
             await ws.send_json({"id": command["id"], "type": "event", "event": {}})
             await ws.send_json(
                 {"id": command["id"], "type": "result", "success": True,
@@ -123,6 +125,33 @@ def test_shows_in_sidebar_only_once(tmp_path, monkeypatch) -> None:
     assert calls == [{"ingress_panel": True}]
 
 
+def test_ignores_the_discovered_adapter_on_request(monkeypatch) -> None:
+    calls: list[dict] = []
+    flows = [{"flow_id": "f1", "handler": "bluetooth", "context": {"unique_id": "aa:bb:cc:dd:ee:ff"}}]
+
+    async def scenario() -> tuple[bool, bool]:
+        async with TestServer(_fake_home_assistant([], flows, calls)) as server:
+            monkeypatch.setenv("SUPERVISOR_API", str(server.make_url("")).rstrip("/"))
+            return (await ha.ignore_discovered("AA:BB:CC:DD:EE:FF"),
+                    await ha.ignore_discovered("11:22:33:44:55:66"))
+
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "token")
+    assert asyncio.run(scenario()) == (True, False)
+    ignore = [c for c in calls if c["type"] == "config_entries/ignore_flow"]
+    # The title keeps the address, so the ignored entry is recognised later.
+    assert [(c["flow_id"], c["title"]) for c in ignore] == [("f1", "ToothSpin (AA:BB:CC:DD:EE:FF)")]
+
+
+def test_links_into_home_assistant_need_the_app() -> None:
+    problem = choose(AUTO, [SPARE], {SPARE.address: ha.OFFERED}).problem
+    assert problem is not None and problem.action == "ignore-adapter"
+    linked = problem.as_markdown("abc_toothspin")
+    assert "[Settings → Devices & services](/config/integrations/dashboard)" in linked
+    assert "ha:" not in problem.as_markdown()
+    shared = setup_check._shared(SPARE).as_markdown("abc_toothspin")  # noqa: SLF001
+    assert "(/config/app/abc_toothspin/config)" in shared
+
+
 def test_problem_markdown_numbers_steps() -> None:
     problem = setup_check.Problem("T", "Text.", ["One", "Two"])
     assert problem.as_markdown() == "Text.\n\n1. One\n2. Two"
@@ -142,6 +171,6 @@ def test_setup_page_explains_the_blocking_problem_and_missing_token() -> None:
 
     setup = asyncio.run(scenario())
     assert setup["problem"]["title"] == "No Bluetooth adapter found"
-    token = next(c for c in setup["checks"] if c["title"] == "Music Assistant token")
-    assert token["ok"] is False
-    assert any("Configuration" in step for step in token["steps"])
+    token = next(t for t in setup["todo"] if "token" in t["title"])
+    assert token["kind"] == "todo"
+    assert any("(ha:app-config)" in step for step in token["steps"])
