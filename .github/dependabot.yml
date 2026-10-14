@@ -1,4 +1,5 @@
-# Keeps the image's Alpine release and the workflows' actions current.
+# Keeps the image's Alpine release, the workflows' actions and the Python
+# dependencies current.
 version: 2
 updates:
   - package-ecosystem: docker
@@ -9,3 +10,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Pinned to what the current Music Assistant release ships; bumped
+      # together with it, by hand.
+      - dependency-name: aiosendspin
