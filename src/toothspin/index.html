@@ -70,7 +70,12 @@
   .pin { font: 600 40px/1.1 ui-monospace, monospace; letter-spacing: .15em;
          margin: 8px 0; }
   .notice { border-left: 3px solid var(--accent); padding: 8px 12px; margin-top: 12px; }
-  .error { color: var(--danger); }
+  /* Errors float above everything, so they're seen wherever you scrolled to. */
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 10;
+           bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+           width: max-content; max-width: min(90vw, 480px); padding: 10px 16px;
+           border-radius: 10px; background: #b3392d; color: #fff; font-size: 14px;
+           box-shadow: 0 4px 16px rgba(0, 0, 0, .25); cursor: pointer; }
   .track { font-size: 16px; margin: 6px 0 2px; }
   .phone { display: grid; gap: 4px; }
   .phone + .phone { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
@@ -144,10 +149,11 @@
     <div class="muted" id="subtitle" style="margin-top:8px;font-size:13px"></div>
   </section>
 
-  <div class="error" id="error"></div>
 </main>
+<div class="toast" id="toast" role="alert" hidden></div>
 <script>
 const $ = (id) => document.getElementById(id);
+document.addEventListener("click", (e) => { if (e.target.id === "toast") hideToast(); });
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 let state = null;
@@ -171,21 +177,36 @@ let sliding = false;
 const ICON_SOUND = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
 const ICON_MUTED = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>`;
 
+let toastTimer = null;
+let offline = false;
+// A message at the bottom of the screen; ms = 0 keeps it until replaced.
+function toast(message, ms = 6000) {
+  const el = $("toast");
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  if (ms) toastTimer = setTimeout(() => { el.hidden = true; }, ms);
+}
+function hideToast() { clearTimeout(toastTimer); $("toast").hidden = true; }
+
 async function post(path, body) {
-  const res = await fetch(path, {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(body ?? {}),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    $("error").textContent = data.error || `Request failed (${res.status})`;
-  } else {
-    $("error").textContent = "";
+  try {
+    const res = await fetch(path, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body ?? {}),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast(data.error || `Request failed (${res.status})`);
+    }
+  } catch (e) {
+    toast("Couldn't reach the receiver.");
   }
   await refresh();
 }
 
 function renderAudio(d) {
+  if (d.reconnecting) return `<div><span class="dot warn"></span>The phone plays on its own speaker; reconnecting to move its audio here…</div>`;
   if (!d.connected) return `<div class="muted">Not connected</div>`;
   if (!d.audio) return `<div class="muted">Connected, not streaming</div>`;
   const np = d.audio.now_playing, ss = d.sendspin;
@@ -415,9 +436,11 @@ async function refresh() {
   try {
     const res = await fetch("api/state");
     state = await res.json();
+    if (offline) { offline = false; hideToast(); }
     if (!editing && !sliding) render();
   } catch (e) {
-    $("error").textContent = "Lost connection to the receiver.";
+    offline = true;
+    toast("Lost connection to the receiver.", 0);
   }
 }
 // Only takes effect over HTTPS (or localhost); harmless otherwise. Not inside
