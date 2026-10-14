@@ -2,7 +2,7 @@
 # only the host's bluetoothd (system D-Bus socket) and host networking.
 # Alpine: smallest base whose PipeWire ships the AAC codec iPhones stream
 # (Debian's lacks it, fdk-aac being non-free there).
-ARG ALPINE_RELEASE=3.22
+ARG ALPINE_RELEASE=3.23
 
 FROM docker.io/library/alpine:${ALPINE_RELEASE} AS build
 # All dependencies ship musl wheels for amd64 and arm64, so no compilers.
@@ -15,7 +15,9 @@ RUN python3 -m venv /opt/venv \
     && find /opt/venv -name __pycache__ -prune -exec rm -rf {} +
 
 FROM docker.io/library/alpine:${ALPINE_RELEASE}
-RUN apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools
+# Upgrade first: the base image lags behind Alpine's security fixes.
+RUN apk upgrade --no-cache \
+    && apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools
 COPY --from=build /opt/venv /opt/venv
 COPY deploy/pipewire/*.conf /etc/wireplumber/wireplumber.conf.d/
 COPY deploy/pipewire/pipewire.conf.d/*.conf /etc/pipewire/pipewire.conf.d/
