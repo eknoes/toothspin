@@ -62,7 +62,7 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: toothspin:scan
-          cache-from: type=gha
+          cache-from: type=gha,scope=default
       - name: SBOM (SPDX)
         uses: anchore/sbom-action@v0.24.2
         with:
@@ -111,6 +111,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        # The server image adds what standalone mode's Sendspin server needs.
+        flavour:
+          - {name: default, suffix: "", extras: ""}
+          - {name: server, suffix: "-server", extras: server}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -120,6 +126,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/toothspin
+          flavor: |
+            suffix=${{ matrix.flavour.suffix }},onlatest=true
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -137,6 +145,7 @@ jobs:
         with:
           context: .
           file: Containerfile
+          build-args: EXTRAS=${{ matrix.flavour.extras }}
           platforms: linux/amd64,linux/arm64
           push: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -144,8 +153,8 @@ jobs:
           # Per-architecture SBOM and provenance attestations in the registry.
           sbom: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           provenance: ${{ (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && 'mode=max' || 'false' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.flavour.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.flavour.name }}
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -183,7 +192,7 @@ jobs:
           {
             cat notes.md
             echo
-            echo "Image: \`ghcr.io/${{ github.repository_owner }}/toothspin:$version\`. SBOMs (SPDX, CycloneDX) are attached; the image in the registry also carries SBOM and provenance attestations."
+            echo "Image: \`ghcr.io/${{ github.repository_owner }}/toothspin:$version\` (standalone mode: \`$version-server\`). SBOMs (SPDX, CycloneDX) of the default image are attached; both images in the registry carry SBOM and provenance attestations."
           } > release.md
           gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file release.md \
             "toothspin-$version.spdx.json" "toothspin-$version.cdx.json"
