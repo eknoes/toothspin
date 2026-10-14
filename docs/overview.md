@@ -139,9 +139,23 @@ PIN must have at least 6 digits.
 ## Versions
 
 `source@v1` is young and still changing. ToothSpin pins `aiosendspin` to the
-version Music Assistant ships (9.1.1 for 2.10.6), because newer releases
-renamed protocol messages and break against older servers. The two get
-bumped together.
+version the stable Music Assistant ships: 9.1.1, in every 2.10 release.
+
+- **Older Music Assistant:** Sendspin inputs arrived in 2.10.0, but raw PCM
+  input (ToothSpin's default) and token pairing only work since 2.10.2.
+  ToothSpin reads Music Assistant's version (from its API, or without a
+  token from `/info` or its mDNS announcement) and asks for an update below
+  2.10.2.
+- **Music Assistant 2.11** (beta as of October 2026) moves to aiosendspin
+  10, which follows the Sendspin 1.0 spec. A 10.x *client* can't talk to a
+  9.1.1 server, so ToothSpin can't move ahead of the stable Music Assistant.
+  The other way round works: a 10.x server accepts 9.1.1 clients as legacy
+  clients (logged as non-compliant), and Music Assistant 2.11 allows them by
+  default. Tested against real 2.10.0, 2.10.5, 2.10.6 and 2.11.0b5
+  containers: pairing via the API and streaming work. The one break was
+  2.11's new steps in the "Pair the device" flow, which ToothSpin answers.
+- Once Music Assistant drops legacy clients, or 2.10 is gone, ToothSpin
+  moves to aiosendspin 10 and its minimum version follows.
 
 ## Things that were tried and dropped
 

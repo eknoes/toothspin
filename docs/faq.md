@@ -37,6 +37,13 @@ phone, the phone's volume buttons controlling the speakers, and automatic
 pairing with Music Assistant. Create one in Music Assistant (your profile →
 **Tokens** → **Create token**) and paste it into ToothSpin's configuration.
 
+### Which Music Assistant versions work? {#ma-versions}
+
+2.10.2 or newer; 2.10.6 or newer is recommended, and ToothSpin is also
+tested with the 2.11 beta. With an older one, ToothSpin says so in **Finish
+setup** and in its log. If Music Assistant updates and something stops
+working, please [open an issue](https://github.com/eknoes/toothspin/issues).
+
 ### Where is ToothSpin in Home Assistant? {#sidebar}
 
 In the sidebar. ToothSpin adds itself there on its first start. If you
