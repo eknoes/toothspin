@@ -25,6 +25,8 @@ Changelog = "https://github.com/eknoes/toothspin/releases"
 
 [project.optional-dependencies]
 codecs = ["aiosendspin[source]==9.1.1"]
+# Standalone mode, ToothSpin's own Sendspin server (PyAV, numpy, Pillow: big).
+server = ["aiosendspin[server]==9.1.1"]
 test = [
   "pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==9.1.1", "numpy>=1.26", "ruff==0.16.10",
 ]
