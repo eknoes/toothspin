@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 from . import speakers
 from .bluez import BluetoothManager, Transport
-from .ma import MusicAssistant, MusicAssistantError
+from .backend import BackendError, PlayerBackend
 from .receivers import Receivers
 
 logger = logging.getLogger(__name__)
@@ -113,12 +113,12 @@ def _send_to_speaker(state: PhoneState, volume: int, now: float) -> Action:
 
 class VolumeSync:
     def __init__(
-        self, bluetooth: BluetoothManager, receivers: Receivers, ma: MusicAssistant,
+        self, bluetooth: BluetoothManager, receivers: Receivers, backend: PlayerBackend,
         start_volume: int = DEFAULT_START_VOLUME,
     ) -> None:
         self._bluetooth = bluetooth
         self._receivers = receivers
-        self._ma = ma
+        self._backend = backend
         self._start_volume = start_volume
         self._states: dict[str, PhoneState] = {}
         self._changed = asyncio.Event()
@@ -131,7 +131,7 @@ class VolumeSync:
             self._changed.clear()
             try:
                 await self.sync_once()
-            except (MusicAssistantError, TimeoutError, OSError) as err:
+            except (BackendError, TimeoutError, OSError) as err:
                 logger.debug("Volume sync: %s", err)
             except Exception:  # noqa: BLE001 - keep syncing other phones
                 logger.exception("Volume sync failed")
@@ -139,7 +139,7 @@ class VolumeSync:
                 await asyncio.wait_for(self._changed.wait(), POLL_S)
 
     async def sync_once(self) -> None:
-        all_speakers = {s.player_id: s for s in speakers.speakers(self._ma.players)}
+        all_speakers = {s.player_id: s for s in speakers.speakers(self._backend.players)}
         seen = set()
         for device in self._bluetooth.devices():
             receiver = self._receivers.get(device.address)
@@ -177,10 +177,10 @@ class VolumeSync:
             await self._bluetooth.set_phone_volume(transport.path, value)
         elif len(leader.members) > 1:
             logger.info("%s set group %s to %d%%", phone, leader.name, value)
-            await self._ma.call("players/cmd/group_volume", player_id=leader.player_id, volume_level=value)
+            await self._backend.call("players/cmd/group_volume", player_id=leader.player_id, volume_level=value)
         else:
             logger.info("%s set %s to %d%%", phone, leader.name, value)
-            await self._ma.call("players/cmd/volume_set", player_id=leader.player_id, volume_level=value)
+            await self._backend.call("players/cmd/volume_set", player_id=leader.player_id, volume_level=value)
 
 
 def _speaker_volume(leader: speakers.Speaker) -> int | None:

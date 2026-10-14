@@ -18,7 +18,7 @@ from dbus_fast.errors import DBusError
 from . import speakers
 from .bluez import BluetoothManager
 from .ha import INGRESS_PROXY_IP
-from .ma import MusicAssistant, MusicAssistantError
+from .backend import BackendError, PlayerBackend
 from .receivers import Receivers
 
 logger = logging.getLogger(__name__)
@@ -28,12 +28,12 @@ def create_app(
     bluetooth: BluetoothManager,
     receivers: Receivers,
     pairing_seconds: float,
-    ma: MusicAssistant | None = None,
+    backend: PlayerBackend | None = None,
     ingress_port: int | None = None,
     start_volume: int = 100,
 ) -> web.Application:
     index = files(__package__).joinpath("index.html").read_text()
-    volumes = speakers.Volumes(ma) if ma else None
+    volumes = speakers.Volumes(backend) if backend else None
 
     async def get_index(_: web.Request) -> web.Response:
         return web.Response(text=index, content_type="text/html")
@@ -68,12 +68,12 @@ def create_app(
                 },
                 "devices": [device_state(d) for d in bluetooth.devices()],
                 "speakers": None
-                if ma is None
+                if backend is None
                 else {
-                    "connected": ma.connected,
+                    "connected": backend.connected,
                     "list": [
                         {**asdict(s), "can_group_with": sorted(s.can_group_with)}
-                        for s in speakers.speakers(ma.players, volumes.emulated_mutes)
+                        for s in speakers.speakers(backend.players, volumes.emulated_mutes)
                     ],
                 },
             }
@@ -120,25 +120,25 @@ def create_app(
 
     async def post_speaker_toggle(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
-        if receiver is None or ma is None:
+        if receiver is None or backend is None:
             raise web.HTTPNotFound
         body = await request.json()
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
-            await speakers.toggle(ma, uri, str(body["player_id"]), bool(body["on"]), start_volume)
-        except (MusicAssistantError, TimeoutError) as err:
+            await speakers.toggle(backend, uri, str(body["player_id"]), bool(body["on"]), start_volume)
+        except (BackendError, TimeoutError) as err:
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
 
     async def post_speaker_move(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
-        if receiver is None or ma is None:
+        if receiver is None or backend is None:
             raise web.HTTPNotFound
         body = await request.json()
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
-            await speakers.move(ma, uri, str(body["player_id"]), start_volume)
-        except (MusicAssistantError, TimeoutError) as err:
+            await speakers.move(backend, uri, str(body["player_id"]), start_volume)
+        except (BackendError, TimeoutError) as err:
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
 
@@ -161,7 +161,7 @@ def create_app(
                 await volumes.set_muted(str(body["player_id"]), bool(body["muted"]))
             else:
                 await volumes.set_volume(str(body["player_id"]), int(body["volume"]))
-        except (MusicAssistantError, TimeoutError) as err:
+        except (BackendError, TimeoutError) as err:
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
 

@@ -13,7 +13,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from .ma import MusicAssistant, MusicAssistantError
+from .backend import BackendError, PlayerBackend
 
 SOURCE_URI = "sendspin_source://audio_source/{client_id}"
 # MA applies commands asynchronously; e.g. playing on a speaker that still
@@ -121,7 +121,7 @@ def plan(players: list[dict[str, Any]], uri: str, player_id: str, on: bool) -> l
     all_speakers = {s.player_id: s for s in speakers(players)}
     speaker = all_speakers.get(player_id)
     if speaker is None:
-        raise MusicAssistantError(f"speaker {player_id} is not available")
+        raise BackendError(f"speaker {player_id} is not available")
     selected = speaker.playing_uri == uri
 
     if not on:
@@ -131,7 +131,7 @@ def plan(players: list[dict[str, Any]], uri: str, player_id: str, on: bool) -> l
 
     leader = _leader(all_speakers, uri)
     if leader is not None and player_id not in leader.can_group_with:
-        raise MusicAssistantError(f"{speaker.name} can't play in sync with {leader.name}")
+        raise BackendError(f"{speaker.name} can't play in sync with {leader.name}")
     # A speaker playing another phone's input is taken over.
     commands = _release(all_speakers, speaker)
     if leader is None:
@@ -147,7 +147,7 @@ def plan_move(players: list[dict[str, Any]], uri: str, player_id: str) -> list[C
     all_speakers = {s.player_id: s for s in speakers(players)}
     speaker = all_speakers.get(player_id)
     if speaker is None:
-        raise MusicAssistantError(f"speaker {player_id} is not available")
+        raise BackendError(f"speaker {player_id} is not available")
     leader = _leader(all_speakers, uri)
     if leader is None:
         return plan(players, uri, player_id, True)
@@ -203,31 +203,31 @@ def quiet_start(
 
 
 async def toggle(
-    ma: MusicAssistant, uri: str, player_id: str, on: bool, start_volume: int = 100
+    backend: PlayerBackend, uri: str, player_id: str, on: bool, start_volume: int = 100
 ) -> None:
-    await ma.refresh()
-    commands = plan(ma.players, uri, player_id, on)
+    await backend.refresh()
+    commands = plan(backend.players, uri, player_id, on)
     if on and commands:
-        commands = quiet_start(ma.players, uri, player_id, start_volume) + commands
-    await _run(ma, commands)
+        commands = quiet_start(backend.players, uri, player_id, start_volume) + commands
+    await _run(backend, commands)
 
 
-async def move(ma: MusicAssistant, uri: str, player_id: str, start_volume: int = 100) -> None:
-    await ma.refresh()
-    commands = plan_move(ma.players, uri, player_id)
+async def move(backend: PlayerBackend, uri: str, player_id: str, start_volume: int = 100) -> None:
+    await backend.refresh()
+    commands = plan_move(backend.players, uri, player_id)
     if commands:
-        commands = quiet_start(ma.players, uri, player_id, start_volume) + commands
-    await _run(ma, commands)
+        commands = quiet_start(backend.players, uri, player_id, start_volume) + commands
+    await _run(backend, commands)
 
 
-async def _run(ma: MusicAssistant, commands: list[Command]) -> None:
+async def _run(backend: PlayerBackend, commands: list[Command]) -> None:
     for command, args in commands:
-        await ma.call(command, **args)
+        await backend.call(command, **args)
         loop = asyncio.get_running_loop()
         deadline = loop.time() + SETTLE_TIMEOUT_S
         while True:
-            await ma.refresh()
-            if _applied(ma.players, command, args) or loop.time() > deadline:
+            await backend.refresh()
+            if _applied(backend.players, command, args) or loop.time() > deadline:
                 break
             await asyncio.sleep(SETTLE_POLL_S)
 
@@ -235,31 +235,31 @@ async def _run(ma: MusicAssistant, commands: list[Command]) -> None:
 class Volumes:
     """Volume and mute; mute is emulated (volume 0, then restore) where unsupported."""
 
-    def __init__(self, ma: MusicAssistant) -> None:
-        self._ma = ma
+    def __init__(self, backend: PlayerBackend) -> None:
+        self._backend = backend
         # player_id -> volume to restore, for speakers muted by emulation.
         self.emulated_mutes: dict[str, int] = {}
 
     def _speaker(self, player_id: str) -> Speaker:
-        for speaker in speakers(self._ma.players, self.emulated_mutes):
+        for speaker in speakers(self._backend.players, self.emulated_mutes):
             if speaker.player_id == player_id:
                 return speaker
-        raise MusicAssistantError(f"speaker {player_id} is not available")
+        raise BackendError(f"speaker {player_id} is not available")
 
     async def set_volume(self, player_id: str, volume: int) -> None:
         volume = max(0, min(100, volume))
         self.emulated_mutes.pop(player_id, None)
-        await self._ma.call("players/cmd/volume_set", player_id=player_id, volume_level=volume)
-        await self._ma.refresh()
+        await self._backend.call("players/cmd/volume_set", player_id=player_id, volume_level=volume)
+        await self._backend.refresh()
 
     async def set_muted(self, player_id: str, muted: bool) -> None:
         speaker = self._speaker(player_id)
         if speaker.has_mute:
-            await self._ma.call("players/cmd/volume_mute", player_id=player_id, muted=muted)
+            await self._backend.call("players/cmd/volume_mute", player_id=player_id, muted=muted)
         elif muted and player_id not in self.emulated_mutes:
             self.emulated_mutes[player_id] = speaker.volume or 0
-            await self._ma.call("players/cmd/volume_set", player_id=player_id, volume_level=0)
+            await self._backend.call("players/cmd/volume_set", player_id=player_id, volume_level=0)
         elif not muted and player_id in self.emulated_mutes:
             restore = self.emulated_mutes.pop(player_id)
-            await self._ma.call("players/cmd/volume_set", player_id=player_id, volume_level=restore)
-        await self._ma.refresh()
+            await self._backend.call("players/cmd/volume_set", player_id=player_id, volume_level=restore)
+        await self._backend.refresh()

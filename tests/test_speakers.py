@@ -1,6 +1,6 @@
 import pytest
 
-from toothspin.ma import MusicAssistantError
+from toothspin.backend import BackendError
 from toothspin.speakers import plan, plan_move, quiet_start, source_uri, speakers
 
 PIXEL = source_uri("pixel")
@@ -49,7 +49,7 @@ def test_second_speaker_joins_the_group() -> None:
 
 def test_incompatible_speaker_is_refused() -> None:
     players = [_player("buero", playing=PIXEL), _player("couch", can=["kitchen"])]
-    with pytest.raises(MusicAssistantError, match="can't play in sync"):
+    with pytest.raises(BackendError, match="can't play in sync"):
         plan(players, PIXEL, "couch", on=True)
 
 

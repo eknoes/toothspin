@@ -14,12 +14,14 @@ from typing import Any
 
 import aiohttp
 
+from .backend import BackendError
+
 logger = logging.getLogger(__name__)
 
 POLL_S = 2.0
 
 
-class MusicAssistantError(Exception):
+class MusicAssistantError(BackendError):
     pass
 
 
