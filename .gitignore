@@ -5,3 +5,5 @@ __pycache__/
 # Ignition configs are built from deploy/coreos/config.bu; keys stay local.
 *.ign
 deploy/coreos/authorized_keys
+# Instructions for Claude Code; kept local.
+CLAUDE.md
