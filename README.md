@@ -28,9 +28,10 @@ with Music Assistant to set it up. From then on: press **Connect** in
 ToothSpin, play something on the phone and switch on the speakers you want.
 The phone's volume buttons control those speakers.
 
-Connections only ever start from ToothSpin, never from the phone. Walking
-in the front door with your phone won't suddenly blast your playlist
-through the whole house.
+By default, connections only start from ToothSpin, never from the phone:
+walking in the front door with your phone won't suddenly blast your
+playlist through the whole house. And when a phone starts on a speaker
+someone left loud, the speaker starts at 20% instead (configurable).
 
 > [!NOTE]
 > ToothSpin is in an early state. It was put together over a couple of
@@ -114,6 +115,7 @@ are optional:
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
+| `START_VOLUME` | `20` | the loudest a speaker starts at (0-100) when a phone starts playing on it; quieter speakers keep their volume, `100` always keeps it |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
 | `LOG_LEVEL` | `INFO` | |
@@ -134,7 +136,7 @@ phone, then switch on speakers on its card. Several speakers form a group
 on the fly (only speakers that can play in sync are offered together), each
 with its own volume and mute. To switch rooms, the arrow next to a speaker
 moves the phone there in one go, off all the others. On connecting, the phone takes over the
-speaker's current volume, so nothing suddenly gets loud; after that, its
+speaker's volume (at most `START_VOLUME`), so nothing suddenly gets loud; after that, its
 volume buttons control the speaker or group. The eye icon hides speakers
 you don't need on that phone's card.
 

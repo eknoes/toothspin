@@ -20,7 +20,7 @@ from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant
 from .receivers import Receivers
-from .volume_sync import VolumeSync
+from .volume_sync import DEFAULT_START_VOLUME, VolumeSync
 from .web import create_app
 
 logger = logging.getLogger(__name__)
@@ -58,6 +58,10 @@ def _parse_args() -> argparse.Namespace:
         help="As a Home Assistant App: also serve the web UI on this port to the LAN",
     )
     parser.add_argument(
+        "--start-volume", type=int, default=int(env("START_VOLUME", str(DEFAULT_START_VOLUME))),
+        help="The loudest a speaker starts at when a phone starts playing on it (0-100)",
+    )
+    parser.add_argument(
         "--pairing-seconds", type=float, default=float(env("BT_PAIRING_SECONDS", "120"))
     )
     parser.add_argument(
@@ -73,7 +77,9 @@ def _parse_args() -> argparse.Namespace:
         help="Start PipeWire + WirePlumber ourselves (the container image does this)",
     )
     parser.add_argument("--log-level", default=env("LOG_LEVEL", "INFO"))
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.start_volume = max(0, min(100, args.start_volume))
+    return args
 
 
 async def _run(args: argparse.Namespace) -> None:
@@ -88,7 +94,9 @@ async def _run(args: argparse.Namespace) -> None:
             volume_sync.notify()
 
     volume_sync: VolumeSync | None = None
-    bluetooth = BluetoothManager(bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change)
+    bluetooth = BluetoothManager(
+        bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change,
+    )
     receivers = Receivers(
         bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name, args.manufacturer
     )
@@ -102,7 +110,10 @@ async def _run(args: argparse.Namespace) -> None:
 
     ingress_port = await ha.ingress_port() if ha.running_as_app() else None
     runner = web.AppRunner(
-        create_app(bluetooth, receivers, args.pairing_seconds, ma, ingress_port=ingress_port)
+        create_app(
+            bluetooth, receivers, args.pairing_seconds, ma, ingress_port=ingress_port,
+            start_volume=args.start_volume,
+        )
     )
     await runner.setup()
     if ingress_port:
@@ -127,7 +138,7 @@ async def _run(args: argparse.Namespace) -> None:
         tasks.append(asyncio.create_task(audio.exited.wait()))
     ma_task = asyncio.create_task(ma.run()) if ma else None
     if ma:
-        volume_sync = VolumeSync(bluetooth, receivers, ma)
+        volume_sync = VolumeSync(bluetooth, receivers, ma, args.start_volume)
         tasks.append(asyncio.create_task(volume_sync.run()))
     if ma_task:
         # Speaker control is optional: log a crash instead of taking the service down.

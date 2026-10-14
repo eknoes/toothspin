@@ -12,6 +12,12 @@ configuration:
     description: >-
       The adapter phones connect to, e.g. hci0 or hci1. Use a dedicated USB
       dongle and turn it off in Home Assistant's Bluetooth integration.
+  start_volume:
+    name: Start volume
+    description: >-
+      The loudest a speaker starts at (0-100) when a phone starts playing on
+      it, so a speaker left loud doesn't blast. Quieter speakers keep their
+      volume; 100 always keeps the speaker's volume.
   ma_token:
     name: Music Assistant token
     description: >-

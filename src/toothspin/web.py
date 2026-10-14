@@ -30,6 +30,7 @@ def create_app(
     pairing_seconds: float,
     ma: MusicAssistant | None = None,
     ingress_port: int | None = None,
+    start_volume: int = 100,
 ) -> web.Application:
     index = files(__package__).joinpath("index.html").read_text()
     volumes = speakers.Volumes(ma) if ma else None
@@ -124,7 +125,7 @@ def create_app(
         body = await request.json()
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
-            await speakers.toggle(ma, uri, str(body["player_id"]), bool(body["on"]))
+            await speakers.toggle(ma, uri, str(body["player_id"]), bool(body["on"]), start_volume)
         except (MusicAssistantError, TimeoutError) as err:
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
@@ -136,7 +137,7 @@ def create_app(
         body = await request.json()
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
-            await speakers.move(ma, uri, str(body["player_id"]))
+            await speakers.move(ma, uri, str(body["player_id"]), start_volume)
         except (MusicAssistantError, TimeoutError) as err:
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})

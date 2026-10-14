@@ -192,14 +192,32 @@ def _applied(players: list[dict[str, Any]], command: str, args: dict[str, Any]) 
     return True
 
 
-async def toggle(ma: MusicAssistant, uri: str, player_id: str, on: bool) -> None:
-    await ma.refresh()
-    await _run(ma, plan(ma.players, uri, player_id, on))
+def quiet_start(
+    players: list[dict[str, Any]], uri: str, player_id: str, start_volume: int
+) -> list[Command]:
+    """Turn a speaker left loud down to the start volume before ``uri`` starts on it."""
+    speaker = next((s for s in speakers(players) if s.player_id == player_id), None)
+    if speaker is None or speaker.playing_uri == uri or (speaker.volume or 0) <= start_volume:
+        return []
+    return [("players/cmd/volume_set", {"player_id": player_id, "volume_level": start_volume})]
 
 
-async def move(ma: MusicAssistant, uri: str, player_id: str) -> None:
+async def toggle(
+    ma: MusicAssistant, uri: str, player_id: str, on: bool, start_volume: int = 100
+) -> None:
     await ma.refresh()
-    await _run(ma, plan_move(ma.players, uri, player_id))
+    commands = plan(ma.players, uri, player_id, on)
+    if on and commands:
+        commands = quiet_start(ma.players, uri, player_id, start_volume) + commands
+    await _run(ma, commands)
+
+
+async def move(ma: MusicAssistant, uri: str, player_id: str, start_volume: int = 100) -> None:
+    await ma.refresh()
+    commands = plan_move(ma.players, uri, player_id)
+    if commands:
+        commands = quiet_start(ma.players, uri, player_id, start_volume) + commands
+    await _run(ma, commands)
 
 
 async def _run(ma: MusicAssistant, commands: list[Command]) -> None:

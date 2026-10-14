@@ -43,18 +43,18 @@ Pairing closes again once a phone has paired.
 choose **Pair the device**; then press **Allow** on the phone's card in
 ToothSpin and type the code it shows into Music Assistant.
 
-**Connect and play:** connections always start from ToothSpin: press
-**Connect** on the phone's card. A phone trying to connect by itself is
-refused. Play something on the phone, then switch on one or more speakers
-on its card. Several speakers form a group on the fly; only speakers that
+**Connect and play:** connections start from ToothSpin: press **Connect**
+on the phone's card. A phone trying to connect by itself is refused. Play something on the phone, then switch
+on one or more speakers on its card. Several speakers form a group on the fly; only speakers that
 can play in sync are offered together. Each speaker has its own volume and
 mute. To switch rooms, the arrow next to a speaker plays the phone only
 there, in one go.
 
 **Volume from the phone:** while a phone plays, its volume buttons control
 the speaker, or the whole group if it plays on several. When it starts
-playing, the phone takes over the speaker's current volume instead of
-imposing its own, so nothing suddenly gets loud.
+playing, the phone takes over the speaker's volume instead of imposing its
+own, and a speaker left loud starts at the **Start volume** (20 by default),
+so nothing suddenly gets loud.
 
 **Hide speakers:** the eye icon next to a speaker hides it on that phone's
 card: it is dimmed and moved to the end of the list. Each phone has its own
@@ -74,6 +74,7 @@ instead: select a player, open **Browse**, pick the phone's input and press
 | Music Assistant token | Enables choosing speakers in the app. |
 | Music Assistant URL | Only needed if Music Assistant isn't found automatically, e.g. `http://homeassistant.local:8095`. |
 | Sendspin server URL | Only needed if Music Assistant's Sendspin server isn't found automatically, e.g. `ws://homeassistant.local:8927/sendspin`. |
+| Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it. Quieter speakers keep their volume; `100` always keeps it. Default: `20`. |
 | LAN port | Also serves the web interface on this port to your whole network, **without** Home Assistant's login. Handy for adding it to a phone's home screen; leave it empty otherwise. |
 | Log level | `debug`, `info`, `warning` or `error`. |
 

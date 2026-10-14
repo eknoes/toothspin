@@ -3,8 +3,9 @@
 While a phone streams to a speaker (or group), its volume buttons set that
 speaker's volume, and volume changes made elsewhere (web UI, Music
 Assistant) are sent to the phone. When a phone starts streaming to a
-speaker, the speaker's current volume wins: it's sent to the phone rather
-than taking over whatever volume the phone happened to have.
+speaker, the speaker's current volume wins, capped at the start volume: it's
+sent to the phone rather than taking over whatever volume the phone happened
+to have, and a speaker left loud doesn't start loud.
 
 Phones report absolute volume as 0-127 (AVRCP); speakers use 0-100. The
 captured audio itself stays at full scale (PipeWire's Bluetooth hardware
@@ -29,9 +30,12 @@ logger = logging.getLogger(__name__)
 POLL_S = 0.5
 # After sending a volume to a phone it reports back its own rounding (e.g.
 # Android has 15 steps); reports that close to ours are that echo, not a
-# change by the user.
+# change by the user. Likewise, Music Assistant reports a volume we set a
+# moment later and until then still the old one.
 ECHO_WINDOW_S = 3.0
 ECHO_TOLERANCE = 9  # one Android volume step on the 0-127 scale
+# The loudest a speaker starts at when a phone starts playing on it (0-100).
+DEFAULT_START_VOLUME = 20
 
 
 def to_phone(percent: int) -> int:
@@ -52,47 +56,70 @@ class PhoneState:
     speaker: int | None = None
     """Last speaker volume we know of (0-100)."""
     echo_until: float = 0.0
+    speaker_pending_until: float = 0.0
+    """Until when Music Assistant may still report the volume before ours."""
+
+
+Action = tuple[str, int]
 
 
 def decide(
     state: PhoneState, phone_level: int | None, target: str | None, speaker_volume: int | None,
-    now: float,
-) -> tuple[str, int] | None:
-    """What to change, if anything: ("phone", 0-127) or ("speaker", 0-100)."""
+    now: float, start_volume: int = 100,
+) -> list[Action]:
+    """What to change: ("phone", 0-127) and/or ("speaker", 0-100) actions."""
     if phone_level is None or target is None or speaker_volume is None:
         state.target = None
-        return None
+        return []
     if state.target != target:
         # Started streaming to a speaker, or switched speakers: the speaker's
-        # volume wins.
+        # volume wins, but never above the start volume.
         state.target = target
-        return _send_to_phone(state, speaker_volume, now)
+        actions = []
+        if speaker_volume > start_volume:
+            speaker_volume = start_volume
+            actions.append(_send_to_speaker(state, start_volume, now))
+        return [*actions, _send_to_phone(state, speaker_volume, now)]
     if phone_level != state.phone:
         if now < state.echo_until and abs(phone_level - (state.phone or 0)) <= ECHO_TOLERANCE:
             state.phone = phone_level  # the phone rounding our value
-            return None
+            return []
         state.phone = phone_level
-        state.speaker = to_percent(phone_level)
-        if state.speaker == speaker_volume:
-            return None
-        return ("speaker", state.speaker)
-    if speaker_volume != state.speaker:
-        return _send_to_phone(state, speaker_volume, now)
-    return None
+        level = to_percent(phone_level)
+        if level == speaker_volume:
+            state.speaker = level
+            return []
+        return [_send_to_speaker(state, level, now)]
+    if speaker_volume == state.speaker:
+        state.speaker_pending_until = 0.0  # Music Assistant caught up
+        return []
+    if now < state.speaker_pending_until:
+        return []  # still the volume from before ours
+    return [_send_to_phone(state, speaker_volume, now)]
 
 
-def _send_to_phone(state: PhoneState, speaker_volume: int, now: float) -> tuple[str, int]:
+def _send_to_phone(state: PhoneState, speaker_volume: int, now: float) -> Action:
     state.speaker = speaker_volume
     state.phone = to_phone(speaker_volume)
     state.echo_until = now + ECHO_WINDOW_S
     return ("phone", state.phone)
 
 
+def _send_to_speaker(state: PhoneState, volume: int, now: float) -> Action:
+    state.speaker = volume
+    state.speaker_pending_until = now + ECHO_WINDOW_S
+    return ("speaker", volume)
+
+
 class VolumeSync:
-    def __init__(self, bluetooth: BluetoothManager, receivers: Receivers, ma: MusicAssistant) -> None:
+    def __init__(
+        self, bluetooth: BluetoothManager, receivers: Receivers, ma: MusicAssistant,
+        start_volume: int = DEFAULT_START_VOLUME,
+    ) -> None:
         self._bluetooth = bluetooth
         self._receivers = receivers
         self._ma = ma
+        self._start_volume = start_volume
         self._states: dict[str, PhoneState] = {}
         self._changed = asyncio.Event()
 
@@ -132,8 +159,11 @@ class VolumeSync:
                 None,
             )
             volume = None if leader is None else _speaker_volume(leader)
-            action = decide(state, transport.volume, leader and leader.player_id, volume, time.monotonic())
-            if action:
+            actions = decide(
+                state, transport.volume, leader and leader.player_id, volume, time.monotonic(),
+                self._start_volume,
+            )
+            for action in actions:
                 await self._apply(device.name, transport, leader, action)
         for address in [a for a, s in self._states.items() if s.transport not in seen]:
             del self._states[address]

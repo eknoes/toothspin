@@ -1,7 +1,7 @@
 import pytest
 
 from toothspin.ma import MusicAssistantError
-from toothspin.speakers import plan, plan_move, source_uri, speakers
+from toothspin.speakers import plan, plan_move, quiet_start, source_uri, speakers
 
 PIXEL = source_uri("pixel")
 IPHONE = source_uri("iphone")
@@ -155,6 +155,17 @@ def test_moving_when_not_playing_starts_there() -> None:
     assert plan_move([_player("buero")], PIXEL, "buero") == [
         ("player_queues/play_media", {"queue_id": "buero", "media": PIXEL})
     ]
+
+
+def test_a_loud_speaker_is_turned_down_before_starting() -> None:
+    loud = {**_player("kitchen"), "volume_level": 97}
+    assert quiet_start([loud], PIXEL, "kitchen", 20) == [
+        ("players/cmd/volume_set", {"player_id": "kitchen", "volume_level": 20})
+    ]
+    assert quiet_start([{**loud, "volume_level": 12}], PIXEL, "kitchen", 20) == []
+    # Already playing this phone: its volume is the user's choice.
+    playing = {**_player("kitchen", playing=PIXEL), "volume_level": 97}
+    assert quiet_start([playing], PIXEL, "kitchen", 20) == []
 
 
 def test_applied_reflects_ma_state() -> None:

@@ -27,6 +27,7 @@ OPTION_ENV = {
     "bluetooth_name": "BT_NAME",
     "input_name": "SENDSPIN_NAME",
     "adapter": "BT_ADAPTER",
+    "start_volume": "START_VOLUME",
     "sendspin_url": "SENDSPIN_URL",
     "ma_url": "MA_URL",
     "ma_token": "MA_TOKEN",
