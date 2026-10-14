@@ -17,6 +17,12 @@ dependencies = [
     "dbus-fast==5.0.9",
 ]
 
+[project.urls]
+Homepage = "https://github.com/eknoes/toothspin"
+Source = "https://github.com/eknoes/toothspin"
+Issues = "https://github.com/eknoes/toothspin/issues"
+Changelog = "https://github.com/eknoes/toothspin/blob/main/toothspin/CHANGELOG.md"
+
 [project.optional-dependencies]
 codecs = ["aiosendspin[source]==9.1.1"]
 test = ["pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==9.1.1", "numpy>=1.26"]

@@ -29,6 +29,8 @@ ENV PATH=/opt/venv/bin:$PATH \
     BUNDLED_PIPEWIRE=1 \
     XDG_RUNTIME_DIR=/tmp/runtime \
     XDG_STATE_HOME=/tmp/runtime/state
-LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
+LABEL org.opencontainers.image.licenses="GPL-3.0-or-later" \
+      org.opencontainers.image.source="https://github.com/eknoes/toothspin" \
+      org.opencontainers.image.url="https://github.com/eknoes/toothspin"
 VOLUME /data
 CMD ["toothspin"]
