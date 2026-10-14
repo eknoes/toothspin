@@ -20,7 +20,7 @@ hassio_api: true
 homeassistant_api: true
 ingress: true
 ingress_port: 0
-panel_icon: mdi:bluetooth-audio
+panel_icon: mdi:home-sound-in
 panel_title: ToothSpin
 options:
   bluetooth_name: ToothSpin
