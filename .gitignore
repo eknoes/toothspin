@@ -7,3 +7,6 @@ __pycache__/
 deploy/coreos/authorized_keys
 # Instructions for Claude Code; kept local.
 CLAUDE.md
+
+# Logs shared for debugging (may hold device addresses).
+*.log
