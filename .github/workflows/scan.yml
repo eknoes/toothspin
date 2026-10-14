@@ -16,6 +16,11 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The default image and standalone mode's server image.
+        tag: [latest, latest-server]
     steps:
       # For .grype.yaml (false positives).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,21 +33,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Pull the latest release
-        run: docker pull "ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin:latest"
+        env:
+          TAG: ${{ matrix.tag }}
+        run: docker pull "ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin:$TAG"
       - name: All known vulnerabilities (report)
         uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
-          image: ghcr.io/${{ github.repository_owner }}/toothspin:latest
+          image: ghcr.io/${{ github.repository_owner }}/toothspin:${{ matrix.tag }}
           fail-build: false
           output-format: table
           output-file: vulnerabilities.txt
       - name: Add the report to the job summary
+        env:
+          TAG: ${{ matrix.tag }}
         run: |
-          { echo '## Known vulnerabilities in the latest release'; echo '```'; cat vulnerabilities.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "## Known vulnerabilities in $TAG"; echo '```'; cat vulnerabilities.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on fixable high/critical vulnerabilities
         uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
-          image: ghcr.io/${{ github.repository_owner }}/toothspin:latest
+          image: ghcr.io/${{ github.repository_owner }}/toothspin:${{ matrix.tag }}
           only-fixed: true
           severity-cutoff: high
           fail-build: true

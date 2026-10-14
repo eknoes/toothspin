@@ -85,6 +85,12 @@ jobs:
     # findings are listed in the job summary.
     needs: test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Both images: the server one brings PyAV, numpy and Pillow.
+        flavour:
+          - {name: default, extras: "", artifact: sbom}
+          - {name: server, extras: server, artifact: sbom-server}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -98,11 +104,13 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: toothspin:scan
-          build-args: GIT_COMMIT=${{ github.sha }}
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            EXTRAS=${{ matrix.flavour.extras }}
           # Written here so the image job reuses these amd64 layers instead
           # of building them a second time.
-          cache-from: type=gha,scope=default
-          cache-to: type=gha,mode=max,scope=default
+          cache-from: type=gha,scope=${{ matrix.flavour.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.flavour.name }}
       - name: SBOM (SPDX)
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
@@ -127,7 +135,7 @@ jobs:
           cache-db: true
       - name: Add the report to the job summary
         run: |
-          { echo '## Known vulnerabilities in the image'; echo '```'; cat vulnerabilities.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo '## Known vulnerabilities in the ${{ matrix.flavour.name }} image'; echo '```'; cat vulnerabilities.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on fixable high/critical vulnerabilities
         uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
@@ -139,7 +147,7 @@ jobs:
           cache-db: true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sbom
+          name: ${{ matrix.flavour.artifact }}
           path: |
             toothspin.spdx.json
             toothspin.cdx.json
