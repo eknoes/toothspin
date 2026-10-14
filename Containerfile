@@ -5,12 +5,15 @@
 # out in both FROM lines so Dependabot can propose new ones.
 
 FROM docker.io/library/alpine:3.24 AS build
+# "server" builds the image for standalone mode (ToothSpin's own Sendspin
+# server), which needs PyAV, numpy and Pillow: about 200 MB more.
+ARG EXTRAS=""
 # All dependencies ship musl wheels for amd64 and arm64, so no compilers.
 RUN apk add --no-cache python3
 COPY pyproject.toml /src/
 COPY src /src/src
 RUN python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir /src \
+    && /opt/venv/bin/pip install --no-cache-dir "/src${EXTRAS:+[$EXTRAS]}" \
     && /opt/venv/bin/pip uninstall -y pip \
     && find /opt/venv -name __pycache__ -prune -exec rm -rf {} +
 
