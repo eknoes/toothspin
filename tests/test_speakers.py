@@ -1,7 +1,7 @@
 import pytest
 
 from toothspin.ma import MusicAssistantError
-from toothspin.speakers import plan, source_uri, speakers
+from toothspin.speakers import plan, plan_move, source_uri, speakers
 
 PIXEL = source_uri("pixel")
 IPHONE = source_uri("iphone")
@@ -100,6 +100,61 @@ def test_toggling_to_the_current_state_does_nothing() -> None:
     players = [_player("buero", playing=PIXEL), _player("living")]
     assert plan(players, PIXEL, "buero", on=True) == []
     assert plan(players, PIXEL, "living", on=False) == []
+
+
+def test_moving_to_another_speaker_stops_the_old_one() -> None:
+    players = [_player("buero", playing=PIXEL), _player("living")]
+    assert plan_move(players, PIXEL, "living") == [
+        ("player_queues/play_media", {"queue_id": "living", "media": PIXEL}),
+        ("players/cmd/stop", {"player_id": "buero"}),
+    ]
+
+
+def test_moving_out_of_a_group_ungroups_it_first() -> None:
+    players = [
+        _player("buero", playing=PIXEL, members=["buero", "living", "bath"]),
+        _player("living", playing=PIXEL, synced_to="buero"),
+        _player("bath", playing=PIXEL, synced_to="buero"),
+    ]
+    assert plan_move(players, PIXEL, "bath") == [
+        ("players/cmd/set_members",
+         {"target_player": "buero", "player_ids_to_remove": ["living", "bath"]}),
+        ("player_queues/play_media", {"queue_id": "bath", "media": PIXEL}),
+        ("players/cmd/stop", {"player_id": "buero"}),
+    ]
+
+
+def test_moving_to_the_group_leader_drops_the_others() -> None:
+    players = [
+        _player("buero", playing=PIXEL, members=["buero", "living"]),
+        _player("living", playing=PIXEL, synced_to="buero"),
+    ]
+    assert plan_move(players, PIXEL, "buero") == [
+        ("players/cmd/set_members", {"target_player": "buero", "player_ids_to_remove": ["living"]})
+    ]
+    assert plan_move([_player("buero", playing=PIXEL)], PIXEL, "buero") == []
+
+
+def test_moving_works_where_grouping_doesnt() -> None:
+    players = [_player("buero", playing=PIXEL), _player("couch", can=["kitchen"])]
+    assert plan_move(players, PIXEL, "couch")[0] == (
+        "player_queues/play_media", {"queue_id": "couch", "media": PIXEL}
+    )
+
+
+def test_moving_takes_over_another_phones_speaker() -> None:
+    players = [_player("buero", playing=PIXEL), _player("living", playing=IPHONE)]
+    assert plan_move(players, PIXEL, "living") == [
+        ("players/cmd/stop", {"player_id": "living"}),
+        ("player_queues/play_media", {"queue_id": "living", "media": PIXEL}),
+        ("players/cmd/stop", {"player_id": "buero"}),
+    ]
+
+
+def test_moving_when_not_playing_starts_there() -> None:
+    assert plan_move([_player("buero")], PIXEL, "buero") == [
+        ("player_queues/play_media", {"queue_id": "buero", "media": PIXEL})
+    ]
 
 
 def test_applied_reflects_ma_state() -> None:

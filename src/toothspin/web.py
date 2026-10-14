@@ -129,6 +129,18 @@ def create_app(
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
 
+    async def post_speaker_move(request: web.Request) -> web.Response:
+        receiver = receivers.get(request.match_info["address"])
+        if receiver is None or ma is None:
+            raise web.HTTPNotFound
+        body = await request.json()
+        uri = speakers.source_uri(receiver.source.client.identity.peer_id)
+        try:
+            await speakers.move(ma, uri, str(body["player_id"]))
+        except (MusicAssistantError, TimeoutError) as err:
+            return web.json_response({"ok": False, "error": str(err)}, status=502)
+        return web.json_response({"ok": True})
+
     async def post_speaker_hidden(request: web.Request) -> web.Response:
         body = await request.json()
         try:
@@ -186,6 +198,7 @@ def create_app(
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)
     app.router.add_post("/api/sendspin/{address}/name", post_sendspin_name)
     app.router.add_post("/api/speakers/{address}/toggle", post_speaker_toggle)
+    app.router.add_post("/api/speakers/{address}/move", post_speaker_move)
     app.router.add_post("/api/speakers/volume", post_speaker_volume)
     app.router.add_post("/api/speakers/{address}/hidden", post_speaker_hidden)
     return app

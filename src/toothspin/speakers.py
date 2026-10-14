@@ -2,7 +2,8 @@
 
 Toggling several speakers for one phone groups them on the fly (MA sync
 grouping via ``players/cmd/set_members``); toggling one off takes it out of
-the group. Music Assistant is the source of truth: the current selection is
+the group. Moving a phone to one speaker switches rooms in one go. Music
+Assistant is the source of truth: the current selection is
 read back from its player state, never stored here.
 """
 
@@ -141,6 +142,33 @@ def plan(players: list[dict[str, Any]], uri: str, player_id: str, on: bool) -> l
     return commands
 
 
+def plan_move(players: list[dict[str, Any]], uri: str, player_id: str) -> list[Command]:
+    """MA commands that make ``player_id`` the only speaker playing ``uri``."""
+    all_speakers = {s.player_id: s for s in speakers(players)}
+    speaker = all_speakers.get(player_id)
+    if speaker is None:
+        raise MusicAssistantError(f"speaker {player_id} is not available")
+    leader = _leader(all_speakers, uri)
+    if leader is None:
+        return plan(players, uri, player_id, True)
+    followers = _followers(leader)
+    if leader.player_id == player_id:
+        return [("players/cmd/set_members",
+                 {"target_player": player_id, "player_ids_to_remove": followers})] if followers else []
+    # Ungroup the old speakers (including this one, if it was one of them),
+    # start this one, then stop the old leader.
+    commands: list[Command] = []
+    if followers:
+        commands.append(("players/cmd/set_members",
+                         {"target_player": leader.player_id, "player_ids_to_remove": followers}))
+    if player_id not in followers:
+        # A speaker playing another phone's input is taken over.
+        commands += _release(all_speakers, speaker)
+    commands.append(("player_queues/play_media", {"queue_id": player_id, "media": uri}))
+    commands.append(("players/cmd/stop", {"player_id": leader.player_id}))
+    return commands
+
+
 def _applied(players: list[dict[str, Any]], command: str, args: dict[str, Any]) -> bool:
     """Whether MA's player state shows ``command`` took effect."""
     by_id = {s.player_id: s for s in speakers(players)}
@@ -166,7 +194,16 @@ def _applied(players: list[dict[str, Any]], command: str, args: dict[str, Any]) 
 
 async def toggle(ma: MusicAssistant, uri: str, player_id: str, on: bool) -> None:
     await ma.refresh()
-    for command, args in plan(ma.players, uri, player_id, on):
+    await _run(ma, plan(ma.players, uri, player_id, on))
+
+
+async def move(ma: MusicAssistant, uri: str, player_id: str) -> None:
+    await ma.refresh()
+    await _run(ma, plan_move(ma.players, uri, player_id))
+
+
+async def _run(ma: MusicAssistant, commands: list[Command]) -> None:
+    for command, args in commands:
         await ma.call(command, **args)
         loop = asyncio.get_running_loop()
         deadline = loop.time() + SETTLE_TIMEOUT_S

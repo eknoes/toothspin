@@ -48,7 +48,8 @@ ToothSpin and type the code it shows into Music Assistant.
 refused. Play something on the phone, then switch on one or more speakers
 on its card. Several speakers form a group on the fly; only speakers that
 can play in sync are offered together. Each speaker has its own volume and
-mute.
+mute. To switch rooms, the arrow next to a speaker plays the phone only
+there, in one go.
 
 **Volume from the phone:** while a phone plays, its volume buttons control
 the speaker, or the whole group if it plays on several. When it starts

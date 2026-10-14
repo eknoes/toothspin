@@ -128,7 +128,8 @@ card in ToothSpin and type the code it shows into Music Assistant.
 **Play:** press **Connect** on the phone's card, play something on the
 phone, then switch on speakers on its card. Several speakers form a group
 on the fly (only speakers that can play in sync are offered together), each
-with its own volume and mute. On connecting, the phone takes over the
+with its own volume and mute. To switch rooms, the arrow next to a speaker
+moves the phone there in one go, off all the others. On connecting, the phone takes over the
 speaker's current volume, so nothing suddenly gets loud; after that, its
 volume buttons control the speaker or group. The eye icon hides speakers
 you don't need on that phone's card.
