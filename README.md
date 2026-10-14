@@ -34,8 +34,12 @@ through the whole house.
 
 > [!NOTE]
 > ToothSpin is in an early state. It was put together over a couple of
-> evenings with [Claude](https://claude.ai) and so far runs in exactly one
-> home. Expect rough edges; bug reports are welcome.
+> evenings with [Claude](https://claude.ai), with a human firmly at the
+> wheel: the AI got steered a lot, and every line of code was reviewed by
+> me. It runs in exactly one home so far, but that home is a demanding test
+> lab: several phones, a household that switches rooms mid-song, and
+> reviewers who report regressions at full volume, without filing an issue.
+> Expect rough edges; bug reports (any volume) are welcome.
 
 **You need:** Music Assistant **2.10.6 or newer** and a USB Bluetooth dongle
 just for ToothSpin. How it's built:
