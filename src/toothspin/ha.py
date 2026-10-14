@@ -70,6 +70,29 @@ async def ingress_port() -> int:
     return int(data["data"]["ingress_port"])
 
 
+SIDEBAR_MARKER = Path("/data/.sidebar_shown")
+
+
+async def show_in_sidebar(marker: Path = SIDEBAR_MARKER) -> None:
+    """Put ToothSpin in Home Assistant's sidebar, once.
+
+    Same as the App page's "Show in sidebar" switch, which is off for new
+    installs. Only done on the first start, so switching it off sticks.
+    """
+    if marker.exists():
+        return
+    headers = {"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"}
+    async with (
+        aiohttp.ClientSession() as session,
+        session.post(
+            f"{_api()}/addons/self/options", headers=headers, json={"ingress_panel": True}
+        ) as response,
+    ):
+        response.raise_for_status()
+    marker.touch()
+    logger.info("Added ToothSpin to Home Assistant's sidebar")
+
+
 # How Home Assistant's Bluetooth integration treats an adapter, by address.
 USED = "used"  # set up and enabled: HA scans with it
 DISABLED = "disabled"  # set up, but disabled by the user: free for ToothSpin

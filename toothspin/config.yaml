@@ -12,7 +12,8 @@ arch:
 host_network: true
 # Uses the host's BlueZ (bluetoothd) over D-Bus; no raw Bluetooth access.
 host_dbus: true
-# Only to read the ingress port the Supervisor assigns (ingress_port: 0).
+# Only to read the ingress port the Supervisor assigns (ingress_port: 0)
+# and to show the app in the sidebar on its first start.
 hassio_api: true
 # Only to check whether Home Assistant's Bluetooth integration uses the
 # adapter too, and to raise a notification when setup needs the user.

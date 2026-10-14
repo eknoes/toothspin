@@ -223,6 +223,11 @@ async def _run(args: argparse.Namespace) -> None:
     # Up first, so problems before Bluetooth starts can be shown there.
     await site.serve(create_setup_app(status, ingress_port))
     site.log_addresses()
+    if status.app:
+        try:
+            await ha.show_in_sidebar()
+        except (aiohttp.ClientError, OSError) as err:
+            logger.warning("Couldn't add ToothSpin to the sidebar: %s", err)
 
     audio = AudioStack() if args.bundled_pipewire else None
     if audio:

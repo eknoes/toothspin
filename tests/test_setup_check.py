@@ -108,6 +108,21 @@ def test_reads_adapter_usage_from_home_assistant(monkeypatch) -> None:
     }
 
 
+def test_shows_in_sidebar_only_once(tmp_path, monkeypatch) -> None:
+    calls: list[dict] = []
+    marker = tmp_path / "sidebar"
+
+    async def scenario() -> None:
+        async with TestServer(_fake_home_assistant([], [], calls)) as server:
+            monkeypatch.setenv("SUPERVISOR_API", str(server.make_url("")).rstrip("/"))
+            await ha.show_in_sidebar(marker)
+            await ha.show_in_sidebar(marker)
+
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "token")
+    asyncio.run(scenario())
+    assert calls == [{"ingress_panel": True}]
+
+
 def test_problem_markdown_numbers_steps() -> None:
     problem = setup_check.Problem("T", "Text.", ["One", "Two"])
     assert problem.as_markdown() == "Text.\n\n1. One\n2. Two"
