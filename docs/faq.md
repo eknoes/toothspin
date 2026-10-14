@@ -27,6 +27,13 @@ ToothSpin's log names the adapter it uses, and if the configured one
 doesn't exist, ToothSpin lists the ones it found. Or set `auto`: it picks
 one Home Assistant doesn't use.
 
+### Do I need Music Assistant? {#without-music-assistant}
+
+Not necessarily. With only Sendspin speakers (e.g. ESPHome's), ToothSpin can
+run its own Sendspin server and play the phones on them directly:
+[standalone mode]({{ '/install.html#standalone' | relative_url }}). It isn't
+available as a Home Assistant App yet, and it only plays the phones.
+
 ### Do I need the Music Assistant token? {#token}
 
 It's strongly recommended. Without it you can't pick speakers in ToothSpin,

@@ -67,6 +67,15 @@ first (`chown -R 1000:1000`). Rootless Podman uses `--userns keep-id`
 instead of `--user`, SELinux hosts need a small policy module. Details and all options: the
 [README](https://github.com/eknoes/toothspin#with-docker-or-podman).
 
+## Without Music Assistant {#standalone}
+
+ToothSpin can also run its own Sendspin server and play the phones directly
+on Sendspin speakers (e.g. ESPHome's), grouped and in sync. Use the server
+image, `ghcr.io/eknoes/toothspin:<version>-server`, with `MODE=standalone`
+in the Docker or Podman setup above. It only plays the phones, and only on
+Sendspin speakers. Details:
+[standalone mode](https://github.com/eknoes/toothspin#standalone-mode-without-music-assistant).
+
 ## Fedora CoreOS machine {#coreos}
 
 A small VM with the dongle passed through, or a Raspberry Pi 4, set up
