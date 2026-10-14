@@ -1,10 +1,10 @@
 # Self-contained image: the service plus its own PipeWire/WirePlumber. Needs
 # only the host's bluetoothd (system D-Bus socket) and host networking.
 # Alpine: smallest base whose PipeWire ships the AAC codec iPhones stream
-# (Debian's lacks it, fdk-aac being non-free there).
-ARG ALPINE_RELEASE=3.23
+# (Debian's lacks it, fdk-aac being non-free there). The release is written
+# out in both FROM lines so Dependabot can propose new ones.
 
-FROM docker.io/library/alpine:${ALPINE_RELEASE} AS build
+FROM docker.io/library/alpine:3.24 AS build
 # All dependencies ship musl wheels for amd64 and arm64, so no compilers.
 RUN apk add --no-cache python3
 COPY pyproject.toml /src/
@@ -14,10 +14,22 @@ RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip uninstall -y pip \
     && find /opt/venv -name __pycache__ -prune -exec rm -rf {} +
 
-FROM docker.io/library/alpine:${ALPINE_RELEASE}
-# Upgrade first: the base image lags behind Alpine's security fixes.
-RUN apk upgrade --no-cache \
-    && apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools
+FROM docker.io/library/alpine:3.24
+# PipeWire's camera plugin needs libcamera, which drags in Mesa and LLVM
+# (~250 MB). Camera support is disabled (deploy/pipewire), so a stub package
+# stands in for libcamera; the check fails the build should a new libcamera
+# soname bring the real one back. Upgrade first: the base image lags behind
+# Alpine's security fixes.
+RUN apk mkpkg --output /tmp/no-camera.apk \
+        --info name:toothspin-no-camera --info version:1-r0 --info arch:noarch \
+        --info "description:Stands in for libcamera, PipeWire camera support is disabled" \
+        --info license:GPL-3.0-or-later \
+        --info "provides:so:libcamera.so.0.7=0 so:libcamera-base.so.0.7=0" \
+    && apk add --no-cache --allow-untrusted /tmp/no-camera.apk \
+    && rm /tmp/no-camera.apk \
+    && apk upgrade --no-cache \
+    && apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools \
+    && ! apk info -e libcamera mesa
 COPY --from=build /opt/venv /opt/venv
 COPY deploy/pipewire/*.conf /etc/wireplumber/wireplumber.conf.d/
 COPY deploy/pipewire/pipewire.conf.d/*.conf /etc/pipewire/pipewire.conf.d/
