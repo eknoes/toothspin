@@ -14,7 +14,7 @@ dependencies = [
     # 10.x renamed the client_stream/* messages a 9.1.1 server expects.
     # The default PCM codec needs no extras; FLAC/Opus need the "codecs" extra.
     "aiosendspin==9.1.1",
-    "dbus-fast==5.0.9",
+    "dbus-fast==5.2.0",
 ]
 
 [project.urls]
