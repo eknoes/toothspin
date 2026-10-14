@@ -163,7 +163,7 @@ Every run also generates SBOMs of the image (SPDX and CycloneDX, with syft)
 and scans them with grype: high or critical vulnerabilities that have a fix
 fail the build; all findings are listed in the run's summary. Releases
 attach both SBOMs, and published images carry SBOM and provenance
-attestations. The latest release is rescanned daily
+attestations. The latest release is rescanned weekly
 ([scan.yml](.github/workflows/scan.yml)), since new vulnerabilities turn up
 after an image was built; a failed scan means it's time to release again,
 which rebuilds on Alpine's current packages. Dependabot proposes new Alpine

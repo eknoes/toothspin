@@ -1,12 +1,12 @@
 name: Vulnerability scan
 
 # New vulnerabilities are published after an image was built: rescan the
-# latest release daily against grype's current database. A failed run (a
+# latest release weekly against grype's current database. A failed run (a
 # fixable high or critical vulnerability) means: release again, the rebuild
 # picks up Alpine's fixes.
 on:
   schedule:
-    - cron: "17 5 * * *"
+    - cron: "17 5 * * 1"
   workflow_dispatch:
 
 permissions:
