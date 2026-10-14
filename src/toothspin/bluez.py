@@ -29,6 +29,11 @@ from . import dbus
 logger = logging.getLogger(__name__)
 
 BLUEZ = "org.bluez"
+# After a Connect, how long to watch for a phone that plays but not to us,
+# and how long it has to do so (see _check_routing).
+ROUTING_CHECK_S = 15.0
+ROUTING_STUCK_S = 3.0
+ROUTING_POLL_S = 0.5
 ADAPTER = "org.bluez.Adapter1"
 DEVICE = "org.bluez.Device1"
 PLAYER = "org.bluez.MediaPlayer1"
@@ -95,6 +100,7 @@ class BluetoothManager:
         self._pairing_close: asyncio.TimerHandle | None = None
         # Device paths whose current connection we started (or that just paired).
         self._connect_allowed: set[str] = set()
+        self._routing_checks: set[asyncio.Task[None]] = set()
         # Set when the adapter vanishes (dongle reset/unplug) or bluetoothd
         # restarts: our agent and adapter settings are gone, so the service
         # exits and systemd restarts it once the adapter is back.
@@ -278,7 +284,7 @@ class BluetoothManager:
         await dbus.call(self._bus, BLUEZ, self._adapter_path, ADAPTER, "RemoveDevice", "o", [path])
         logger.info("Removed Bluetooth device %s", address)
 
-    async def connect_device(self, address: str) -> None:
+    async def connect_device(self, address: str, *, check_routing: bool = True) -> None:
         """Connect a paired phone; its connections are accepted until it disconnects."""
         path = self._path_for(address)
         self._connect_allowed.add(path)
@@ -291,6 +297,44 @@ class BluetoothManager:
                 self._connect_allowed.discard(path)
             raise
         logger.info("Connected %s", self.device_name(path))
+        if check_routing:
+            task = asyncio.create_task(self._check_routing(address), name=f"routing {address}")
+            self._routing_checks.add(task)
+            task.add_done_callback(self._routing_checks.discard)
+
+    async def _check_routing(self, address: str) -> None:
+        """Reconnect once if the phone plays, but not to us.
+
+        Right after a connection Android sometimes keeps playing on its own
+        speaker: it reports "playing" over AVRCP, but never starts the A2DP
+        stream. A fresh connection makes it switch; only shortly after the
+        user pressed Connect, so a later choice of other headphones stands.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + ROUTING_CHECK_S
+        playing_since: float | None = None
+        while loop.time() < deadline:
+            await asyncio.sleep(ROUTING_POLL_S)
+            transport = self.transport(address)
+            if transport is not None and transport.state in ("pending", "active"):
+                return  # streaming to us
+            now_playing = self.now_playing(address)
+            if now_playing is None or now_playing.status != "playing":
+                playing_since = None
+                continue
+            playing_since = playing_since or loop.time()
+            if loop.time() - playing_since >= ROUTING_STUCK_S:
+                break
+        else:
+            return
+        name = self.device_name(self._path_for(address))
+        logger.warning("%s plays, but not over Bluetooth; reconnecting it", name)
+        try:
+            await self.disconnect_device(address)
+            await asyncio.sleep(1.0)
+            await self.connect_device(address, check_routing=False)
+        except (DBusError, TimeoutError, KeyError) as err:
+            logger.warning("Reconnecting %s failed: %s", name, err)
 
     async def refuse(self, path: str) -> None:
         """Disconnect a phone that connected on its own."""

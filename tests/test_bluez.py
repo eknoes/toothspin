@@ -151,3 +151,44 @@ def test_pin_pairing_answers_with_the_pin_only_on_our_adapter() -> None:
         raise AssertionError("PIN request without BT_PIN should need the window")
     except DBusError:
         pass
+
+
+def test_reconnects_once_when_the_phone_plays_but_not_to_us(monkeypatch) -> None:  # noqa: ANN001
+    import asyncio
+
+    from toothspin import bluez
+
+    monkeypatch.setattr(bluez, "ROUTING_POLL_S", 0.01)
+    monkeypatch.setattr(bluez, "ROUTING_STUCK_S", 0.05)
+    monkeypatch.setattr(bluez, "ROUTING_CHECK_S", 0.5)
+    device = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+
+    async def scenario(transport_state: str, player_status: str) -> list[str]:
+        calls: list[str] = []
+
+        async def call(_bus, _service, _path, _iface, member, *args):  # noqa: ANN001, ANN002
+            calls.append(member)
+            await asyncio.sleep(0)
+
+        monkeypatch.setattr(bluez.dbus, "call", call)
+        monkeypatch.setattr(bluez.asyncio, "sleep", _fast_sleep)
+        manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+        manager._devices[device] = {"Address": "34:39:16:5D:41:B9", "Paired": True, "Connected": True}
+        manager._transports[device + "/fd0"] = {"State": transport_state}
+        manager._players[device + "/avrcp/player0"] = {"Status": player_status}
+        await manager.connect_device("34:39:16:5D:41:B9")
+        await asyncio.gather(*manager._routing_checks)
+        return calls
+
+    # Playing, but the stream to us never starts: one reconnect, no more.
+    assert asyncio.run(scenario("idle", "playing")) == ["Connect", "Disconnect", "Connect"]
+    # Streaming to us, or simply paused: leave it alone.
+    assert asyncio.run(scenario("active", "playing")) == ["Connect"]
+    assert asyncio.run(scenario("idle", "paused")) == ["Connect"]
+
+
+_real_sleep = __import__("asyncio").sleep
+
+
+async def _fast_sleep(seconds: float) -> None:
+    await _real_sleep(min(seconds, 0.01))
