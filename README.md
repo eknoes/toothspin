@@ -29,6 +29,9 @@ a token for Music Assistant's API. From then on: press **Connect** in
 ToothSpin, play something on the phone and switch on the speakers you want.
 The phone's volume buttons control those speakers.
 
+**No Music Assistant?** ToothSpin can also be its own Sendspin server and
+play phones on Sendspin speakers directly ([standalone mode](#standalone-mode-without-music-assistant)).
+
 By default, connections only start from ToothSpin, never from the phone:
 walking in the front door with your phone won't suddenly blast your
 playlist through the whole house. And when a phone starts on a speaker
@@ -43,8 +46,8 @@ someone left loud, the speaker starts at 20% instead (both configurable).
 > users who report bugs without any technical details directly at the maintainer, without filing an issue.
 > Expect rough edges; bug reports (any volume) are welcome.
 
-**You need:** Music Assistant **2.10.6 or newer** and a USB Bluetooth dongle
-just for ToothSpin. How it's built:
+**You need:** Music Assistant **2.10.6 or newer** (or Sendspin speakers, in
+standalone mode) and a USB Bluetooth dongle just for ToothSpin. How it's built:
 [technical overview](https://eknoes.github.io/toothspin/overview.html).
 
 ## Install
@@ -113,6 +116,23 @@ Its README walks through adding your SSH key and installing.
 The web UI is on `http://<host>:8080/`. It has no login, so keep it on your
 home network.
 
+### Standalone mode, without Music Assistant
+
+With `MODE=standalone`, ToothSpin runs its own Sendspin server instead of
+feeding Music Assistant. It finds Sendspin speakers on your network and
+plays the phones on them, grouped and in sync, with the same web UI. It only
+plays the phones and only on Sendspin speakers: no other music sources, no
+AirPlay, Chromecast or Squeezebox.
+
+- Use the server image, `ghcr.io/eknoes/toothspin:<version>-server` (or
+  build with `--build-arg EXTRAS=server`): its Sendspin server needs PyAV,
+  numpy and Pillow, about 200 MB the default image doesn't carry.
+- Speakers that still speak Sendspin unencrypted (e.g. ESPHome's) or allow
+  servers they aren't paired with work out of the box. A speaker already
+  playing for Music Assistant switches to ToothSpin when you turn it on in
+  ToothSpin, and back when Music Assistant plays on it again.
+- Speakers that insist on being paired aren't supported yet.
+
 ### Configuration
 
 Outside Home Assistant, set these as environment variables (on CoreOS: in
@@ -124,7 +144,9 @@ are optional:
 | `MA_TOKEN` | – | long-lived Music Assistant token (your profile → **Tokens**); enables choosing speakers in the web UI and pairing phones with Music Assistant automatically |
 | `MA_URL` | discovered via mDNS | e.g. `http://192.168.178.91:8095` |
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
-| `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
+| `MODE` | `music-assistant` | `standalone` runs ToothSpin's own Sendspin server (server image only) |
+| `SERVER_PORT` | `8927` | standalone: port of ToothSpin's Sendspin server |
+| `BT_NAME` | `Music Assistant` (`ToothSpin` standalone) | Bluetooth name phones see |
 | `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN instead of only during the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
 | `BT_ADAPTER` | `hci0` | the dongle |
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
@@ -148,7 +170,7 @@ as a new device, e.g. "Pixel 10 (Bluetooth)". With `MA_TOKEN` set, ToothSpin
 pairs it by itself within a few seconds. Without, open it in Music
 Assistant's settings and choose **Pair the device**; then press **Allow** on
 the phone's card in ToothSpin and type the code it shows into Music
-Assistant.
+Assistant. In standalone mode there's nothing to pair.
 
 **Play:** press **Connect** on the phone's card, play something on the
 phone, then switch on speakers on its card. Several speakers form a group
