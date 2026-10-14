@@ -17,6 +17,8 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
+      # For .grype.yaml (false positives).
+      - uses: actions/checkout@v7
       - name: Log in to GHCR
         uses: docker/login-action@v4
         with:

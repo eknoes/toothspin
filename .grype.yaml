@@ -1,0 +1,10 @@
+# Findings that don't apply to the image, read by grype in CI. Only add
+# false positives here, each with why; unreachable but real ones stay in
+# the report.
+ignore:
+  # A Linux kernel bug (BleedingTooth "BadVibes", net/bluetooth, fixed in
+  # 5.8) that NVD files under "BlueZ", so it matches the userspace library.
+  # The image has no kernel; the host's kernel is what matters.
+  - vulnerability: CVE-2020-24490
+    package:
+      name: bluez-libs
