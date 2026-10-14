@@ -119,7 +119,10 @@ unpaired. Music Assistant only accepts audio from paired sources.
 Music Assistant's speakers as toggles. Turning one on plays the phone there
 right away; turning on more groups them on the fly (only speakers that can
 play in sync are offered); turning one off takes it out. A speaker playing
-another phone is taken over. Without the token: select a player in Music
+another phone is taken over. The eye icon hides a speaker on that phone's
+card (dimmed and moved to the end). While a phone plays, its volume buttons
+control the speaker or group; on starting, the phone adopts the speaker's
+current volume rather than imposing its own. Without the token: select a player in Music
 Assistant, open **Browse**, pick the phone's input and press **Play**. Or set the device's **Automatically play
 line-in on** setting: the service reports a signal while the phone plays
 non-silent audio, and MA stops a minute after it goes quiet.
@@ -152,7 +155,19 @@ builds the amd64/arm64 image on every push and pull request. Pushes to
 
 The tag must match the version; CI then publishes
 `ghcr.io/<owner>/toothspin:0.2.0` (and `:0.2`) and creates a GitHub release
-with generated notes.
+with generated notes. Bump `version` in
+[toothspin/config.yaml](toothspin/config.yaml) along with it: it is the
+image tag the Home Assistant App installs, and CI checks both match.
+
+Every run also generates SBOMs of the image (SPDX and CycloneDX, with syft)
+and scans them with grype: high or critical vulnerabilities that have a fix
+fail the build; all findings are listed in the run's summary. Releases
+attach both SBOMs, and published images carry SBOM and provenance
+attestations.
+
+## Security
+
+Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
 ## License
 

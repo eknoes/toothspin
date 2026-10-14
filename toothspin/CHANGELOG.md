@@ -12,3 +12,6 @@ All notable changes to this app are documented here. The format follows
 - Web interface through Home Assistant's ingress: pair phones, pair them
   with Music Assistant, connect them, and pick speakers per phone with
   volume and mute.
+- Hide speakers per phone: hidden speakers are dimmed and listed last.
+- The phone's volume buttons control the speaker or group it plays on;
+  on connecting, the phone takes over the speaker's current volume.

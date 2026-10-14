@@ -50,6 +50,15 @@ on its card. Several speakers form a group on the fly; only speakers that
 can play in sync are offered together. Each speaker has its own volume and
 mute.
 
+**Volume from the phone:** while a phone plays, its volume buttons control
+the speaker, or the whole group if it plays on several. When it starts
+playing, the phone takes over the speaker's current volume instead of
+imposing its own, so nothing suddenly gets loud.
+
+**Hide speakers:** the eye icon next to a speaker hides it on that phone's
+card: it is dimmed and moved to the end of the list. Each phone has its own
+hidden speakers.
+
 Without a Music Assistant token, play the input from Music Assistant
 instead: select a player, open **Browse**, pick the phone's input and press
 **Play**.
