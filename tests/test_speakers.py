@@ -158,17 +158,20 @@ def test_moving_when_not_playing_starts_there() -> None:
 
 
 def test_a_loud_speaker_is_turned_down_before_starting() -> None:
-    loud = {**_player("kitchen"), "volume_level": 97}
+    loud = {**_player("kitchen"), "volume_control": "native", "volume_level": 97}
     assert quiet_start([loud], PIXEL, "kitchen", 20) == [
         ("players/cmd/volume_set", {"player_id": "kitchen", "volume_level": 20})
     ]
     assert quiet_start([{**loud, "volume_level": 12}], PIXEL, "kitchen", 20) == []
+    # A speaker without volume control isn't touched.
+    fixed = {**loud, "volume_control": "none", "volume_level": None}
+    assert quiet_start([fixed], PIXEL, "kitchen", 20) == []
     # Not knowing the volume is no reason to assume it's quiet.
     assert quiet_start([{**loud, "volume_level": None}], PIXEL, "kitchen", 20) == [
         ("players/cmd/volume_set", {"player_id": "kitchen", "volume_level": 20})
     ]
     # Already playing this phone: its volume is the user's choice.
-    playing = {**_player("kitchen", playing=PIXEL), "volume_level": 97}
+    playing = {**_player("kitchen", playing=PIXEL), "volume_control": "native", "volume_level": 97}
     assert quiet_start([playing], PIXEL, "kitchen", 20) == []
 
 

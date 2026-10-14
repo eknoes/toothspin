@@ -198,7 +198,9 @@ def quiet_start(
     """Turn a speaker left loud down to the start volume before ``uri`` starts on it."""
     speaker = next((s for s in speakers(players) if s.player_id == player_id), None)
     # An unknown volume (e.g. a speaker still with another server) may be loud.
-    if speaker is None or speaker.playing_uri == uri or (
+    # A speaker without volume control (e.g. one turned up and down by an
+    # amplifier after it) is left alone.
+    if speaker is None or speaker.playing_uri == uri or not speaker.has_volume or (
         speaker.volume is not None and speaker.volume <= start_volume
     ):
         return []
