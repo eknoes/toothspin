@@ -64,14 +64,14 @@ jobs:
           tags: toothspin:scan
           cache-from: type=gha
       - name: SBOM (SPDX)
-        uses: anchore/sbom-action@v0.24.2
+        uses: anchore/sbom-action@v0.24.3
         with:
           image: toothspin:scan
           format: spdx-json
           output-file: toothspin.spdx.json
           upload-artifact: false
       - name: SBOM (CycloneDX)
-        uses: anchore/sbom-action@v0.24.2
+        uses: anchore/sbom-action@v0.24.3
         with:
           image: toothspin:scan
           format: cyclonedx-json
