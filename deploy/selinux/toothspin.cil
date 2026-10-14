@@ -21,4 +21,11 @@
     (allow system_dbusd_t process (dbus (send_msg)))
     (allow process bluetooth_t (dbus (send_msg)))
     (allow bluetooth_t process (dbus (send_msg)))
+    ; The phones' audio: bluetoothd hands PipeWire each transport's socket.
+    ; Without this, receiving it fails silently (the base policy doesn't
+    ; audit it) and the bus drops PipeWire, endpoints and all.
+    (allow process bluetooth_t (bluetooth_socket (getattr getopt setopt ioctl read write shutdown)))
+    ; RTKit can't give realtime priority to a process in another PID
+    ; namespace anyway; don't log PipeWire asking.
+    (dontaudit process rtkit_daemon_t (dbus (send_msg)))
 )
