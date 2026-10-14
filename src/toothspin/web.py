@@ -7,6 +7,7 @@ Supervisor's ingress proxy may reach.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import asdict
 from typing import Any
@@ -120,6 +121,10 @@ def create_app(
             raise web.HTTPNotFound from None
         return web.json_response({"ok": True})
 
+    # Quick clicks on several speakers arrive nearly at once; each plans from
+    # the grouping the one before left, not all from the same old one.
+    routing = asyncio.Lock()
+
     async def post_speaker_toggle(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
         if receiver is None or backend is None:
@@ -127,7 +132,10 @@ def create_app(
         body = await request.json()
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
-            await speakers.toggle(backend, uri, str(body["player_id"]), bool(body["on"]), start_volume)
+            async with routing:
+                await speakers.toggle(
+                    backend, uri, str(body["player_id"]), bool(body["on"]), start_volume
+                )
         except (BackendError, TimeoutError) as err:
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
@@ -139,7 +147,8 @@ def create_app(
         body = await request.json()
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
-            await speakers.move(backend, uri, str(body["player_id"]), start_volume)
+            async with routing:
+                await speakers.move(backend, uri, str(body["player_id"]), start_volume)
         except (BackendError, TimeoutError) as err:
             return web.json_response({"ok": False, "error": str(err)}, status=502)
         return web.json_response({"ok": True})
