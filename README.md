@@ -34,7 +34,7 @@ web UI opens through Home Assistant (ingress).
 
 ### Requirements outside Home Assistant
 
-The container image is self-contained (its own PipeWire, ~120 MB). The host
+The container image is self-contained (its own PipeWire, ~120 MB, on Alpine). The host
 only needs:
 
 - **BlueZ** (`bluetoothd`) running with the USB dongle. Recommended: our
@@ -163,7 +163,11 @@ Every run also generates SBOMs of the image (SPDX and CycloneDX, with syft)
 and scans them with grype: high or critical vulnerabilities that have a fix
 fail the build; all findings are listed in the run's summary. Releases
 attach both SBOMs, and published images carry SBOM and provenance
-attestations.
+attestations. The latest release is rescanned daily
+([scan.yml](.github/workflows/scan.yml)), since new vulnerabilities turn up
+after an image was built; a failed scan means it's time to release again,
+which rebuilds on Alpine's current packages. Dependabot proposes new Alpine
+releases and action versions.
 
 ## Security
 
