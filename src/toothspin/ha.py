@@ -8,10 +8,13 @@ the Supervisor's ingress proxy.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import re
 from pathlib import Path
+from typing import Any
 
 import aiohttp
 
@@ -65,3 +68,91 @@ async def ingress_port() -> int:
         response.raise_for_status()
         data = await response.json(content_type=None)
     return int(data["data"]["ingress_port"])
+
+
+# How Home Assistant's Bluetooth integration treats an adapter, by address.
+USED = "used"  # set up and enabled: HA scans with it
+DISABLED = "disabled"  # set up, but disabled by the user: free for ToothSpin
+IGNORED = "ignored"  # discovered, and the user chose to ignore it
+OFFERED = "offered"  # discovered, waiting to be added: one click from USED
+
+_ADDRESS = re.compile(r"\(([0-9A-F]{2}(?::[0-9A-F]{2}){5})\)", re.IGNORECASE)
+
+
+async def bluetooth_adapter_usage() -> dict[str, str]:
+    """What Home Assistant's Bluetooth integration does with each adapter.
+
+    Its config entries are titled "<manufacturer> <model> (<address>)", one
+    per adapter; adapters it discovered but nobody added yet show up as
+    flows in progress, keyed by the same address.
+    """
+    entries, flows = await _websocket(
+        {"type": "config_entries/get", "domain": "bluetooth"},
+        {"type": "config_entries/flow/progress"},
+    )
+    usage: dict[str, str] = {}
+    for flow in flows or []:
+        address = (flow.get("context") or {}).get("unique_id")
+        if flow.get("handler") == "bluetooth" and address:
+            usage[address.upper()] = OFFERED
+    for entry in entries or []:
+        match = _ADDRESS.search(entry.get("title") or "")
+        if not match:
+            continue
+        if entry.get("source") == "ignore":
+            state = IGNORED
+        elif entry.get("disabled_by"):
+            state = DISABLED
+        else:
+            state = USED
+        usage[match.group(1).upper()] = state
+    return usage
+
+
+async def notify(notification_id: str, title: str, message: str) -> None:
+    """A notification in Home Assistant's notification panel."""
+    await _service(
+        "persistent_notification", "create",
+        {"notification_id": notification_id, "title": title, "message": message},
+    )
+
+
+async def dismiss(notification_id: str) -> None:
+    await _service("persistent_notification", "dismiss", {"notification_id": notification_id})
+
+
+def _api() -> str:
+    return os.environ.get("SUPERVISOR_API", "http://supervisor")
+
+
+async def _service(domain: str, service: str, data: dict[str, Any]) -> None:
+    headers = {"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"}
+    async with (
+        aiohttp.ClientSession() as session,
+        session.post(
+            f"{_api()}/core/api/services/{domain}/{service}", json=data, headers=headers
+        ) as response,
+    ):
+        response.raise_for_status()
+
+
+async def _websocket(*commands: dict[str, Any]) -> list[Any]:
+    """Run commands over Home Assistant's WebSocket API (via the Supervisor)."""
+    url = _api().replace("http", "ws", 1) + "/core/websocket"
+    results: list[Any] = []
+    async with aiohttp.ClientSession() as session, session.ws_connect(url) as ws:
+        await asyncio.wait_for(ws.receive_json(), 10)  # auth_required
+        await ws.send_json({"type": "auth", "access_token": os.environ["SUPERVISOR_TOKEN"]})
+        reply = await asyncio.wait_for(ws.receive_json(), 10)
+        if reply.get("type") != "auth_ok":
+            raise RuntimeError(f"Home Assistant refused the connection: {reply}")
+        for number, command in enumerate(commands, start=1):
+            await ws.send_json({"id": number, **command})
+            while True:
+                reply = await asyncio.wait_for(ws.receive_json(), 10)
+                if reply.get("id") == number and reply.get("type") == "result":
+                    break
+            if not reply.get("success"):
+                raise RuntimeError(f"{command['type']} failed: {reply.get('error')}")
+            results.append(reply.get("result"))
+    return results

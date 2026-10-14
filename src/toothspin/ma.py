@@ -35,6 +35,9 @@ class MusicAssistant:
         self._pending: dict[str, asyncio.Future[Any]] = {}
         self._connected = asyncio.Event()
         self.players: list[dict[str, Any]] = []
+        # Why there's no connection, for the web UI: "not_found", "auth" or
+        # "unreachable"; None while connected or still trying the first time.
+        self.problem: str | None = None
 
     @property
     def connected(self) -> bool:
@@ -49,6 +52,7 @@ class MusicAssistant:
                 if self._url is None:
                     base_url = await discover_url()
                     if base_url is None:
+                        self.problem = "not_found"
                         logger.warning("Music Assistant not found via mDNS; retrying in %.0fs", backoff)
                         await asyncio.sleep(backoff)
                         backoff = min(backoff * 2, 60.0)
@@ -60,7 +64,12 @@ class MusicAssistant:
                         await asyncio.wait_for(ws.receive_json(), 15)  # server info
                         reader = asyncio.create_task(self._read(ws))
                         try:
-                            await self._call("auth", token=self._token)
+                            try:
+                                await self._call("auth", token=self._token)
+                            except MusicAssistantError:
+                                self.problem = "auth"
+                                raise
+                            self.problem = None
                             self._connected.set()
                             backoff = 1.0
                             logger.info("Connected to Music Assistant API at %s", self._url)
@@ -72,6 +81,8 @@ class MusicAssistant:
                             with contextlib.suppress(asyncio.CancelledError):
                                 await reader
                 except (OSError, aiohttp.ClientError, MusicAssistantError, TimeoutError) as err:
+                    if self.problem != "auth":
+                        self.problem = "unreachable"
                     logger.warning("Music Assistant API: %s; retrying in %.0fs", err, backoff)
                 finally:
                     self._connected.clear()

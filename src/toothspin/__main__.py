@@ -11,18 +11,20 @@ import signal
 import socket
 from pathlib import Path
 
+import aiohttp
 from aiohttp import web
 from aiosendspin.models.types import AudioCodec
 from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
+from dbus_fast.errors import DBusError
 
-from . import ha, ma_pairing
+from . import ha, ma_pairing, setup_check
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant
 from .receivers import Receivers
 from .volume_sync import DEFAULT_START_VOLUME, VolumeSync
-from .web import create_app
+from .web import create_app, create_setup_app
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,10 @@ def _parse_args() -> argparse.Namespace:
         "--manufacturer", default=env("SENDSPIN_MANUFACTURER", socket.gethostname()),
         help="Manufacturer shown for each input in Music Assistant (default: host name)",
     )
-    parser.add_argument("--adapter", default=env("BT_ADAPTER", "hci0"))
+    parser.add_argument(
+        "--adapter", default=env("BT_ADAPTER", "hci0"),
+        help="hci0, hci1, ... or auto: one Home Assistant doesn't use (as an App), else the first",
+    )
     parser.add_argument(
         "--codec", default=env("SENDSPIN_CODEC", "pcm"), choices=["pcm", "flac", "opus"],
         help="Codec for the stream to Music Assistant",
@@ -99,11 +104,133 @@ def _flag(value: str) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
+SETUP_NOTIFICATION = "toothspin_setup"
+# How often to look again while setup is blocked, and while running.
+RECHECK_S = 15.0
+WATCH_S = 60.0
+
+
+class _Web:
+    """The web UI on its ports: first the setup page, then the real thing."""
+
+    def __init__(self, host: str, ports: list[int], ingress_port: int | None) -> None:
+        self._host = host
+        self._ports = ports
+        self._ingress_port = ingress_port
+        self._runner: web.AppRunner | None = None
+
+    async def serve(self, app: web.Application) -> None:
+        if self._runner is not None:
+            await self._runner.cleanup()
+        self._runner = web.AppRunner(app)
+        await self._runner.setup()
+        for port in self._ports:
+            await web.TCPSite(self._runner, self._host, port).start()
+
+    def log_addresses(self) -> None:
+        for port in self._ports:
+            label = "ingress" if port == self._ingress_port else "web UI"
+            logger.info("Serving %s on http://%s:%d/", label, self._host, port)
+
+    async def close(self) -> None:
+        if self._runner is not None:
+            await self._runner.cleanup()
+
+
+async def _check_adapter(bus: MessageBus, configured: str, app: bool) -> setup_check.Result:
+    try:
+        found = await setup_check.adapters(bus)
+    except DBusError:
+        return setup_check.Result(None, setup_check.bluetooth_missing())
+    usage = None
+    if app:
+        try:
+            usage = await ha.bluetooth_adapter_usage()
+        except (aiohttp.ClientError, OSError, RuntimeError, TimeoutError) as err:
+            logger.warning("Couldn't ask Home Assistant which Bluetooth adapters it uses: %s", err)
+    return setup_check.choose(configured, found, usage)
+
+
+async def _report(
+    status: setup_check.Status, problem: setup_check.Problem | None, shown: list[str | None]
+) -> None:
+    """Log a new problem, and tell Home Assistant if it blocks; clear it once gone.
+
+    Warnings (ToothSpin works, but could work better) only go to the log
+    and the web UI, not as a notification on every start.
+    """
+    title = problem.title if problem else None
+    previous, shown[0] = shown[0], title
+    if title == previous:
+        return
+    if problem is not None:
+        log = logger.error if problem.fatal else logger.warning
+        log("%s. %s", problem.title, problem.as_markdown().replace("**", ""))
+    else:
+        logger.info("Solved: %s", previous)
+    if not status.app:
+        return
+    try:
+        if problem is None or not problem.fatal:
+            await ha.dismiss(SETUP_NOTIFICATION)
+        else:
+            await ha.notify(
+                SETUP_NOTIFICATION,
+                f"ToothSpin: {problem.title}",
+                problem.as_markdown() + "\n\nDetails: open ToothSpin from the sidebar.",
+            )
+    except (aiohttp.ClientError, OSError) as err:
+        logger.warning("Couldn't update the notification in Home Assistant: %s", err)
+
+
+async def _claim_adapter(
+    bus: MessageBus, configured: str, status: setup_check.Status, shown: list[str | None]
+) -> setup_check.Adapter:
+    """Wait until there's an adapter ToothSpin may use; explain why not meanwhile."""
+    while True:
+        result = await _check_adapter(bus, configured, status.app)
+        if result.adapter is not None:
+            status.problem = None
+            status.adapter = result.adapter
+            status.warning = result.problem
+            await _report(status, result.problem, shown)
+            return result.adapter
+        status.problem = result.problem
+        await _report(status, result.problem, shown)
+        await asyncio.sleep(RECHECK_S)
+
+
+async def _watch_adapter(
+    bus: MessageBus, configured: str, status: setup_check.Status, shown: list[str | None]
+) -> None:
+    """While running: warn if Home Assistant takes over (or offers to) our adapter."""
+    while True:
+        await asyncio.sleep(WATCH_S)
+        assert status.adapter is not None
+        result = await _check_adapter(bus, status.adapter.name, status.app)
+        status.warning = result.problem
+        await _report(status, result.problem, shown)
+
+
 async def _run(args: argparse.Namespace) -> None:
+    status = setup_check.Status(app=ha.running_as_app(), ma_token=bool(args.ma_token))
+    ingress_port = await ha.ingress_port() if status.app else None
+    if ingress_port:
+        ports = [ingress_port] + ([args.lan_port] if args.lan_port else [])
+    else:
+        ports = [args.web_port]
+    site = _Web(args.web_host, ports, ingress_port)
+    # Up first, so problems before Bluetooth starts can be shown there.
+    await site.serve(create_setup_app(status, ingress_port))
+    site.log_addresses()
+
     audio = AudioStack() if args.bundled_pipewire else None
     if audio:
         await audio.start()
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+    shown: list[str | None] = [None]
+    adapter = await _claim_adapter(bus, args.adapter, status, shown)
+    logger.info("Using Bluetooth adapter %s", adapter.label)
 
     def on_bluetooth_change() -> None:
         receivers.notify()
@@ -112,7 +239,7 @@ async def _run(args: argparse.Namespace) -> None:
 
     volume_sync: VolumeSync | None = None
     bluetooth = BluetoothManager(
-        bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change,
+        bus, adapter.name, alias=args.bt_name, on_change=on_bluetooth_change,
         allow_phone_connect=args.allow_phone_connect, pin=args.bt_pin or None,
     )
     # Without MA_URL the API is found via mDNS, so in HA only the token is needed.
@@ -130,22 +257,12 @@ async def _run(args: argparse.Namespace) -> None:
     await bluetooth.start()
     await receivers.sync()
 
-    ingress_port = await ha.ingress_port() if ha.running_as_app() else None
-    runner = web.AppRunner(
+    await site.serve(
         create_app(
             bluetooth, receivers, args.pairing_seconds, ma, ingress_port=ingress_port,
-            start_volume=args.start_volume, auto_pairing=ma is not None,
+            start_volume=args.start_volume, auto_pairing=ma is not None, status=status,
         )
     )
-    await runner.setup()
-    if ingress_port:
-        ports = [ingress_port] + ([args.lan_port] if args.lan_port else [])
-    else:
-        ports = [args.web_port]
-    for port in ports:
-        await web.TCPSite(runner, args.web_host, port).start()
-        label = "ingress" if port == ingress_port else "web UI"
-        logger.info("Serving %s on http://%s:%d/", label, args.web_host, port)
 
     # We run as PID 1 in the container, where SIGTERM has no default action.
     stop = asyncio.Event()
@@ -156,6 +273,7 @@ async def _run(args: argparse.Namespace) -> None:
         asyncio.create_task(bluetooth.lost.wait()),
         asyncio.create_task(receivers.failed.wait()),
     ]
+    watch = asyncio.create_task(_watch_adapter(bus, adapter.name, status, shown))
     if audio:
         tasks.append(asyncio.create_task(audio.exited.wait()))
     ma_task = asyncio.create_task(ma.run()) if ma else None
@@ -182,8 +300,9 @@ async def _run(args: argparse.Namespace) -> None:
         if ma_task:
             ma_task.cancel()
             await asyncio.gather(ma_task, return_exceptions=True)
+        watch.cancel()
         await receivers.close()
-        await runner.cleanup()
+        await site.close()
         bus.disconnect()
         if audio:
             await audio.stop()

@@ -14,6 +14,9 @@ host_network: true
 host_dbus: true
 # Only to read the ingress port the Supervisor assigns (ingress_port: 0).
 hassio_api: true
+# Only to check whether Home Assistant's Bluetooth integration uses the
+# adapter too, and to raise a notification when setup needs the user.
+homeassistant_api: true
 ingress: true
 ingress_port: 0
 panel_icon: mdi:bluetooth-audio
@@ -22,13 +25,14 @@ options:
   bluetooth_name: ToothSpin
   input_name: "{device} (Bluetooth)"
   adapter: hci0
+  ma_token: ""
   start_volume: 100
   allow_phone_connect: true
   log_level: info
 schema:
   bluetooth_name: str
   input_name: str
-  adapter: match(^hci[0-9]+$)
+  adapter: match(^(auto|hci[0-9]+)$)
   start_volume: int(0,100)
   allow_phone_connect: bool
   ma_token: password?

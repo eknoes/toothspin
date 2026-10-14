@@ -123,6 +123,19 @@
     .spk input[type=range] { grid-column: 1 / 3; }
     .spk .fixed-vol { grid-column: 1 / 4; }
   }
+  /* Setup problems and the first-run checklist. */
+  .problem { border-left: 3px solid var(--danger); padding: 4px 12px; }
+  .problem h2 { color: var(--danger); text-transform: none; letter-spacing: 0; font-size: 18px; margin: 4px 0 8px; }
+  .problem.warn { border-left-color: var(--accent); }
+  .problem.warn h2 { color: inherit; font-size: 16px; }
+  .problem ol, .check ol { margin: 8px 0; padding-left: 22px; }
+  .problem li, .check li { margin: 4px 0; }
+  .check { display: grid; grid-template-columns: 1.5em 1fr; gap: 2px 8px; margin: 10px 0; }
+  .check .mark { font-weight: 700; text-align: center; }
+  .check .mark.ok { color: var(--accent); }
+  .check .mark.bad { color: var(--danger); }
+  .check .body { min-width: 0; }
+  code { font-size: 12px; padding: 1px 4px; border-radius: 4px; background: var(--line); }
   .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 6px; }
 </style>
 </head>
@@ -136,6 +149,9 @@
     </div>
   </header>
 
+  <section id="setup" hidden></section>
+
+  <div id="app-ui">
   <section>
     <h2>Phones</h2>
     <div id="devices"></div>
@@ -148,6 +164,7 @@
     </div>
     <div class="muted" id="subtitle" style="margin-top:8px;font-size:13px"></div>
   </section>
+  </div>
 
 </main>
 <div class="toast" id="toast" role="alert" hidden></div>
@@ -317,7 +334,42 @@ function renderTitle(d) {
   return `${head}<div class="sub">${esc(d.name)} · ${esc(d.address)}</div>`;
 }
 
+// The little Markdown our setup texts use: **bold** and `code`.
+const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+const steps = (list) => list && list.length ? `<ol>${list.map((s) => `<li>${md(s)}</li>`).join("")}</ol>` : "";
+
+function problemHtml(p, blocking) {
+  return `<div class="problem ${blocking ? "" : "warn"}"><h2>${esc(p.title)}</h2>
+    <div>${md(p.text)}</div>${steps(p.steps)}</div>`;
+}
+
+// Problems that stop ToothSpin replace the page; warnings and the
+// checklist (while anything's missing) sit above it.
+function renderSetup() {
+  const su = state.setup;
+  const blocking = su && su.problem;
+  $("app-ui").hidden = Boolean(blocking);
+  let html = "";
+  if (blocking) {
+    html = problemHtml(blocking, true)
+      + `<p class="muted">ToothSpin checks again every few seconds and starts by itself once this is fixed.</p>`;
+  } else if (su) {
+    if (su.warning) html += problemHtml(su.warning, false);
+    const checks = su.checks || [];
+    if (checks.some((c) => c.ok !== true)) {
+      html += `<h2>Setup</h2>` + checks.map((c) => `<div class="check">
+        <span class="mark ${c.ok === true ? "ok" : c.ok === false ? "bad" : ""}">${c.ok === true ? "✓" : c.ok === false ? "✗" : "•"}</span>
+        <div class="body"><b>${esc(c.title)}</b> — ${md(c.text)}${c.ok === true ? "" : steps(c.steps)}</div>
+      </div>`).join("");
+    }
+  }
+  $("setup").innerHTML = html;
+  $("setup").hidden = !html;
+}
+
 function render() {
+  renderSetup();
+  if (!state.bluetooth || (state.setup && state.setup.problem)) return;
   const bt = state.bluetooth;
   $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
 

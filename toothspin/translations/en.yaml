@@ -10,8 +10,9 @@ configuration:
   adapter:
     name: Bluetooth adapter
     description: >-
-      The adapter phones connect to, e.g. hci0 or hci1. Use a dedicated USB
-      dongle and turn it off in Home Assistant's Bluetooth integration.
+      The adapter phones connect to: hci0 (default) is the first one. With
+      a dongle just for ToothSpin, set it here (e.g. hci1), or auto to pick
+      one Home Assistant's Bluetooth integration doesn't use.
   start_volume:
     name: Start volume
     description: >-
@@ -27,8 +28,9 @@ configuration:
   ma_token:
     name: Music Assistant token
     description: >-
-      A long-lived token from Music Assistant (your profile, Tokens). Enables
-      choosing speakers per phone in the app.
+      Recommended. A long-lived token from Music Assistant (your profile,
+      Tokens). Lets you pick speakers per phone in the app and pairs phones
+      with Music Assistant automatically.
   ma_url:
     name: Music Assistant URL
     description: >-
