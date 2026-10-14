@@ -65,6 +65,16 @@ Music Assistant: with a token that happens by itself, otherwise press
 **Allow pairing** on the phone's card and type the code into Music
 Assistant.
 
+### Why doesn't Music Assistant show the song title? {#metadata}
+
+Music Assistant only gets the audio from ToothSpin, not what's playing:
+Sendspin, the protocol between them, has no way yet for an input to send
+the title, artist or cover art. So Music Assistant and your speakers show
+just the phone's input. ToothSpin's own web UI shows the title and artist on
+the phone's card, as far as the phone reports them over Bluetooth. Support
+in Sendspin is being discussed
+([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)).
+
 ### Can several phones play at once? {#several-phones}
 
 Yes. Each phone is its own input in Music Assistant and can play on its own
