@@ -101,8 +101,8 @@ jobs:
           build-args: GIT_COMMIT=${{ github.sha }}
           # Written here so the image job reuses these amd64 layers instead
           # of building them a second time.
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=default
+          cache-to: type=gha,mode=max,scope=default
       - name: SBOM (SPDX)
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
@@ -151,6 +151,12 @@ jobs:
     permissions:
       contents: read  # check out the code
       packages: write  # push the image to GHCR
+    strategy:
+      matrix:
+        # The server image adds what standalone mode's Sendspin server needs.
+        flavour:
+          - {name: default, suffix: "", extras: ""}
+          - {name: server, suffix: "-server", extras: server}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -162,6 +168,8 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/toothspin
+          flavor: |
+            suffix=${{ matrix.flavour.suffix }},onlatest=true
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -179,16 +187,18 @@ jobs:
         with:
           context: .
           file: Containerfile
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            EXTRAS=${{ matrix.flavour.extras }}
           platforms: linux/amd64,linux/arm64
-          build-args: GIT_COMMIT=${{ github.sha }}
           push: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Per-architecture SBOM and provenance attestations in the registry.
           sbom: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           provenance: ${{ (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && 'mode=max' || 'false' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.flavour.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.flavour.name }}
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -227,7 +237,7 @@ jobs:
           {
             cat notes.md
             echo
-            echo "Image: \`ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin:$version\`. SBOMs (SPDX, CycloneDX) are attached; the image in the registry also carries SBOM and provenance attestations."
+            echo "Image: \`ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin:$version\` (standalone mode: \`$version-server\`). SBOMs (SPDX, CycloneDX) of the default image are attached; both images in the registry carry SBOM and provenance attestations."
           } > release.md
           gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file release.md \
             "toothspin-$version.spdx.json" "toothspin-$version.cdx.json"
