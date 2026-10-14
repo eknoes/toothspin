@@ -213,3 +213,20 @@ def test_audio_conflict_comes_first_with_its_action() -> None:
     todo = _setup_state(status, None, None)["todo"]
     assert todo[0]["action"] == "take-bluetooth-audio"
     assert "token" in todo[1]["title"]
+
+
+def test_standalone_setup_talks_about_its_own_server() -> None:
+    from types import SimpleNamespace
+
+    from toothspin.web import _setup_state
+
+    status = setup_check.Status(app=False, ma_token=True)
+    starting = SimpleNamespace(connected=False, players=[])
+    todo = _setup_state(status, starting, None, "standalone")["todo"]
+    assert [t["title"] for t in todo] == ["Starting ToothSpin's Sendspin server…"]
+    running = SimpleNamespace(connected=True, players=[])
+    todo = _setup_state(status, running, None, "standalone")["todo"]
+    assert [t["kind"] for t in todo] == ["hint"]
+    assert not any("Music Assistant" in t["title"] for t in todo)
+    playing = SimpleNamespace(connected=True, players=[{"player_id": "kitchen"}])
+    assert _setup_state(status, playing, None, "standalone")["todo"] == []

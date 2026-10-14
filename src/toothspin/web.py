@@ -70,7 +70,7 @@ def create_app(
                 "about": build_info(),
                 "mode": mode,
                 "auto_pairing": auto_pairing,
-                "setup": _setup_state(status, backend, bluetooth) if status else None,
+                "setup": _setup_state(status, backend, bluetooth, mode) if status else None,
                 "bluetooth": {
                     "name": bluetooth.alias,
                     "address": bluetooth.address,
@@ -390,6 +390,7 @@ def _setup_state(
     status: setup_check.Status,
     backend: PlayerBackend | None,
     bluetooth: BluetoothManager | None,
+    mode: str = "music-assistant",
 ) -> dict[str, Any]:
     """A blocking problem, or what's left to finish setup.
 
@@ -401,7 +402,7 @@ def _setup_state(
         # First: without it, phones connect but nothing plays.
         todo.append(_problem(status.audio_conflict) | {"kind": "todo"})
     version = getattr(backend, "server_version", None) or status.ma_version
-    if ma.too_old(version):
+    if mode == "music-assistant" and ma.too_old(version):
         todo.append({
             "kind": "todo",
             "title": "Update Music Assistant",
@@ -431,6 +432,19 @@ def _setup_state(
                 ),
             ],
         })
+    elif mode == "standalone":
+        # ToothSpin's own server: nothing to set up, only to find speakers.
+        if backend is not None and not backend.connected:
+            todo.append({"kind": "wait", "title": "Starting ToothSpin's Sendspin server…",
+                         "text": "", "steps": []})
+        elif backend is not None and not backend.players:
+            todo.append({
+                "kind": "hint",
+                "title": "Looking for Sendspin speakers",
+                "text": "ToothSpin plays on Sendspin speakers on your network, e.g. "
+                "ESPHome or Sendspin players. Switch one on; it shows up here by itself.",
+                "steps": [],
+            })
     elif backend is not None and not backend.connected:
         problem = getattr(backend, "problem", None)
         title, text, steps = {
