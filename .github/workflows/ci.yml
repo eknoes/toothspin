@@ -89,8 +89,8 @@ jobs:
       matrix:
         # Both images: the server one brings PyAV, numpy and Pillow.
         flavour:
-          - {name: default, extras: "", artifact: sbom}
-          - {name: server, extras: server, artifact: sbom-server}
+          - {name: default, extras: "", mode: music-assistant, artifact: sbom}
+          - {name: server, extras: server, mode: standalone, artifact: sbom-server}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -107,6 +107,7 @@ jobs:
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             EXTRAS=${{ matrix.flavour.extras }}
+            MODE=${{ matrix.flavour.mode }}
           # Written here so the image job reuses these amd64 layers instead
           # of building them a second time.
           cache-from: type=gha,scope=${{ matrix.flavour.name }}
@@ -161,10 +162,10 @@ jobs:
       packages: write  # push the image to GHCR
     strategy:
       matrix:
-        # The server image adds what standalone mode's Sendspin server needs.
+        # toothspin-standalone adds what its own Sendspin server needs.
         flavour:
-          - {name: default, suffix: "", extras: ""}
-          - {name: server, suffix: "-server", extras: server}
+          - {name: default, image: toothspin, extras: "", mode: music-assistant}
+          - {name: server, image: toothspin-standalone, extras: server, mode: standalone}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -175,9 +176,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ghcr.io/${{ github.repository_owner }}/toothspin
-          flavor: |
-            suffix=${{ matrix.flavour.suffix }},onlatest=true
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.flavour.image }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -198,6 +197,7 @@ jobs:
           build-args: |
             GIT_COMMIT=${{ github.sha }}
             EXTRAS=${{ matrix.flavour.extras }}
+            MODE=${{ matrix.flavour.mode }}
           platforms: linux/amd64,linux/arm64
           push: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -245,7 +245,7 @@ jobs:
           {
             cat notes.md
             echo
-            echo "Image: \`ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin:$version\` (standalone mode: \`$version-server\`). SBOMs (SPDX, CycloneDX) of the default image are attached; both images in the registry carry SBOM and provenance attestations."
+            echo "Image: \`ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin:$version\` (standalone mode: \`ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin-standalone:$version\`). SBOMs (SPDX, CycloneDX) of the default image are attached; both images in the registry carry SBOM and provenance attestations."
           } > release.md
           gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file release.md \
             "toothspin-$version.spdx.json" "toothspin-$version.cdx.json"

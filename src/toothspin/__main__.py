@@ -335,7 +335,7 @@ async def _start_server(args: argparse.Namespace) -> ToothSpinServer:
         from .server import ToothSpinServer
     except ImportError as err:
         raise SystemExit(
-            f"Standalone mode needs the server image (the -server tag): {err}"
+            f"Standalone mode needs the toothspin-standalone image: {err}"
         ) from err
     server = ToothSpinServer(args.data_dir, "ToothSpin", args.server_port)
     await server.start()

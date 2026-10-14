@@ -148,9 +148,10 @@ plays the phones on them, grouped and in sync, with the same web UI. It only
 plays the phones and only on Sendspin speakers: no other music sources, no
 AirPlay, Chromecast or Squeezebox.
 
-- Use the server image, `ghcr.io/eknoes/toothspin:<version>-server` (or
-  build with `--build-arg EXTRAS=server`): its Sendspin server needs PyAV,
-  numpy and Pillow, about 200 MB the default image doesn't carry.
+- Use the image `ghcr.io/eknoes/toothspin-standalone` (or build with
+  `--build-arg EXTRAS=server --build-arg MODE=standalone`). It starts in
+  standalone mode, and its Sendspin server needs PyAV, numpy and Pillow,
+  about 200 MB the default image doesn't carry.
 - Speakers that still speak Sendspin unencrypted (e.g. ESPHome's) or allow
   servers they aren't paired with work out of the box. A speaker already
   playing for Music Assistant switches to ToothSpin when you turn it on in
@@ -168,7 +169,7 @@ are optional:
 | `MA_TOKEN` | – | Music Assistant token (your profile → **Tokens**); lets you pick speakers in the web UI and pairs phones automatically |
 | `MA_URL` | discovered via mDNS | e.g. `http://192.168.178.91:8095` |
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
-| `MODE` | `music-assistant` | `standalone` runs ToothSpin's own Sendspin server (server image only) |
+| `MODE` | `music-assistant` (`standalone` in toothspin-standalone) | `standalone` runs ToothSpin's own Sendspin server (toothspin-standalone only) |
 | `SERVER_PORT` | `8927` | standalone: port of ToothSpin's Sendspin server |
 | `BT_NAME` | `ToothSpin` | Bluetooth name phones see |
 | `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN, not only in the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |

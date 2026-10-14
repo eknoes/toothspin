@@ -41,17 +41,17 @@ It builds the image, loads the SELinux policy where needed and runs the
 build as a rootless Quadlet unit (a drop-in points the unit at the local
 image instead of the release). Logs: `journalctl --user -u toothspin`.
 
-For standalone mode, build the server image and point the unit at it with
+For standalone mode, build toothspin-standalone and point the unit at it with
 another drop-in, `~/.config/containers/systemd/toothspin.container.d/standalone.conf`:
 
 ```bash
-podman build --build-arg EXTRAS=server -t localhost/toothspin:server .
+podman build --build-arg EXTRAS=server --build-arg MODE=standalone \
+    -t localhost/toothspin-standalone .
 ```
 
 ```ini
 [Container]
-Image=localhost/toothspin:server
-Environment=MODE=standalone
+Image=localhost/toothspin-standalone
 ```
 
 `tests/fake_speaker.py "Test speaker" 8930` runs a simulated Sendspin
@@ -99,9 +99,9 @@ release:
 3. Tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
 
 CI then publishes `ghcr.io/eknoes/toothspin:0.2.0` (plus `:0.2` and
-`:latest`), the server image for standalone mode as `0.2.0-server` (plus
-`:0.2-server` and `:latest-server`), and creates a GitHub release. Its notes,
-like the changelog, are generated from the commits ([cliff.toml](cliff.toml)): `feat`,
+`:latest`), the same tags of `ghcr.io/eknoes/toothspin-standalone` for
+standalone mode, and creates a GitHub release. Its notes, like the changelog,
+are generated from the commits ([cliff.toml](cliff.toml)): `feat`,
 `fix`, `perf`, `build` and `docs` commits, grouped by type, so write their
 subjects for users. Preview them with `git cliff --unreleased`.
 

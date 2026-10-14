@@ -4,8 +4,8 @@
 # out in both FROM lines so Dependabot can propose new ones.
 
 FROM docker.io/library/alpine:3.24 AS build
-# "server" builds the image for standalone mode (ToothSpin's own Sendspin
-# server), which needs PyAV, numpy and Pillow: about 200 MB more.
+# "server" builds toothspin-standalone (ToothSpin's own Sendspin server),
+# which needs PyAV, numpy and Pillow: about 200 MB more.
 ARG EXTRAS=""
 # All dependencies ship musl wheels for amd64 and arm64, so no compilers.
 RUN apk add --no-cache python3
@@ -17,6 +17,9 @@ RUN python3 -m venv /opt/venv \
     && find /opt/venv -name __pycache__ -prune -exec rm -rf {} +
 
 FROM docker.io/library/alpine:3.24
+# The mode the image starts in: toothspin-standalone is built with
+# MODE=standalone, so it needs no configuration for it.
+ARG MODE=music-assistant
 # PipeWire's camera plugin needs libcamera, which drags in Mesa and LLVM
 # (~250 MB). Camera support is disabled (deploy/pipewire), so a stub package
 # stands in for libcamera; the check fails the build should a new libcamera
@@ -51,6 +54,7 @@ ENV PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     BUNDLED_PIPEWIRE=1 \
+    MODE=${MODE} \
     XDG_RUNTIME_DIR=/tmp/runtime \
     XDG_STATE_HOME=/tmp/runtime/state
 LABEL org.opencontainers.image.licenses="GPL-3.0-or-later" \

@@ -148,7 +148,8 @@ Assistant uses too:
   on different clocks; when the delay drifts more than 20 ms from where it
   started, one sample per 20 ms chunk is dropped or repeated.
 - aiosendspin's server needs PyAV (its push stream always resamples), numpy
-  and Pillow, about 200 MB, so it ships as a separate `-server` image.
+  and Pillow, about 200 MB, so it ships as a separate image,
+  `toothspin-standalone`, which starts in standalone mode.
 
 ## Pairing with Music Assistant automatically
 
