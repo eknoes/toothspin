@@ -197,7 +197,10 @@ def quiet_start(
 ) -> list[Command]:
     """Turn a speaker left loud down to the start volume before ``uri`` starts on it."""
     speaker = next((s for s in speakers(players) if s.player_id == player_id), None)
-    if speaker is None or speaker.playing_uri == uri or (speaker.volume or 0) <= start_volume:
+    # An unknown volume (e.g. a speaker still with another server) may be loud.
+    if speaker is None or speaker.playing_uri == uri or (
+        speaker.volume is not None and speaker.volume <= start_volume
+    ):
         return []
     return [("players/cmd/volume_set", {"player_id": player_id, "volume_level": start_volume})]
 
