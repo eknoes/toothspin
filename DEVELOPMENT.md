@@ -8,6 +8,9 @@ How ToothSpin is built: [technical overview](https://eknoes.github.io/toothspin/
 - [src/toothspin](src/toothspin/): the service. It finds each phone's
   PipeWire node, captures it with `pw-record` and feeds an aiosendspin
   `SourceCapture`; it also runs the BlueZ pairing agent and the web UI.
+  Speakers are controlled through a backend (`backend.py`), a slice of
+  Music Assistant's player API: Music Assistant itself (`ma.py`, with
+  `ma_pairing.py` pairing inputs through its API).
 - [deploy/](deploy/): PipeWire/WirePlumber config baked into the image, the
   BlueZ config, the SELinux policy, the Quadlet unit and the CoreOS config.
 - [toothspin/](toothspin/): the Home Assistant App, with

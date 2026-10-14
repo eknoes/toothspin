@@ -24,7 +24,8 @@ phone shows up in [Music Assistant](https://music-assistant.io) as its own
 live input, and ToothSpin's web UI plays it on any speaker or group.
 
 After pairing your phone with ToothSpin over Bluetooth, it needs one pairing
-with Music Assistant to set it up. From then on: press **Connect** in
+with Music Assistant to set it up, which ToothSpin does by itself when it has
+a token for Music Assistant's API. From then on: press **Connect** in
 ToothSpin, play something on the phone and switch on the speakers you want.
 The phone's volume buttons control those speakers.
 
@@ -120,10 +121,11 @@ are optional:
 
 | Variable | Default | |
 |---|---|---|
-| `MA_TOKEN` | – | long-lived Music Assistant token (your profile → **Tokens**); enables choosing speakers in the web UI |
+| `MA_TOKEN` | – | long-lived Music Assistant token (your profile → **Tokens**); enables choosing speakers in the web UI and pairing phones with Music Assistant automatically |
 | `MA_URL` | discovered via mDNS | e.g. `http://192.168.178.91:8095` |
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
 | `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
+| `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN instead of only during the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
 | `BT_ADAPTER` | `hci0` | the dongle |
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
@@ -138,12 +140,15 @@ are optional:
 
 **Add a phone:** press **Add phone** in the web UI; the dongle is visible
 for two minutes. On the phone, connect to the Bluetooth name (default
-"Music Assistant"). Outside that window, pairing is refused.
+"Music Assistant"). Outside that window, pairing is refused, unless you set
+a `BT_PIN`: then phones can pair any time by entering it.
 
 **Pair it with Music Assistant:** the phone now appears in Music Assistant
-as a new device, e.g. "Pixel 10 (Bluetooth)". Open it in Music Assistant's
-settings and choose **Pair the device**; then press **Allow** on the phone's
-card in ToothSpin and type the code it shows into Music Assistant.
+as a new device, e.g. "Pixel 10 (Bluetooth)". With `MA_TOKEN` set, ToothSpin
+pairs it by itself within a few seconds. Without, open it in Music
+Assistant's settings and choose **Pair the device**; then press **Allow** on
+the phone's card in ToothSpin and type the code it shows into Music
+Assistant.
 
 **Play:** press **Connect** on the phone's card, play something on the
 phone, then switch on speakers on its card. Several speakers form a group
@@ -160,8 +165,9 @@ instead: select a player, open **Browse**, pick the phone's input and press
 Music Assistant then starts it when the phone plays and stops a minute after
 it goes quiet.
 
-**Remove** on a phone's card also forgets its Music Assistant pairing;
-remove the matching device in Music Assistant too.
+**Remove** on a phone's card also forgets its Music Assistant pairing. With
+`MA_TOKEN` set, ToothSpin removes the phone's input from Music Assistant too;
+otherwise remove the matching device there yourself.
 
 ## Design decisions
 
@@ -175,8 +181,9 @@ behaviour, set `ALLOW_PHONE_CONNECT=true`.
 **Why pair manually, instead of a "free for all"?** To stay in control of
 who plays on your speakers. Someone walking past your home shouldn't be able
 to connect to your living room speaker. Phones can only pair while you've
-opened the pairing window in the web UI, and each one needs a one-time
-pairing with Music Assistant before it can play anywhere.
+opened the pairing window in the web UI, or with a PIN only you know
+(`BT_PIN`), and each one needs a one-time pairing with Music Assistant
+before it can play anywhere.
 
 ## More
 

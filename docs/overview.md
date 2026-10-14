@@ -61,7 +61,8 @@ passthrough works fine, because it has its own kernel.
 
 - Every phone gets its own Sendspin client identity and appears as its own
   Live Input.
-- Music Assistant only activates `source@v1` on a paired connection. Pairing
+- Music Assistant only activates `source@v1` on a paired connection. With
+  an API token ToothSpin pairs automatically (see below); without, pairing
   uses Sendspin's Noise-based dynamic pairing code, shown in the web UI.
   Removing a phone deletes its identity too.
 - The service reports a line-sense signal while the phone plays non-silent
@@ -103,6 +104,25 @@ environment variables the plain container uses. It reaches `bluetoothd`
 via `host_dbus`, finds Music Assistant via mDNS on the host network and asks
 the Supervisor for its ingress port (`ingress_port: 0`). Images are built
 and scanned in CI; each release ships SPDX and CycloneDX SBOMs.
+
+## Pairing with Music Assistant automatically
+
+Pairing a phone over Bluetooth already is the user's consent. With a token
+for Music Assistant's API, ToothSpin answers MA's "Pair the device" setup
+flow itself (`config/players/setup`, `config/flows/submit`): the phone's
+source accepts a fresh pre-shared key, and MA receives it as a pairing token.
+MA offers token pairing only to devices without a PIN method, so with a
+token the sources offer just that. Removing a phone says goodbye for good
+(MA keeps devices that only restart) and then removes it from MA.
+
+## Pairing with a PIN
+
+`BT_PIN` lets phones pair at any time with a fixed PIN instead of only in
+the pairing window. That's legacy PIN pairing: phones only use it when the
+adapter has Secure Simple Pairing off, which only the host can switch
+(`btmgmt ssp off` after bluetoothd starts). Phones paired before keep
+working. Legacy pairing is weaker than SSP and has no retry limit, so the
+PIN must have at least 6 digits.
 
 ## Versions
 

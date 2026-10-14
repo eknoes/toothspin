@@ -39,9 +39,11 @@ on the phone, connect to the **Bluetooth name** (default "Music Assistant").
 Pairing closes again once a phone has paired.
 
 **Pair with Music Assistant:** each phone becomes its own input, e.g.
-"Pixel 10 (Bluetooth)". In Music Assistant's settings, open that device and
-choose **Pair the device**; then press **Allow** on the phone's card in
-ToothSpin and type the code it shows into Music Assistant.
+"Pixel 10 (Bluetooth)". With a **Music Assistant token** set, ToothSpin
+pairs it with Music Assistant by itself. Without, open that device in Music
+Assistant's settings and choose **Pair the device**; then press **Allow** on
+the phone's card in ToothSpin and type the code it shows into Music
+Assistant.
 
 **Connect and play:** connections start from ToothSpin: press **Connect**
 on the phone's card. A phone trying to connect by itself is refused, unless
@@ -72,7 +74,7 @@ instead: select a player, open **Browse**, pick the phone's input and press
 | Bluetooth name | The name phones see. Default: `Music Assistant`. |
 | Input name in Music Assistant | Default name for each phone's input; `{device}` is the phone's name. Each input can be renamed in the app. |
 | Bluetooth adapter | The dongle phones connect to, e.g. `hci0` or `hci1`. |
-| Music Assistant token | Enables choosing speakers in the app. |
+| Music Assistant token | Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |
 | Music Assistant URL | Only needed if Music Assistant isn't found automatically, e.g. `http://homeassistant.local:8095`. |
 | Sendspin server URL | Only needed if Music Assistant's Sendspin server isn't found automatically, e.g. `ws://homeassistant.local:8927/sendspin`. |
 | Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it. Quieter speakers keep their volume; `100` always keeps it. Default: `20`. |
@@ -90,8 +92,9 @@ instead: select a player, open **Browse**, pick the phone's input and press
   through ToothSpin's pairing window on its own adapter, so in practice only
   that one is used.
 - Music Assistant identifies each phone's input by a key stored in the
-  app's data. Removing a phone in ToothSpin also removes that key; remove
-  the matching device in Music Assistant too. App backups include the keys.
+  app's data. Removing a phone in ToothSpin also removes that key, and with
+  a Music Assistant token the device in Music Assistant too (without, remove
+  it there yourself). App backups include the keys.
 
 ## Support
 
