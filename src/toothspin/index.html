@@ -129,7 +129,7 @@
   .problem.warn { border-left-color: var(--accent); }
   .problem.warn h2 { color: inherit; font-size: 16px; }
   .problem ol, .check ol { margin: 8px 0; padding-left: 22px; }
-  .problem li, .check li { margin: 4px 0; }
+  .problem li, .check li { margin: 4px 0; padding: 0; border: 0; }
   .check { display: grid; grid-template-columns: 1.5em 1fr; gap: 2px 8px; margin: 10px 0; }
   .check .mark { font-weight: 700; text-align: center; }
   .check .mark.ok { color: var(--accent); }
@@ -384,8 +384,9 @@ function renderTitle(d) {
   return `${head}<div class="sub">${esc(d.name)} · ${esc(d.address)}</div>`;
 }
 
-// The little Markdown our setup texts use: **bold** and `code`.
-const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+// The little Markdown our setup texts use: **bold**, *italics* and `code`.
+const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>")
+  .replace(/`([^`]+)`/g, "<code>$1</code>");
 const steps = (list) => list && list.length ? `<ol>${list.map((s) => `<li>${md(s)}</li>`).join("")}</ol>` : "";
 
 function problemHtml(p, blocking) {
