@@ -3,7 +3,7 @@
   "devices": [
     {
       "address": "AA:BB:CC:00:00:01", "name": "Pixel 9", "paired": true, "trusted": false, "connected": true,
-      "audio": {"codec": "AAC", "now_playing": {"title": "Teardrop", "artist": "Massive Attack"}},
+      "audio": {"codec": "AAC", "now_playing": {"title": "Never Gonna Give You Up", "artist": "Rick Astley"}},
       "sendspin": {
         "name": "Alex's Pixel (Bluetooth)", "url": "ws://192.168.1.10:8927/sendspin", "connected": true,
         "server_name": "Music Assistant", "paired": true, "requested": true, "streaming": true, "signal": true,

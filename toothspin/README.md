@@ -42,5 +42,7 @@ Assistant notification.
 Step by step: [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) ·
 [FAQ](https://eknoes.github.io/toothspin/faq.html)
 
+![ToothSpin's web UI: a speaker joins the phone's group, its volume goes up, then the phone plays only there](https://eknoes.github.io/toothspin/assets/screenshots/demo.gif)
+
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg

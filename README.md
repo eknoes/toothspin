@@ -30,6 +30,11 @@ any Bluetooth speaker (or press **Connect** in ToothSpin), play something
 and switch on the speakers you want. The phone's volume buttons control
 those speakers.
 
+<p align="center">
+  <img src="docs/assets/screenshots/demo.gif" width="480"
+    alt="ToothSpin's web UI: a speaker joins the phone's group, its volume goes up, then the phone plays only there">
+</p>
+
 > [!NOTE]
 > ToothSpin is in an early state. It was put together over a couple of
 > evenings with [Claude](https://claude.ai), with a human firmly at the

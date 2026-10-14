@@ -43,11 +43,12 @@ On every start, and while running, ToothSpin checks:
 - **Does Home Assistant use it too?** ToothSpin asks Home Assistant's
   Bluetooth integration and recommends a dongle of its own if it shares
   one. If Home Assistant discovered ToothSpin's dongle and offers to add it,
-  ToothSpin recommends ignoring it.
+  ToothSpin recommends ignoring it, and does it for you if you confirm.
 - **Music Assistant token and connection:** missing token, a token Music
   Assistant rejects, or Music Assistant not found.
 
-The app shows what to do, step by step, and the log says it too. If
+What's left shows up as **Finish setup** on top of the app, with steps and
+links into Home Assistant; it goes away once done. The log says it too. If
 ToothSpin can't start (no adapter), it also raises a Home Assistant
 notification, checks again every few seconds and starts by itself once the
 problem is fixed; the notification then disappears.

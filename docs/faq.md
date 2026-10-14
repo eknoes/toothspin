@@ -95,10 +95,24 @@ No. ToothSpin only receives music (A2DP), no calls.
 
 ### ToothSpin says something is wrong {#setup-problems}
 
-ToothSpin checks its setup on every start and shows what to do in its web
-UI, step by step. Problems that stop it from starting also show up as a Home
-Assistant notification. Fix them and ToothSpin starts by itself within a few
-seconds.
+ToothSpin checks its setup on every start. What's left to do shows up as
+**Finish setup** on top of its web UI; open it for step-by-step instructions
+with links into Home Assistant. It goes away once everything is done, and
+ToothSpin works meanwhile.
+
+<figure class="shot">
+  <img src="{{ '/assets/screenshots/setup-collapsed.png' | relative_url }}" width="448"
+    alt="Finish setup, collapsed: two things to do">
+</figure>
+
+Problems that stop it from starting replace the page instead, and also show
+up as a Home Assistant notification. Fix them and ToothSpin starts by itself
+within a few seconds.
+
+<figure class="shot">
+  <img src="{{ '/assets/screenshots/setup-blocked.png' | relative_url }}" width="448"
+    alt="No Bluetooth adapter found, with steps to fix it">
+</figure>
 
 ### Something else {#other}
 

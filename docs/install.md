@@ -35,10 +35,18 @@ devices.
    phone's Bluetooth settings. Play something and switch on a speaker on the
    phone's card.
 
-ToothSpin checks its setup on every start. If something is missing, the app
-shows what to do, step by step. If it can't start at all (e.g. no adapter),
+ToothSpin checks its setup on every start. Anything left to do shows up as
+**Finish setup** on top of the app, with step-by-step instructions and links
+into Home Assistant; it goes away once it's done, and ToothSpin works
+meanwhile. If it can't start at all (e.g. no adapter), it says why instead,
 you also get a Home Assistant notification, and ToothSpin starts by itself
 once it's fixed.
+
+<figure class="shot">
+  <img src="{{ '/assets/screenshots/setup.png' | relative_url }}" width="448"
+    alt="Finish setup card: let Home Assistant ignore ToothSpin's adapter, add a Music Assistant token">
+  <figcaption>What's left to finish setup, expanded.</figcaption>
+</figure>
 
 All options are described on the App's **Documentation** tab. Questions:
 [FAQ]({{ '/faq.html' | relative_url }}).
