@@ -13,9 +13,11 @@ import contextlib
 import json
 import logging
 import shutil
+from collections.abc import Awaitable, Callable, Coroutine
 from importlib.metadata import version
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from aiosendspin.models.core import DeviceInfo
 from aiosendspin.models.types import AudioCodec
@@ -44,12 +46,21 @@ class Receivers:
         codec: AudioCodec,
         name_format: str,
         manufacturer: str,
+        alongside: Callable[[SendspinSource], Coroutine[Any, Any, None]] | None = None,
+        pin_pairing: bool = True,
+        on_forget: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self._bluetooth = bluetooth
         self._data_dir = data_dir / "devices"
         self._url = url
         self._codec = codec
         self._name_format = name_format
+        # E.g. pairing it with Music Assistant through its API, while it runs.
+        self._alongside = alongside
+        self._pin_pairing = pin_pairing
+        # Removing a phone's input from the server too, by its client id.
+        self._on_forget = on_forget
+        self._forgets: set[asyncio.Task[None]] = set()
         self._device_info = DeviceInfo(
             manufacturer=manufacturer,
             product_name="ToothSpin",
@@ -154,10 +165,12 @@ class Receivers:
             self._device_dir(address),
             self._codec,
             self._device_info,
+            pin_pairing=self._pin_pairing,
         )
         await source.setup()
         capture = Capture(address, source, source.client.now_us)
-        task = asyncio.create_task(_run(source, capture), name=f"receiver {address}")
+        extra = self._alongside(source) if self._alongside else None
+        task = asyncio.create_task(_run(source, capture, extra), name=f"receiver {address}")
         task.add_done_callback(self._on_done)
         self._receivers[address] = Receiver(address, source, capture, task)
         logger.info("Added Sendspin source for %s (%s)", device_name, address)
@@ -172,15 +185,27 @@ class Receivers:
         """The user removed this phone: drop its client and Sendspin identity."""
         address = address.upper()
         async with self._sync_lock:
-            if address in self._receivers:
+            client_id = None
+            if (receiver := self._receivers.get(address)) is not None:
+                client_id = receiver.source.client.identity.peer_id
+                receiver.source.leaving = True
                 await self._stop(address)
             # Pairing the phone again then starts fresh on both layers.
             shutil.rmtree(self._device_dir(address), ignore_errors=True)
         logger.info("Removed Sendspin source for %s", address)
+        if client_id and self._on_forget is not None:
+            # In the background: Music Assistant takes a moment to let go.
+            task = asyncio.create_task(self._on_forget(client_id), name=f"forget {address}")
+            task.add_done_callback(self._forgets.discard)
+            self._forgets.add(task)
 
 
-async def _run(source: SendspinSource, capture: Capture) -> None:
+async def _run(
+    source: SendspinSource, capture: Capture, extra: Coroutine[Any, Any, None] | None
+) -> None:
     tasks = [asyncio.create_task(source.run()), asyncio.create_task(capture.run())]
+    if extra is not None:
+        tasks.append(asyncio.create_task(extra))
     try:
         await asyncio.gather(*tasks)
     finally:

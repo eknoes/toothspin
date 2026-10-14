@@ -21,7 +21,7 @@ def _device(address: str, name: str) -> BluetoothDevice:
 
 
 def test_one_receiver_per_paired_phone(tmp_path: Path, monkeypatch) -> None:
-    async def idle(source, capture) -> None:
+    async def idle(source, capture, extra=None) -> None:
         await asyncio.Event().wait()
 
     monkeypatch.setattr(receivers_module, "_run", idle)
@@ -74,7 +74,7 @@ def test_one_receiver_per_paired_phone(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_hidden_speakers_are_kept_per_phone(tmp_path: Path, monkeypatch) -> None:
-    async def idle(source, capture) -> None:
+    async def idle(source, capture, extra=None) -> None:
         await asyncio.Event().wait()
 
     monkeypatch.setattr(receivers_module, "_run", idle)

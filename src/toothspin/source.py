@@ -19,6 +19,7 @@ from aiosendspin.models.player import SupportedAudioFormat
 from aiosendspin.models.source import ClientHelloSourceFeatures, ClientHelloSourceSupport
 from aiosendspin.models.types import AudioCodec, GoodbyeReason, Roles, SignalState
 from aiosendspin.noise import FileClientPairingStore, Identity, b64url_decode, b64url_encode
+from aiosendspin.noise.trust_store import PairingPsk
 
 from .pipewire import CAPTURE_FORMAT, PcmFormat
 
@@ -54,9 +55,15 @@ class SendspinSource:
         data_dir: Path,
         codec: AudioCodec = AudioCodec.PCM,
         device_info: DeviceInfo | None = None,
+        pin_pairing: bool = True,
     ) -> None:
         self._name = name
         self._device_info = device_info
+        # Without, servers can only pair through a pre-shared key that ToothSpin
+        # hands over itself (its own server, or Music Assistant via its API).
+        self._pin_pairing = pin_pairing
+        # Set when the phone was removed: say goodbye for good.
+        self.leaving = False
         self._url = url
         self._data_dir = data_dir
         self._codec = codec
@@ -92,7 +99,9 @@ class SendspinSource:
                 pin_display=self._on_pin,
                 gesture_prompt=self._on_gesture_prompt,
                 offer_static_pin=False,
-            ),
+            )
+            if self._pin_pairing
+            else None,
             source_support=ClientHelloSourceSupport(
                 features=ClientHelloSourceFeatures(line_sense=True)
             ),
@@ -132,8 +141,11 @@ class SendspinSource:
             signal_task.cancel()
             # RESTART, not SHUTDOWN: the service always comes back, and on
             # SHUTDOWN the server drops the client, so Music Assistant forgets
-            # it was playing this input and never asks for it again.
-            await self.client.disconnect(GoodbyeReason.RESTART)
+            # it was playing this input and never asks for it again. Which is
+            # what we want once the phone was removed.
+            await self.client.disconnect(
+                GoodbyeReason.SHUTDOWN if self.leaving else GoodbyeReason.RESTART
+            )
 
     async def _reset(self) -> None:
         async with self._lock:
@@ -252,6 +264,15 @@ class SendspinSource:
 
     def open_pairing_window(self) -> None:
         self.client.open_pairing_window()
+
+    async def accept_pairing(self, pairing: PairingPsk) -> None:
+        """Pair with the next server that presents this pre-shared key.
+
+        The server side gets the same key: no PIN, for servers that are
+        already trusted (Music Assistant via its API).
+        """
+        assert self._store is not None
+        await self._store.set_pairing_psk(pairing)
 
     async def _on_pin(self, pin: str | None) -> None:
         self._pin = pin

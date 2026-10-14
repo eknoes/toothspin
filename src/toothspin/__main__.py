@@ -15,7 +15,7 @@ from aiosendspin.models.types import AudioCodec
 from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 
-from . import ha
+from . import ha, ma_pairing
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant
@@ -107,22 +107,26 @@ async def _run(args: argparse.Namespace) -> None:
         bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change,
         allow_phone_connect=args.allow_phone_connect,
     )
-    receivers = Receivers(
-        bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name, args.manufacturer
-    )
-    await bluetooth.start()
-    await receivers.sync()
-
     # Without MA_URL the API is found via mDNS, so in HA only the token is needed.
     ma = MusicAssistant(args.ma_url, args.ma_token) if args.ma_token else None
     if ma is None:
-        logger.info("MA_TOKEN not set; speaker control disabled")
+        logger.info("MA_TOKEN not set; speaker control and automatic pairing disabled")
+    receivers = Receivers(
+        bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name,
+        args.manufacturer,
+        # With API access, ToothSpin pairs each input with MA itself.
+        alongside=(lambda source: ma_pairing.keep_paired(ma, source)) if ma else None,
+        pin_pairing=ma is None,
+        on_forget=(lambda client_id: ma_pairing.remove(ma, client_id)) if ma else None,
+    )
+    await bluetooth.start()
+    await receivers.sync()
 
     ingress_port = await ha.ingress_port() if ha.running_as_app() else None
     runner = web.AppRunner(
         create_app(
             bluetooth, receivers, args.pairing_seconds, ma, ingress_port=ingress_port,
-            start_volume=args.start_volume,
+            start_volume=args.start_volume, auto_pairing=ma is not None,
         )
     )
     await runner.setup()

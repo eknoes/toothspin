@@ -31,6 +31,7 @@ def create_app(
     backend: PlayerBackend | None = None,
     ingress_port: int | None = None,
     start_volume: int = 100,
+    auto_pairing: bool = False,
 ) -> web.Application:
     index = files(__package__).joinpath("index.html").read_text()
     volumes = speakers.Volumes(backend) if backend else None
@@ -61,6 +62,7 @@ def create_app(
         remaining = bluetooth.pairing_remaining
         return web.json_response(
             {
+                "auto_pairing": auto_pairing,
                 "bluetooth": {
                     "name": bluetooth.alias,
                     "address": bluetooth.address,

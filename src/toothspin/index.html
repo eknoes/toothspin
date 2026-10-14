@@ -204,6 +204,9 @@ function renderSendspin(d) {
               ${ss.url ? "(" + esc(ss.url) + ")" : "(searching…)"}</div>`;
   } else if (ss.paired) {
     html = `<div class="muted"><span class="dot ok"></span>Music Assistant: paired</div>`;
+  } else if (state.auto_pairing) {
+    // ToothSpin pairs it through Music Assistant's API by itself.
+    return `<div class="muted"><span class="dot warn"></span>Music Assistant: pairing…</div>`;
   } else {
     html = `<div><span class="dot warn"></span>Music Assistant: not paired yet</div>`;
   }
