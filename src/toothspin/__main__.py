@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import os
+import re
 import signal
 import socket
 from pathlib import Path
@@ -67,6 +68,10 @@ def _parse_args() -> argparse.Namespace:
         help="Accept connections phones start themselves (default: only from the web UI)",
     )
     parser.add_argument(
+        "--bt-pin", default=env("BT_PIN"),
+        help="Let phones pair any time with this PIN (6-16 digits; needs SSP off on the host)",
+    )
+    parser.add_argument(
         "--pairing-seconds", type=float, default=float(env("BT_PAIRING_SECONDS", "120"))
     )
     parser.add_argument(
@@ -84,6 +89,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--log-level", default=env("LOG_LEVEL", "INFO"))
     args = parser.parse_args()
     args.start_volume = max(0, min(100, args.start_volume))
+    if args.bt_pin is not None and not re.fullmatch(r"\d{6,16}", args.bt_pin):
+        # Legacy PIN pairing has no retry limit: short PINs can be guessed.
+        raise SystemExit("BT_PIN must be 6 to 16 digits")
     return args
 
 
@@ -105,7 +113,7 @@ async def _run(args: argparse.Namespace) -> None:
     volume_sync: VolumeSync | None = None
     bluetooth = BluetoothManager(
         bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change,
-        allow_phone_connect=args.allow_phone_connect,
+        allow_phone_connect=args.allow_phone_connect, pin=args.bt_pin or None,
     )
     # Without MA_URL the API is found via mDNS, so in HA only the token is needed.
     ma = MusicAssistant(args.ma_url, args.ma_token) if args.ma_token else None

@@ -76,12 +76,15 @@ class BluetoothManager:
         alias: str | None = None,
         on_change: Callable[[], None] | None = None,
         allow_phone_connect: bool = False,
+        pin: str | None = None,
     ) -> None:
         self._bus = bus
         self._adapter_path = f"/org/bluez/{adapter}"
         self._alias = alias
         self._on_change = on_change or (lambda: None)
         self._allow_phone_connect = allow_phone_connect
+        # A fixed PIN is the secret for pairing, any time; see pin_pairing.
+        self.pin = pin
         self._adapter: dict[str, Any] = {}
         self._devices: dict[str, dict[str, Any]] = {}
         # AVRCP players, keyed by object path (below their device's path).
@@ -247,14 +250,25 @@ class BluetoothManager:
         logger.info("Bluetooth pairing window open for %.0fs", duration)
         self._on_change()
 
+    @property
+    def pin_pairing(self) -> bool:
+        """Phones may pair any time, with the PIN (legacy PIN pairing).
+
+        Phones only ask for a PIN when the adapter has Secure Simple Pairing
+        off (``btmgmt ssp off`` on the host, see deploy/bluetooth). With SSP
+        on, they pair "Just Works", which still needs the pairing window.
+        """
+        return self.pin is not None
+
     async def close_pairing(self) -> None:
         if self._pairing_close is not None:
             self._pairing_close.cancel()
             self._pairing_close = None
         was_open = self._pairing_deadline is not None
         self._pairing_deadline = None
-        await self._set_adapter("Discoverable", Variant("b", False))
-        await self._set_adapter("Pairable", Variant("b", False))
+        # With a PIN, the adapter stays visible: the PIN guards pairing.
+        await self._set_adapter("Discoverable", Variant("b", self.pin_pairing))
+        await self._set_adapter("Pairable", Variant("b", self.pin_pairing))
         if was_open:
             logger.info("Bluetooth pairing window closed")
         self._on_change()
@@ -408,6 +422,10 @@ class _Agent(ServiceInterface):
 
     @method()
     def RequestPinCode(self, device: "o") -> "s":  # noqa: F821, N802
+        if self._manager.owns(device) and self._manager.pin is not None:
+            # Legacy PIN pairing: the phone's user must type the same PIN.
+            logger.info("Answering PIN request from %s", device)
+            return self._manager.pin
         self._require_window(device)
         return "0000"
 

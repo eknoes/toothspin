@@ -122,3 +122,32 @@ def test_phones_may_connect_on_their_own_when_allowed() -> None:
     _Agent(allowing).AuthorizeService.__wrapped__(
         _Agent(allowing), path, "0000110a-0000-1000-8000-00805f9b34fb"
     )
+
+
+def test_pin_pairing_answers_with_the_pin_only_on_our_adapter() -> None:
+    from dbus_fast.errors import DBusError
+
+    from toothspin.bluez import _Agent
+
+    ours = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+    others = "/org/bluez/hci1/dev_AA_BB_CC_DD_EE_FF"
+    manager = BluetoothManager(bus=None, pin="482913")  # type: ignore[arg-type]
+    agent = _Agent(manager)
+    # No pairing window needed: the PIN is the secret.
+    assert agent.RequestPinCode.__wrapped__(agent, ours) == "482913"
+    assert manager.pin_pairing
+    # Other adapters never get our PIN.
+    assert agent.RequestPinCode.__wrapped__(agent, others) == "0000"
+    # Pairing without a PIN (Just Works) still needs the window.
+    try:
+        agent.RequestConfirmation.__wrapped__(agent, ours, 123456)
+        raise AssertionError("Just Works pairing should need the window")
+    except DBusError:
+        pass
+    # Without BT_PIN, PIN requests need the window too.
+    plain = _Agent(BluetoothManager(bus=None))  # type: ignore[arg-type]
+    try:
+        plain.RequestPinCode.__wrapped__(plain, ours)
+        raise AssertionError("PIN request without BT_PIN should need the window")
+    except DBusError:
+        pass

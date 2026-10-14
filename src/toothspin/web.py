@@ -67,6 +67,7 @@ def create_app(
                     "name": bluetooth.alias,
                     "address": bluetooth.address,
                     "pairing_remaining": None if remaining is None else round(remaining),
+                    "pin_pairing": bluetooth.pin_pairing,
                 },
                 "devices": [device_state(d) for d in bluetooth.devices()],
                 "speakers": None
