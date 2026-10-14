@@ -129,6 +129,27 @@ are shown in the web UI and the log; blocking ones also as a persistent
 notification, re-checked until solved. On its first start the App puts
 itself in the sidebar (`ingress_panel`, once, so turning it off sticks).
 
+## Standalone mode
+
+Without Music Assistant, ToothSpin can run its own Sendspin server
+(`MODE=standalone`), built on aiosendspin's server side, the library Music
+Assistant uses too:
+
+- It discovers Sendspin speakers via mDNS and connects to them. Unencrypted
+  (pre-1.0, e.g. ESPHome) speakers and speakers allowing unpaired playback
+  work; a speaker attached to another server is claimed when it's asked to
+  play, before any command (so the start volume isn't lost on the way).
+- The phones' Sendspin sources connect to it over localhost exactly as to
+  Music Assistant. ToothSpin pairs them itself with a staged pre-shared key.
+- It offers the same slice of Music Assistant's player API ToothSpin uses
+  (play, stop, group members, volume, group volume, mute), so the web UI and
+  the volume sync can't tell the difference.
+- It forwards each input to every group playing it. Phone and speakers run
+  on different clocks; when the delay drifts more than 20 ms from where it
+  started, one sample per 20 ms chunk is dropped or repeated.
+- aiosendspin's server needs PyAV (its push stream always resamples), numpy
+  and Pillow, about 200 MB, so it ships as a separate `-server` image.
+
 ## Pairing with Music Assistant automatically
 
 Pairing a phone over Bluetooth already is the user's consent. With a token

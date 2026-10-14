@@ -8,9 +8,10 @@ How ToothSpin is built: [technical overview](https://eknoes.github.io/toothspin/
 - [src/toothspin](src/toothspin/): the service. It finds each phone's
   PipeWire node, captures it with `pw-record` and feeds an aiosendspin
   `SourceCapture`; it also runs the BlueZ pairing agent and the web UI.
-  Speakers are controlled through a backend (`backend.py`), a slice of
-  Music Assistant's player API: Music Assistant itself (`ma.py`, with
-  `ma_pairing.py` pairing inputs through its API).
+  Speakers are controlled through a backend (`backend.py`): Music Assistant
+  (`ma.py`, with `ma_pairing.py` pairing inputs through its API) or
+  ToothSpin's own Sendspin server (`server.py`, standalone mode), both
+  offering the same slice of Music Assistant's player API.
 - [deploy/](deploy/): PipeWire/WirePlumber config baked into the image, the
   BlueZ config, the SELinux policy, the Quadlet unit and the CoreOS config.
 - [toothspin/](toothspin/): the Home Assistant App, with
@@ -39,6 +40,23 @@ deploy/service/install.sh
 It builds the image, loads the SELinux policy where needed and runs the
 build as a rootless Quadlet unit (a drop-in points the unit at the local
 image instead of the release). Logs: `journalctl --user -u toothspin`.
+
+For standalone mode, build the server image and point the unit at it with
+another drop-in, `~/.config/containers/systemd/toothspin.container.d/standalone.conf`:
+
+```bash
+podman build --build-arg EXTRAS=server -t localhost/toothspin:server .
+```
+
+```ini
+[Container]
+Image=localhost/toothspin:server
+Environment=MODE=standalone
+```
+
+`tests/fake_speaker.py "Test speaker" 8930` runs a simulated Sendspin
+speaker that servers find via mDNS: it counts the audio it gets and never
+makes a sound, handy to try grouping without waking the house.
 
 ### As a Home Assistant App
 
@@ -81,8 +99,9 @@ release:
 3. Tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
 
 CI then publishes `ghcr.io/eknoes/toothspin:0.2.0` (plus `:0.2` and
-`:latest`) and creates a GitHub release. Its notes, like the changelog, are
-generated from the commits ([cliff.toml](cliff.toml)): `feat`,
+`:latest`), the server image for standalone mode as `0.2.0-server` (plus
+`:0.2-server` and `:latest-server`), and creates a GitHub release. Its notes,
+like the changelog, are generated from the commits ([cliff.toml](cliff.toml)): `feat`,
 `fix`, `perf`, `build` and `docs` commits, grouped by type, so write their
 subjects for users. Preview them with `git cliff --unreleased`.
 
