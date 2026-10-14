@@ -541,7 +541,8 @@ function render() {
       ${renderSendspin(d)}
       <div class="actions">
         ${d.connected
-          ? `<button data-addr="${esc(d.address)}" data-action="disconnect">Disconnect</button>`
+          ? `<button data-addr="${esc(d.address)}" data-action="disconnect"
+               ${pending.has(`disconnect|${d.address}`) ? "disabled" : ""}>${pending.has(`disconnect|${d.address}`) ? "Disconnecting…" : "Disconnect"}</button>`
           : `<button class="primary" data-addr="${esc(d.address)}" data-action="connect"
                ${pending.has(d.address) ? "disabled" : ""}>${pending.has(d.address) ? "Connecting…" : "Connect"}</button>`}
         <button class="danger" data-addr="${esc(d.address)}" data-action="remove">${confirmRemove === d.address ? "Really remove?" : "Remove"}</button>
@@ -559,9 +560,11 @@ function render() {
       }
       confirmRemove = null;
       const url = `api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`;
-      if (b.dataset.action === "connect") {
-        pending.add(b.dataset.addr); render();
-        post(url).then(refresh).finally(() => { pending.delete(b.dataset.addr); render(); });
+      if (b.dataset.action === "connect" || b.dataset.action === "disconnect") {
+        // Both take a few seconds: say so until the phone's state changed.
+        const key = b.dataset.action === "connect" ? b.dataset.addr : `disconnect|${b.dataset.addr}`;
+        pending.add(key); render();
+        post(url).then(refresh).finally(() => { pending.delete(key); render(); });
       } else {
         post(url);
       }
