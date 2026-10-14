@@ -178,8 +178,8 @@ def test_reconnects_once_when_the_phone_plays_but_not_to_us(monkeypatch) -> None
         manager._transports[device + "/fd0"] = {"State": transport_state}
         manager._players[device + "/avrcp/player0"] = {"Status": player_status}
         await manager.connect_device("34:39:16:5D:41:B9")
-        while manager._routing_checks:
-            await asyncio.gather(*list(manager._routing_checks))
+        while manager._routing_tasks:
+            await asyncio.gather(*list(manager._routing_tasks.values()))
         return calls
 
     # Playing, but the stream to us never starts: two reconnects, then it
@@ -197,3 +197,68 @@ _real_sleep = __import__("asyncio").sleep
 
 async def _fast_sleep(seconds: float) -> None:
     await _real_sleep(min(seconds, 0.01))
+
+
+def test_pressing_connect_wins_over_a_pending_reconnect(monkeypatch) -> None:  # noqa: ANN001
+    import asyncio
+
+    from toothspin import bluez
+
+    monkeypatch.setattr(bluez, "ROUTING_POLL_S", 0.01)
+    monkeypatch.setattr(bluez, "ROUTING_STUCK_S", 0.05)
+    address, device = "34:39:16:5D:41:B9", "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+
+    async def scenario() -> list[str]:
+        calls: list[str] = []
+        manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+
+        async def call(_bus, _service, _path, _iface, member, *args):  # noqa: ANN001, ANN002
+            calls.append(member)
+            manager._devices[device]["Connected"] = member == "Connect"
+
+        monkeypatch.setattr(bluez.dbus, "call", call)
+        manager._devices[device] = {"Address": address, "Paired": True, "Connected": False}
+        manager._transports[device + "/fd0"] = {"State": "idle"}
+        manager._players[device + "/avrcp/player0"] = {"Status": "playing"}
+        await manager.connect_device(address)
+        async with asyncio.timeout(5):
+            while not manager.reconnecting(address):  # waiting out the 5 s gap
+                await asyncio.sleep(0.01)
+        manager._transports[device + "/fd0"]["State"] = "active"  # it'll work now
+        await manager.connect_device(address)  # the user presses Connect
+        await asyncio.sleep(0.2)
+        assert not manager.reconnecting(address)
+        for task in list(manager._routing_tasks.values()):
+            task.cancel()
+        return calls
+
+    # No second, automatic Connect after the user's.
+    assert asyncio.run(scenario()) == ["Connect", "Disconnect", "Connect"]
+
+
+def test_connect_waits_for_an_attempt_in_progress(monkeypatch) -> None:  # noqa: ANN001
+    import asyncio
+
+    from dbus_fast.errors import DBusError
+
+    from toothspin import bluez
+
+    address, device = "34:39:16:5D:41:B9", "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+
+    async def scenario() -> bool:
+        manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+        manager._devices[device] = {"Address": address, "Paired": True, "Connected": False}
+
+        async def call(*_args):  # noqa: ANN002
+            # Someone else's attempt, which succeeds a moment later.
+            asyncio.get_running_loop().call_later(
+                0.1, manager._devices[device].__setitem__, "Connected", True
+            )
+            raise DBusError("org.bluez.Error.InProgress", "In Progress")
+
+        monkeypatch.setattr(bluez.dbus, "call", call)
+        monkeypatch.setattr(bluez, "ROUTING_RECONNECT_GAPS_S", ())
+        await manager.connect_device(address)
+        return manager._devices[device]["Connected"]
+
+    assert asyncio.run(scenario())

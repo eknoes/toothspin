@@ -53,6 +53,7 @@ def create_app(
         )
         state["sendspin"] = asdict(receiver.source.status()) if receiver else None
         state["hidden_speakers"] = receivers.hidden_speakers(device.address) if receiver else []
+        state["reconnecting"] = bluetooth.reconnecting(device.address)
         state["source_uri"] = (
             speakers.source_uri(receiver.source.client.identity.peer_id) if receiver else None
         )

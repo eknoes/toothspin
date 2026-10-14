@@ -14,6 +14,7 @@ or after ``connect_device()`` — until that connection ends. With
 # method annotations as D-Bus signatures.
 
 import asyncio
+import contextlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -103,7 +104,9 @@ class BluetoothManager:
         self._pairing_close: asyncio.TimerHandle | None = None
         # Device paths whose current connection we started (or that just paired).
         self._connect_allowed: set[str] = set()
-        self._routing_checks: set[asyncio.Task[None]] = set()
+        # Routing check per phone address, and phones being reconnected by it.
+        self._routing_tasks: dict[str, asyncio.Task[None]] = {}
+        self._reconnecting: set[str] = set()
         # Set when the adapter vanishes (dongle reset/unplug) or bluetoothd
         # restarts: our agent and adapter settings are gone, so the service
         # exits and systemd restarts it once the adapter is back.
@@ -287,14 +290,33 @@ class BluetoothManager:
         await dbus.call(self._bus, BLUEZ, self._adapter_path, ADAPTER, "RemoveDevice", "o", [path])
         logger.info("Removed Bluetooth device %s", address)
 
+    def reconnecting(self, address: str) -> bool:
+        """Being reconnected to move its audio over (see _check_routing)."""
+        return address.upper() in self._reconnecting
+
     async def connect_device(self, address: str, *, routing_attempt: int = 0) -> None:
         """Connect a paired phone; its connections are accepted until it disconnects."""
+        address = address.upper()
         path = self._path_for(address)
+        if routing_attempt == 0:
+            # Pressing Connect wins over an automatic reconnect still to come.
+            pending = self._routing_tasks.get(address)
+            if pending is not None and pending is not asyncio.current_task():
+                pending.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await pending
         self._connect_allowed.add(path)
         try:
-            await asyncio.wait_for(
-                dbus.call(self._bus, BLUEZ, path, DEVICE, "Connect"), timeout=30
-            )
+            try:
+                await asyncio.wait_for(
+                    dbus.call(self._bus, BLUEZ, path, DEVICE, "Connect"), timeout=30
+                )
+            except DBusError as err:
+                # A connection attempt is already running (e.g. an automatic
+                # reconnect we just cancelled): wait for its outcome instead.
+                if err.type != "org.bluez.Error.InProgress":
+                    raise
+                await self._wait_connected(path, timeout=30)
         except (DBusError, TimeoutError):
             if not self._devices.get(path, {}).get("Connected"):
                 self._connect_allowed.discard(path)
@@ -304,8 +326,16 @@ class BluetoothManager:
             task = asyncio.create_task(
                 self._check_routing(address, routing_attempt), name=f"routing {address}"
             )
-            self._routing_checks.add(task)
-            task.add_done_callback(self._routing_checks.discard)
+            self._routing_tasks[address] = task
+            task.add_done_callback(
+                lambda t: self._routing_tasks.get(address) is t
+                and self._routing_tasks.pop(address)
+            )
+
+    async def _wait_connected(self, path: str, timeout: float) -> None:
+        async with asyncio.timeout(timeout):
+            while not self._devices.get(path, {}).get("Connected"):
+                await asyncio.sleep(0.25)
 
     async def _check_routing(self, address: str, attempt: int) -> None:
         """Reconnect if the phone plays, but not to us.
@@ -339,6 +369,8 @@ class BluetoothManager:
         logger.warning(
             "%s plays, but not over Bluetooth; reconnecting it in %.0fs", name, gap
         )
+        self._reconnecting.add(address)
+        self._on_change()
         try:
             await self.disconnect_device(address)
             # Wait until it's really gone, then give the phone time to settle.
@@ -349,7 +381,10 @@ class BluetoothManager:
             await asyncio.sleep(gap)
             await self.connect_device(address, routing_attempt=attempt + 1)
         except (DBusError, TimeoutError, KeyError) as err:
-            logger.warning("Reconnecting %s failed: %s", name, err)
+            logger.warning("Reconnecting %s failed: %s", name, err or "timed out")
+        finally:
+            self._reconnecting.discard(address)
+            self._on_change()
 
     async def refuse(self, path: str) -> None:
         """Disconnect a phone that connected on its own."""
