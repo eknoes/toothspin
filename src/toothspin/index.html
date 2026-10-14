@@ -174,6 +174,7 @@ document.addEventListener("click", (e) => { if (e.target.id === "toast") hideToa
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 let state = null;
+let serverState = null;  // as last polled; state adds what the user just did
 let confirmRemove = null;
 // Address of the phone whose Music Assistant name is being edited. Rendering
 // pauses meanwhile so the 1.5 s refresh doesn't wipe the text field.
@@ -206,12 +207,16 @@ function toast(message, ms = 6000) {
 }
 function hideToast() { clearTimeout(toastTimer); $("toast").hidden = true; }
 
+// True if the request went through. Doesn't wait for the new state: the
+// next poll comes soon, and expected changes show at once (see expect()).
 async function post(path, body) {
+  let ok = false;
   try {
     const res = await fetch(path, {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body ?? {}),
     });
+    ok = res.ok;
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       toast(data.error || `Request failed (${res.status})`);
@@ -219,7 +224,52 @@ async function post(path, body) {
   } catch (e) {
     toast("Couldn't reach the receiver.");
   }
-  await refresh();
+  refreshSoon();
+  return ok;
+}
+
+// Changes the user just made, shown before the receiver confirms them:
+// key -> {apply(state), done(state), until}. Each is dropped once the
+// receiver's state shows it, when its request fails, or after a timeout,
+// which puts back whatever the receiver says. The timeout runs from the
+// request's answer, as some (grouping speakers) take a few seconds.
+const expected = new Map();
+const EXPECT_MS = 6000;
+
+function expect(key, apply, done, request) {
+  expected.set(key, {apply, done, until: Date.now() + EXPECT_MS});
+  show();
+  request.then((ok) => {
+    const e = expected.get(key);
+    if (!e || e.apply !== apply) return;  // replaced by a newer click
+    if (ok) e.until = Date.now() + EXPECT_MS;
+    else { expected.delete(key); show(); }
+  });
+}
+
+function withExpected(server) {
+  const now = Date.now();
+  const copy = structuredClone(server);
+  for (const [key, e] of expected) {
+    if (e.done(server) || now > e.until) expected.delete(key);
+    else e.apply(copy);
+  }
+  return copy;
+}
+
+const speakerIn = (st, id) => st.speakers && st.speakers.list.find((s) => s.player_id === id);
+const deviceIn = (st, addr) => st.devices && st.devices.find((d) => d.address === addr);
+
+function show() {
+  if (!serverState) return;
+  state = withExpected(serverState);
+  if (!editing && !sliding) render();
+}
+
+let refreshTimer = null;
+function refreshSoon() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(refresh, 250);
 }
 
 function renderAudio(d) {
@@ -411,7 +461,7 @@ function render() {
       const url = `api/bluetooth/devices/${encodeURIComponent(b.dataset.addr)}/${b.dataset.action}`;
       if (b.dataset.action === "connect") {
         pending.add(b.dataset.addr); render();
-        post(url).finally(() => { pending.delete(b.dataset.addr); render(); });
+        post(url).then(refresh).finally(() => { pending.delete(b.dataset.addr); render(); });
       } else {
         post(url);
       }
@@ -421,15 +471,14 @@ function render() {
     b.onclick = () => post(`api/sendspin/${encodeURIComponent(b.dataset.pair)}/pairing`);
   }
   for (const b of $("devices").querySelectorAll("button[data-speaker]")) {
-    b.onclick = async () => {
-      const key = `${b.dataset.addr}|${b.dataset.speaker}`;
-      pending.add(key); render();
-      try {
-        await post(`api/speakers/${encodeURIComponent(b.dataset.addr)}/toggle`,
-                   {player_id: b.dataset.speaker, on: b.dataset.on === "1"});
-      } finally {
-        pending.delete(key); render();
-      }
+    b.onclick = () => {
+      const addr = b.dataset.addr, id = b.dataset.speaker, on = b.dataset.on === "1";
+      const uri = deviceIn(state, addr)?.source_uri;
+      const isOn = (st) => speakerIn(st, id)?.playing_uri === uri;
+      expect(`speaker|${addr}|${id}`,
+        (st) => { const s = speakerIn(st, id); if (s) s.playing_uri = on ? uri : null; },
+        (st) => isOn(st) === on,
+        post(`api/speakers/${encodeURIComponent(addr)}/toggle`, {player_id: id, on}));
     };
   }
   for (const b of $("devices").querySelectorAll("button[data-move]")) {
@@ -438,6 +487,7 @@ function render() {
       pending.add(key); render();
       try {
         await post(`api/speakers/${encodeURIComponent(b.dataset.addr)}/move`, {player_id: b.dataset.move});
+        await refresh();
       } finally {
         pending.delete(key); render();
       }
@@ -449,17 +499,38 @@ function render() {
   for (const input of $("devices").querySelectorAll("input[data-vol]")) {
     input.onpointerdown = () => { sliding = true; };
     input.oninput = () => { input.nextElementSibling.textContent = input.value; };
-    input.onchange = async () => {
+    input.onchange = () => {
       sliding = false;
-      await post("api/speakers/volume", {player_id: input.dataset.vol, volume: Number(input.value)});
+      const id = input.dataset.vol, volume = Number(input.value);
+      expect(`volume|${id}`,
+        (st) => { const s = speakerIn(st, id); if (s) s.volume = volume; },
+        (st) => speakerIn(st, id)?.volume === volume,
+        post("api/speakers/volume", {player_id: id, volume}));
     };
   }
   for (const b of $("devices").querySelectorAll("button[data-hide]")) {
-    b.onclick = () => post(`api/speakers/${encodeURIComponent(b.dataset.addr)}/hidden`,
-                           {player_id: b.dataset.hide, hidden: b.dataset.hidden === "1"});
+    b.onclick = () => {
+      const addr = b.dataset.addr, id = b.dataset.hide, hidden = b.dataset.hidden === "1";
+      const isHidden = (st) => (deviceIn(st, addr)?.hidden_speakers || []).includes(id);
+      expect(`hidden|${addr}|${id}`,
+        (st) => {
+          const d = deviceIn(st, addr);
+          if (!d) return;
+          const rest = (d.hidden_speakers || []).filter((x) => x !== id);
+          d.hidden_speakers = hidden ? [...rest, id] : rest;
+        },
+        (st) => isHidden(st) === hidden,
+        post(`api/speakers/${encodeURIComponent(addr)}/hidden`, {player_id: id, hidden}));
+    };
   }
   for (const b of $("devices").querySelectorAll("button[data-mute]")) {
-    b.onclick = () => post("api/speakers/volume", {player_id: b.dataset.mute, muted: b.dataset.muted === "1"});
+    b.onclick = () => {
+      const id = b.dataset.mute, muted = b.dataset.muted === "1";
+      expect(`mute|${id}`,
+        (st) => { const s = speakerIn(st, id); if (s) s.muted = muted; },
+        (st) => Boolean(speakerIn(st, id)?.muted) === muted,
+        post("api/speakers/volume", {player_id: id, muted}));
+    };
   }
   for (const b of $("devices").querySelectorAll("button[data-rename]")) {
     b.onclick = () => {
@@ -487,9 +558,9 @@ function render() {
 async function refresh() {
   try {
     const res = await fetch("api/state");
-    state = await res.json();
+    serverState = await res.json();
     if (offline) { offline = false; hideToast(); }
-    if (!editing && !sliding) render();
+    show();
   } catch (e) {
     offline = true;
     toast("Lost connection to the receiver.", 0);
