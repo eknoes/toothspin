@@ -305,11 +305,15 @@ class SendspinSource:
     def open_pairing_window(self) -> None:
         self.client.open_pairing_window()
 
+    async def paired_with(self, server_id: str) -> bool:
+        assert self._store is not None
+        return await self._store.record_by_server_id(server_id) is not None
+
     async def accept_pairing(self, pairing: PairingPsk) -> None:
         """Pair with the next server that presents this pre-shared key.
 
-        The server side gets the same key: no PIN, for servers that are
-        already trusted (Music Assistant via its API).
+        The server side stages the same key: no PIN, for servers that are
+        already trusted (ToothSpin's own, or Music Assistant via its API).
         """
         assert self._store is not None
         await self._store.set_pairing_psk(pairing)

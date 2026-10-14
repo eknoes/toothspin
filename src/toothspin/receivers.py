@@ -1,4 +1,5 @@
-"""One Sendspin source per paired phone, so each is its own input in Music Assistant.
+"""One Sendspin source per paired phone, so each is its own input in Music Assistant
+(or in ToothSpin's own Sendspin server, see ``server.py``).
 
 Each phone gets its own Sendspin identity and pairing store, so it's paired
 with Music Assistant once, separately. Only removing the phone in the web
@@ -14,10 +15,10 @@ import json
 import logging
 import shutil
 from collections.abc import Awaitable, Callable, Coroutine
-from importlib.metadata import version
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
+from dataclasses import dataclass
+from importlib.metadata import version
+from pathlib import Path
 
 from aiosendspin.models.core import DeviceInfo
 from aiosendspin.models.types import AudioCodec
@@ -46,6 +47,7 @@ class Receivers:
         codec: AudioCodec,
         name_format: str,
         manufacturer: str,
+        prepare_source: Callable[[SendspinSource], Awaitable[None]] | None = None,
         alongside: Callable[[SendspinSource], Coroutine[Any, Any, None]] | None = None,
         pin_pairing: bool = True,
         on_forget: Callable[[str], Awaitable[None]] | None = None,
@@ -55,6 +57,8 @@ class Receivers:
         self._url = url
         self._codec = codec
         self._name_format = name_format
+        # E.g. pairing the source with ToothSpin's own server before it connects.
+        self._prepare_source = prepare_source
         # E.g. pairing it with Music Assistant through its API, while it runs.
         self._alongside = alongside
         self._pin_pairing = pin_pairing
@@ -168,6 +172,8 @@ class Receivers:
             pin_pairing=self._pin_pairing,
         )
         await source.setup()
+        if self._prepare_source is not None:
+            await self._prepare_source(source)
         capture = Capture(address, source, source.client.now_us)
         extra = self._alongside(source) if self._alongside else None
         task = asyncio.create_task(_run(source, capture, extra), name=f"receiver {address}")

@@ -10,6 +10,7 @@ import re
 import signal
 import socket
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from aiohttp import web
 from aiosendspin.models.types import AudioCodec
@@ -19,10 +20,14 @@ from dbus_fast.aio import MessageBus
 from . import ha, ma_pairing
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
+from .backend import PlayerBackend
 from .ma import MusicAssistant
 from .receivers import Receivers
 from .volume_sync import DEFAULT_START_VOLUME, VolumeSync
 from .web import create_app
+
+if TYPE_CHECKING:
+    from .server import ToothSpinServer
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +44,8 @@ def _parse_args() -> argparse.Namespace:
         help="Name of each phone's input in Music Assistant; {device} is the phone's name",
     )
     parser.add_argument(
-        "--bt-name", default=env("BT_NAME", "Music Assistant"),
-        help="Bluetooth name phones see",
+        "--bt-name", default=env("BT_NAME"),
+        help="Bluetooth name phones see (default: Music Assistant, or ToothSpin standalone)",
     )
     parser.add_argument(
         "--manufacturer", default=env("SENDSPIN_MANUFACTURER", socket.gethostname()),
@@ -57,6 +62,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--lan-port", type=int, default=int(env("LAN_PORT")) if env("LAN_PORT") else None,
         help="As a Home Assistant App: also serve the web UI on this port to the LAN",
+    )
+    parser.add_argument(
+        "--mode", choices=["music-assistant", "standalone"],
+        default=env("MODE", "music-assistant"),
+        help="Feed Music Assistant, or run ToothSpin's own Sendspin server for Sendspin speakers",
+    )
+    parser.add_argument(
+        "--server-port", type=int, default=int(env("SERVER_PORT", "8927")),
+        help="Standalone mode: port of ToothSpin's Sendspin server",
     )
     parser.add_argument(
         "--start-volume", type=int, default=int(env("START_VOLUME", str(DEFAULT_START_VOLUME))),
@@ -92,11 +106,25 @@ def _parse_args() -> argparse.Namespace:
     if args.bt_pin is not None and not re.fullmatch(r"\d{6,16}", args.bt_pin):
         # Legacy PIN pairing has no retry limit: short PINs can be guessed.
         raise SystemExit("BT_PIN must be 6 to 16 digits")
+    if not args.bt_name:
+        args.bt_name = "ToothSpin" if args.mode == "standalone" else "Music Assistant"
     return args
 
 
 def _flag(value: str) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
+
+
+async def _start_server(args: argparse.Namespace) -> ToothSpinServer:
+    try:
+        from .server import ToothSpinServer
+    except ImportError as err:
+        raise SystemExit(
+            f"Standalone mode needs the server image (the -server tag): {err}"
+        ) from err
+    server = ToothSpinServer(args.data_dir, "ToothSpin", args.server_port)
+    await server.start()
+    return server
 
 
 async def _run(args: argparse.Namespace) -> None:
@@ -115,26 +143,40 @@ async def _run(args: argparse.Namespace) -> None:
         bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change,
         allow_phone_connect=args.allow_phone_connect, pin=args.bt_pin or None,
     )
-    # Without MA_URL the API is found via mDNS, so in HA only the token is needed.
-    ma = MusicAssistant(args.ma_url, args.ma_token) if args.ma_token else None
-    if ma is None:
-        logger.info("MA_TOKEN not set; speaker control and automatic pairing disabled")
-    receivers = Receivers(
-        bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name,
-        args.manufacturer,
-        # With API access, ToothSpin pairs each input with MA itself.
-        alongside=(lambda source: ma_pairing.keep_paired(ma, source)) if ma else None,
-        pin_pairing=ma is None,
-        on_forget=(lambda client_id: ma_pairing.remove(ma, client_id)) if ma else None,
-    )
+    backend: PlayerBackend | None
+    if args.mode == "standalone":
+        # Our own Sendspin server: the phones' sources connect to it, paired
+        # automatically, and it plays them on Sendspin speakers.
+        server = await _start_server(args)
+        backend = server
+        receivers = Receivers(
+            bluetooth, args.data_dir, server.url, AudioCodec(args.codec), args.name,
+            args.manufacturer, prepare_source=server.pair_local, pin_pairing=False,
+            on_forget=server.forget,
+        )
+    else:
+        # Without MA_URL the API is found via mDNS, so in HA only the token is needed.
+        ma = MusicAssistant(args.ma_url, args.ma_token) if args.ma_token else None
+        backend = ma
+        if ma is None:
+            logger.info("MA_TOKEN not set; speaker control and automatic pairing disabled")
+        receivers = Receivers(
+            bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name,
+            args.manufacturer,
+            # With API access, ToothSpin pairs each input with MA itself.
+            alongside=(lambda source: ma_pairing.keep_paired(ma, source)) if ma else None,
+            pin_pairing=ma is None,
+            on_forget=(lambda client_id: ma_pairing.remove(ma, client_id)) if ma else None,
+        )
     await bluetooth.start()
     await receivers.sync()
 
     ingress_port = await ha.ingress_port() if ha.running_as_app() else None
     runner = web.AppRunner(
         create_app(
-            bluetooth, receivers, args.pairing_seconds, ma, ingress_port=ingress_port,
-            start_volume=args.start_volume, auto_pairing=ma is not None,
+            bluetooth, receivers, args.pairing_seconds, backend, ingress_port=ingress_port,
+            start_volume=args.start_volume, mode=args.mode,
+            auto_pairing=args.mode == "music-assistant" and backend is not None,
         )
     )
     await runner.setup()
@@ -158,13 +200,16 @@ async def _run(args: argparse.Namespace) -> None:
     ]
     if audio:
         tasks.append(asyncio.create_task(audio.exited.wait()))
-    ma_task = asyncio.create_task(ma.run()) if ma else None
-    if ma:
-        volume_sync = VolumeSync(bluetooth, receivers, ma, args.start_volume)
+    backend_task = asyncio.create_task(backend.run()) if backend else None
+    if backend:
+        volume_sync = VolumeSync(bluetooth, receivers, backend, args.start_volume)
         tasks.append(asyncio.create_task(volume_sync.run()))
-    if ma_task:
+    if backend_task and args.mode == "standalone":
+        # Without its own server, ToothSpin has nothing to play on.
+        tasks.append(backend_task)
+    elif backend_task:
         # Speaker control is optional: log a crash instead of taking the service down.
-        ma_task.add_done_callback(
+        backend_task.add_done_callback(
             lambda t: t.cancelled() or t.exception() is None
             or logger.error("Music Assistant API client crashed", exc_info=t.exception())
         )
@@ -174,15 +219,17 @@ async def _run(args: argparse.Namespace) -> None:
             logger.info("Stopping")
         else:
             raise SystemExit(
-                "Bluetooth stack lost, PipeWire exited or a receiver failed; exiting to restart"
+                "Bluetooth stack lost, PipeWire or the Sendspin server exited, or a receiver "
+                "failed; exiting to restart"
             )
     finally:
         for task in tasks:
             task.cancel()
-        if ma_task:
-            ma_task.cancel()
-            await asyncio.gather(ma_task, return_exceptions=True)
+        # Sources say goodbye before our own server (if any) goes away.
         await receivers.close()
+        if backend_task:
+            backend_task.cancel()
+            await asyncio.gather(backend_task, return_exceptions=True)
         await runner.cleanup()
         bus.disconnect()
         if audio:

@@ -124,7 +124,7 @@
     <img src="static/icon.svg" alt="" width="44" height="44">
     <div>
       <h1>ToothSpin</h1>
-      <div class="muted tagline">Bluetooth audio input for Music Assistant</div>
+      <div class="muted tagline" id="tagline">Bluetooth audio input for Music Assistant</div>
     </div>
   </header>
 
@@ -191,13 +191,20 @@ function renderAudio(d) {
     : "";
   return `${track}<div><span class="dot ${ss && ss.signal ? "ok" : ""}"></span>
       ${ss && ss.signal ? "Playing" : "Silent"} · ${esc(d.audio.codec || "Bluetooth")} ·
-      ${!ss || !ss.requested ? "not playing in Music Assistant"
-        : ss.streaming ? "streaming to Music Assistant" : "starting stream…"}</div>`;
+      ${!ss || !ss.requested ? (standalone() ? "not on a speaker" : "not playing in Music Assistant")
+        : ss.streaming ? (standalone() ? "streaming to speakers" : "streaming to Music Assistant")
+        : "starting stream…"}</div>`;
 }
+
+// Standalone: ToothSpin's own Sendspin server instead of Music Assistant.
+const standalone = () => state.mode === "standalone";
 
 function renderSendspin(d) {
   const ss = d.sendspin;
   if (!ss) return "";
+  // ToothSpin's own server pairs its inputs itself; only show trouble.
+  if (standalone()) return ss.connected && ss.paired ? ""
+    : `<div class="muted"><span class="dot"></span>Connecting to ToothSpin's Sendspin server…</div>`;
   let html;
   if (!ss.connected) {
     html = `<div class="muted"><span class="dot"></span>Music Assistant: not connected
@@ -227,7 +234,8 @@ function renderSendspin(d) {
 function renderSpeakers(d) {
   const sp = state.speakers;
   if (!sp || !d.sendspin || !d.sendspin.paired) return "";
-  if (!sp.connected) return `<div class="label">Speakers</div><div class="muted">Music Assistant API not reachable</div>`;
+  if (!sp.connected) return `<div class="label">Speakers</div><div class="muted">${standalone()
+    ? "ToothSpin's Sendspin server isn't running" : "Music Assistant API not reachable"}</div>`;
   const owner = {};
   for (const other of state.devices) if (other.source_uri) owner[other.source_uri] = other.name;
   const selected = sp.list.filter((s) => s.playing_uri === d.source_uri);
@@ -266,7 +274,7 @@ function renderSpeakers(d) {
           title="${isHidden ? "Show this speaker again" : "Hide this speaker for this phone"}">${isHidden ? ICON_EYE_OFF : ICON_EYE}</button>
       </div>`;
   }).join("");
-  return `<div class="label">Speakers</div><div class="spks">${rows || '<span class="muted">No speakers available</span>'}</div>`;
+  return `<div class="label">Speakers</div><div class="spks">${rows || (standalone() ? '<span class="muted">No Sendspin speakers found on the network yet</span>' : '<span class="muted">No speakers available</span>')}</div>`;
 }
 
 const ICON_STAR = (on) => `<svg viewBox="0 0 24 24" fill="${on ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>`;
@@ -280,11 +288,11 @@ function renderTitle(d) {
   const title = ss ? ss.name : d.name;
   const head = editing === d.address
     ? `<div class="row"><input id="name-input" class="name-input" value="${esc(title)}" maxlength="64"
-         aria-label="Name in Music Assistant">
+         aria-label="${standalone() ? "Name" : "Name in Music Assistant"}">
          <button class="primary" data-save="${esc(d.address)}">Save</button>
          <button data-cancel="1">Cancel</button></div>`
     : `<div class="title"><span class="dot ${d.connected ? "ok" : ""}"></span><b>${esc(title)}</b>
-         ${ss ? `<button class="icon" data-rename="${esc(d.address)}" title="Rename in Music Assistant"
+         ${ss ? `<button class="icon" data-rename="${esc(d.address)}" title="${standalone() ? "Rename" : "Rename in Music Assistant"}"
            aria-label="Rename">${ICON_PENCIL}</button>` : ""}
          <button class="icon star ${myPhone === d.address ? "on" : ""}" data-mine="${esc(d.address)}"
            title="${myPhone === d.address ? "This is my phone" : "Mark as my phone (shown first)"}"
@@ -295,6 +303,8 @@ function renderTitle(d) {
 function render() {
   const bt = state.bluetooth;
   $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
+  $("tagline").textContent = standalone()
+    ? "Bluetooth audio for Sendspin speakers" : "Bluetooth audio input for Music Assistant";
 
   const pairing = bt.pairing_remaining !== null;
   $("bt-pairing-text").innerHTML = pairing
