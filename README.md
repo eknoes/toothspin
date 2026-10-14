@@ -4,7 +4,7 @@
 
 **Stream any phone over Bluetooth into Music Assistant.**
 
-I fell for multi-room audio built from open-source software and hardware:
+I fell for multi-room audio built from open-source [software](https://www.music-assistant.io/) and [hardware](https://github.com/sonocotta/esparagus-media-center):
 every room in sync, nothing in the cloud. My household was less impressed.
 Their review: *"Nice. Where's the Bluetooth?"* Then they paired their phones
 with whichever speaker was closest and left my carefully synchronised setup
@@ -39,7 +39,7 @@ someone left loud, the speaker starts at 20% instead (both configurable).
 > wheel: the AI got steered a lot, and every line of code was reviewed by
 > me. It runs in exactly one home so far, but that home is a demanding test
 > lab: several phones, a household that switches rooms mid-song, and
-> reviewers who report regressions at full volume, without filing an issue.
+> users who report bugs without any technical details directly at the maintainer, without filing an issue.
 > Expect rough edges; bug reports (any volume) are welcome.
 
 **You need:** Music Assistant **2.10.6 or newer** and a USB Bluetooth dongle
@@ -47,6 +47,19 @@ just for ToothSpin. How it's built:
 [technical overview](https://eknoes.github.io/toothspin/overview.html).
 
 ## Install
+
+Pick whatever fits your setup:
+
+- **A dedicated Fedora CoreOS machine** is how I run it: a small VM with its
+  own USB Bluetooth dongle passed through. One config file sets up
+  everything on first boot. A Raspberry Pi 4 works too, since Fedora
+  CoreOS [supports it](https://docs.fedoraproject.org/en-US/fedora-coreos/provisioning-raspberry-pi4/)
+  (the Pi 5 isn't supported yet).
+- **A Home Assistant App**, if you have a second Bluetooth dongle: Home
+  Assistant keeps its own adapter, ToothSpin gets the other one.
+- **A container on your own Linux machine** (Docker or Podman) also works,
+  but you install and configure the host side yourself: BlueZ, and no other
+  Bluetooth audio stack.
 
 ### As a Home Assistant App
 
@@ -149,6 +162,21 @@ it goes quiet.
 
 **Remove** on a phone's card also forgets its Music Assistant pairing;
 remove the matching device in Music Assistant too.
+
+## Design decisions
+
+**Why do connections have to be started from ToothSpin?** Phones reconnect
+to known Bluetooth devices on their own, e.g. right after being switched on
+or when you come home. With ToothSpin that could start whatever the phone
+plays on every speaker in the house, by accident. So a phone only connects
+when someone presses **Connect**. If you'd rather have the usual Bluetooth
+behaviour, set `ALLOW_PHONE_CONNECT=true`.
+
+**Why pair manually, instead of a "free for all"?** To stay in control of
+who plays on your speakers. Someone walking past your home shouldn't be able
+to connect to your living room speaker. Phones can only pair while you've
+opened the pairing window in the web UI, and each one needs a one-time
+pairing with Music Assistant before it can play anywhere.
 
 ## More
 
