@@ -1,5 +1,5 @@
 {
-  "bluetooth": {"name": "Music Assistant", "address": "00:1A:7D:DA:71:13", "pairing_remaining": null},
+  "bluetooth": {"name": "ToothSpin", "address": "00:1A:7D:DA:71:13", "pairing_remaining": null},
   "devices": [
     {
       "address": "AA:BB:CC:00:00:01", "name": "Pixel 9", "paired": true, "trusted": false, "connected": true,

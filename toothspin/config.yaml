@@ -19,7 +19,7 @@ ingress_port: 0
 panel_icon: mdi:bluetooth-audio
 panel_title: ToothSpin
 options:
-  bluetooth_name: Music Assistant
+  bluetooth_name: ToothSpin
   input_name: "{device} (Bluetooth)"
   adapter: hci0
   start_volume: 100

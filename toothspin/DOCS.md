@@ -35,7 +35,7 @@ Each phone is paired twice, once over Bluetooth and once with Music
 Assistant.
 
 **Add a phone:** press **Add phone**. The dongle is visible for two minutes;
-on the phone, connect to the **Bluetooth name** (default "Music Assistant").
+on the phone, connect to the **Bluetooth name** (default "ToothSpin").
 Pairing closes again once a phone has paired.
 
 **Pair with Music Assistant:** each phone becomes its own input, e.g.
@@ -72,7 +72,7 @@ instead: select a player, open **Browse**, pick the phone's input and press
 
 | Option | Description |
 |---|---|
-| Bluetooth name | The name phones see. Default: `Music Assistant`. |
+| Bluetooth name | The name phones see. Default: `ToothSpin`. |
 | Input name in Music Assistant | Default name for each phone's input; `{device}` is the phone's name. Each input can be renamed in the app. |
 | Bluetooth adapter | The dongle phones connect to, e.g. `hci0` or `hci1`. |
 | Music Assistant token | Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |

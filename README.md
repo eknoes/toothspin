@@ -120,7 +120,7 @@ are optional:
 | `MA_TOKEN` | – | long-lived Music Assistant token (your profile → **Tokens**); enables choosing speakers in the web UI and pairing phones with Music Assistant automatically |
 | `MA_URL` | discovered via mDNS | e.g. `http://192.168.178.91:8095` |
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
-| `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
+| `BT_NAME` | `ToothSpin` | Bluetooth name phones see |
 | `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN instead of only during the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
 | `BT_ADAPTER` | `hci0` | the dongle |
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
@@ -136,7 +136,7 @@ are optional:
 
 **Add a phone:** press **Add phone** in the web UI; the dongle is visible
 for two minutes. On the phone, connect to the Bluetooth name (default
-"Music Assistant"). Outside that window, pairing is refused, unless you set
+"ToothSpin"). Outside that window, pairing is refused, unless you set
 a `BT_PIN`: then phones can pair any time by entering it.
 
 **Pair it with Music Assistant:** the phone now appears in Music Assistant

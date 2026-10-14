@@ -39,7 +39,7 @@ def _parse_args() -> argparse.Namespace:
         help="Name of each phone's input in Music Assistant; {device} is the phone's name",
     )
     parser.add_argument(
-        "--bt-name", default=env("BT_NAME", "Music Assistant"),
+        "--bt-name", default=env("BT_NAME", "ToothSpin"),
         help="Bluetooth name phones see",
     )
     parser.add_argument(
