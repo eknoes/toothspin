@@ -118,9 +118,17 @@ async def _scenario(tmp_path: Path) -> None:
                 received.extend(chunk)
 
         drain_task = asyncio.create_task(drain(started[0].handle))
+        # The phone isn't playing yet: silence keeps the server's stream alive
+        # (Music Assistant gives up on an input that stays mute for 5 s).
+        await _until(lambda: len(received) >= 4 * 1920)
+        assert not any(received)
         sent = await _push(source, fmt, 25, 1234)
-        await _until(lambda: len(received) >= len(sent))
-        assert bytes(received[: len(sent)]) == sent
+        # Then the phone's audio follows and the silence stops. Where the
+        # phone's first chunk overlaps the last silent one, the overlap is
+        # trimmed rather than played twice: at most one chunk.
+        await _until(lambda: len(bytes(received).lstrip(b"\0")) >= len(sent) - 3840)
+        audio = bytes(received).lstrip(b"\0")
+        assert audio == sent[len(sent) - len(audio):]
 
         # A codec renegotiation on the phone (new rate) restarts the stream.
         new_fmt = PcmFormat(sample_rate=44100, channels=2)
