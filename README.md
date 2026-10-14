@@ -51,14 +51,24 @@ docker run -d --name toothspin --restart unless-stopped \
   --network host \
   -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
   -v toothspin-data:/data \
-  --security-opt label=disable \
+  --cap-drop ALL --security-opt no-new-privileges \
   -e MA_URL=http://<music-assistant>:8095 -e MA_TOKEN=<token> \
   toothspin
 ```
 
 `--network host` is for finding Music Assistant via mDNS and the web UI on
-:8080; `label=disable` only matters on SELinux hosts. Rootless Podman also
-needs `--userns keep-id`, so D-Bus sees your own uid.
+:8080. The container needs no capabilities. Rootless Podman also needs
+`--userns keep-id`, so D-Bus sees your own uid.
+
+On SELinux hosts (Fedora, RHEL, CoreOS), containers may not use the host's
+D-Bus. [deploy/selinux/toothspin.cil](deploy/selinux/toothspin.cil) adds a
+container type that may, but is otherwise confined like any container. Load
+it once and run with `--security-opt label=type:toothspin.process`:
+
+```bash
+sudo semodule -i deploy/selinux/toothspin.cil \
+  /usr/share/udica/templates/{base_container,net_container}.cil
+```
 
 ### The CoreOS VM
 

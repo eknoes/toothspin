@@ -6,6 +6,12 @@ repo="$(cd "$(dirname "$0")/../.." && pwd)"
 
 podman build -t localhost/toothspin:latest "$repo"
 
+# The container's SELinux type, which may use the host's D-Bus.
+if command -v semodule >/dev/null && selinuxenabled; then
+    sudo semodule -i "$repo/deploy/selinux/toothspin.cil" \
+        /usr/share/udica/templates/{base_container,net_container}.cil
+fi
+
 # Keep core's user services running without an SSH session.
 loginctl enable-linger "$USER"
 install -D -m 0644 "$repo/deploy/service/toothspin.container" \

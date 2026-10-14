@@ -18,9 +18,12 @@ Network=host
 # the uid the client claims with the socket's peer credentials.
 UserNS=keep-id
 # Talk to bluetoothd on the host bus; the image brings its own PipeWire.
-# SELinux would otherwise deny container_t access to the bus socket.
 Volume=/run/dbus/system_bus_socket:/run/dbus/system_bus_socket
-SecurityLabelDisable=true
+# A container type that may also use the system bus (deploy/selinux).
+SecurityLabelType=toothspin.process
+# Needs no capabilities: it only talks D-Bus and opens unprivileged ports.
+DropCapability=all
+NoNewPrivileges=true
 Volume=toothspin-data:/data
 # Optional overrides (SENDSPIN_URL, SENDSPIN_NAME, BT_NAME, ...).
 EnvironmentFile=%h/.config/toothspin.env
