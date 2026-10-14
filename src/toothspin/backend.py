@@ -1,8 +1,9 @@
 """The speaker backend: who plays the phones' inputs on which speakers.
 
-Speaker toggles, grouping, volume and the phone volume sync only need a small
-slice of Music Assistant's player API; ``ma.MusicAssistant`` provides it, and
-another backend offering the same slice can stand in for it.
+ToothSpin either uses Music Assistant (``ma.MusicAssistant``) or runs its own
+Sendspin server (``server.ToothSpinServer``). Both offer the same small slice
+of Music Assistant's player API, so speaker toggles, grouping, volume and the
+phone volume sync work the same on either.
 """
 
 from __future__ import annotations

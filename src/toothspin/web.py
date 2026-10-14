@@ -36,6 +36,7 @@ def create_app(
     backend: PlayerBackend | None = None,
     ingress_port: int | None = None,
     start_volume: int = 100,
+    mode: str = "music-assistant",
     auto_pairing: bool = False,
     status: setup_check.Status | None = None,
     take_bluetooth_audio: Callable[[], Awaitable[None]] | None = None,
@@ -67,6 +68,7 @@ def create_app(
         return web.json_response(
             {
                 "about": build_info(),
+                "mode": mode,
                 "auto_pairing": auto_pairing,
                 "setup": _setup_state(status, backend, bluetooth) if status else None,
                 "bluetooth": {
