@@ -196,6 +196,8 @@ class Status:
     ma_token: bool
     app_slug: str = ""
     """The App's slug, for links to its pages in Home Assistant."""
+    ma_version: str | None = None
+    """Music Assistant's version when there's no API connection to tell it."""
     adapter: Adapter | None = None
     problem: Problem | None = None
     """Blocks ToothSpin from starting: the web UI shows only this."""

@@ -174,3 +174,13 @@ def test_setup_page_explains_the_blocking_problem_and_missing_token() -> None:
     token = next(t for t in setup["todo"] if "token" in t["title"])
     assert token["kind"] == "todo"
     assert any("(ha:app-config)" in step for step in token["steps"])
+
+
+def test_too_old_music_assistant_is_on_the_list() -> None:
+    from toothspin.web import _setup_state
+
+    status = setup_check.Status(app=True, ma_token=False, ma_version="2.10.1")
+    todo = _setup_state(status, None, None)["todo"]
+    assert todo[0]["title"] == "Update Music Assistant" and "2.10.1" in todo[0]["text"]
+    status.ma_version = "2.11.0b5"
+    assert all(t["title"] != "Update Music Assistant" for t in _setup_state(status, None, None)["todo"])

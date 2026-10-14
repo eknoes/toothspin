@@ -21,7 +21,7 @@ from dbus_fast.errors import DBusError
 from . import ha, ma_pairing, setup_check
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
-from .ma import MusicAssistant
+from .ma import MusicAssistant, check_version, probe_version
 from .receivers import Receivers
 from .volume_sync import DEFAULT_START_VOLUME, VolumeSync
 from .web import create_app, create_setup_app
@@ -109,6 +109,7 @@ FAQ_URL = "https://eknoes.github.io/toothspin/faq.html"
 # How often to look again while setup is blocked, and while running.
 RECHECK_S = 15.0
 WATCH_S = 60.0
+MA_VERSION_S = 1800.0
 
 
 class _Web:
@@ -214,6 +215,17 @@ async def _watch_adapter(
         await _report(status, result.problem, shown)
 
 
+async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None:
+    """Without a token: look up Music Assistant's version now and then (it may update)."""
+    while True:
+        version = await probe_version(url)
+        if version and version != status.ma_version:
+            status.ma_version = version
+            logger.info("Music Assistant %s", version)
+            check_version(version)
+        await asyncio.sleep(MA_VERSION_S)
+
+
 async def _run(args: argparse.Namespace) -> None:
     status = setup_check.Status(app=ha.running_as_app(), ma_token=bool(args.ma_token))
     ingress_port = None
@@ -283,6 +295,8 @@ async def _run(args: argparse.Namespace) -> None:
         asyncio.create_task(receivers.failed.wait()),
     ]
     watch = asyncio.create_task(_watch_adapter(bus, adapter.name, status, shown))
+    # With a token, the API connection reports Music Assistant's version.
+    version_watch = None if ma else asyncio.create_task(_watch_ma_version(args.ma_url, status))
     if audio:
         tasks.append(asyncio.create_task(audio.exited.wait()))
     ma_task = asyncio.create_task(ma.run()) if ma else None
@@ -310,6 +324,8 @@ async def _run(args: argparse.Namespace) -> None:
             ma_task.cancel()
             await asyncio.gather(ma_task, return_exceptions=True)
         watch.cancel()
+        if version_watch:
+            version_watch.cancel()
         await receivers.close()
         await site.close()
         bus.disconnect()

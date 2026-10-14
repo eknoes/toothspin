@@ -18,7 +18,7 @@ import aiohttp
 from aiohttp import web
 from dbus_fast.errors import DBusError
 
-from . import ha, setup_check, speakers
+from . import ha, ma, setup_check, speakers
 from .bluez import BluetoothManager
 from .ha import INGRESS_PROXY_IP
 from .backend import BackendError, PlayerBackend
@@ -296,6 +296,19 @@ def _setup_state(
     finished steps drop out, and once it's empty the web UI shows nothing.
     """
     todo: list[dict[str, Any]] = []
+    version = getattr(backend, "server_version", None) or status.ma_version
+    if ma.too_old(version):
+        todo.append({
+            "kind": "todo",
+            "title": "Update Music Assistant",
+            "text": f"This Music Assistant is version {version}. ToothSpin needs "
+            f"{'.'.join(map(str, ma.MIN_VERSION))} or newer (2.10.6 or newer recommended): "
+            "older versions can't play phones' audio or pair them.",
+            "steps": [
+                "Update Music Assistant. In Home Assistant: **Settings → Apps → Music "
+                "Assistant → Update**.",
+            ],
+        })
     if status.warning is not None:
         todo.append(_problem(status.warning) | {"kind": "todo"})
     if not status.ma_token:

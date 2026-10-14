@@ -10,6 +10,7 @@ import asyncio
 import contextlib
 import itertools
 import logging
+import re
 from typing import Any
 
 import aiohttp
@@ -19,6 +20,9 @@ from .backend import BackendError
 logger = logging.getLogger(__name__)
 
 POLL_S = 2.0
+# Sendspin inputs arrived in 2.10.0, but PCM input (our default) and token
+# pairing only work since 2.10.2. 2.10.6 is what ToothSpin is tested with.
+MIN_VERSION = (2, 10, 2)
 
 
 class MusicAssistantError(BackendError):
@@ -38,6 +42,8 @@ class MusicAssistant:
         # Why there's no connection, for the web UI: "not_found", "auth" or
         # "unreachable"; None while connected or still trying the first time.
         self.problem: str | None = None
+        # As Music Assistant reports it when connecting, e.g. "2.10.6".
+        self.server_version: str | None = None
 
     @property
     def connected(self) -> bool:
@@ -61,7 +67,9 @@ class MusicAssistant:
                 try:
                     async with self._session.ws_connect(self._url, heartbeat=30) as ws:
                         self._ws = ws
-                        await asyncio.wait_for(ws.receive_json(), 15)  # server info
+                        info = await asyncio.wait_for(ws.receive_json(), 15)
+                        self.server_version = info.get("server_version") or None
+                        check_version(self.server_version)
                         reader = asyncio.create_task(self._read(ws))
                         try:
                             try:
@@ -72,7 +80,10 @@ class MusicAssistant:
                             self.problem = None
                             self._connected.set()
                             backoff = 1.0
-                            logger.info("Connected to Music Assistant API at %s", self._url)
+                            logger.info(
+                                "Connected to Music Assistant %s API at %s",
+                                self.server_version or "(unknown version)", self._url,
+                            )
                             while not reader.done():
                                 await self.refresh()
                                 await asyncio.wait({reader}, timeout=POLL_S)
@@ -130,8 +141,53 @@ class MusicAssistant:
                 future.set_result(data.get("result"))
 
 
+def parse_version(version: str | None) -> tuple[int, int, int] | None:
+    """(major, minor, patch) of e.g. "2.10.6", "2.11.0b5" or "2.11.0.dev2026101403"."""
+    match = re.match(r"(\d+)\.(\d+)\.(\d+)", version or "")
+    return tuple(int(part) for part in match.groups()) if match else None  # type: ignore[return-value]
+
+
+def too_old(version: str | None) -> bool:
+    parsed = parse_version(version)
+    return parsed is not None and parsed < MIN_VERSION
+
+
+def check_version(version: str | None) -> None:
+    if too_old(version):
+        logger.error(
+            "Music Assistant %s is too old: ToothSpin needs %s or newer (2.10.6 or newer "
+            "recommended). Update Music Assistant.", version, ".".join(map(str, MIN_VERSION)),
+        )
+
+
+async def probe_version(url: str | None) -> str | None:
+    """Music Assistant's version without a token: its /info, or its mDNS announcement."""
+    if url is None:
+        found = await discover()
+        return found[1] if found else None
+    try:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(url.rstrip("/") + "/info", timeout=aiohttp.ClientTimeout(total=10)) as response,
+        ):
+            response.raise_for_status()
+            return (await response.json(content_type=None)).get("server_version") or None
+    except (aiohttp.ClientError, OSError, TimeoutError, ValueError):
+        return None
+
+
 async def discover_url(timeout: float = 3.0) -> str | None:
     """Music Assistant's base URL from its mDNS announcement (``_mass._tcp``)."""
+    found = await discover(timeout)
+    return found[0] if found else None
+
+
+async def discover(timeout: float = 3.0) -> tuple[str, str | None] | None:
+    """Music Assistant's base URL and version from its mDNS announcement (``_mass._tcp``).
+
+    The announcement carries the same server info as the API, so this works
+    without a token.
+    """
     from zeroconf import ServiceStateChange
     from zeroconf.asyncio import AsyncServiceBrowser, AsyncServiceInfo, AsyncZeroconf
 
@@ -150,10 +206,11 @@ async def discover_url(timeout: float = 3.0) -> str | None:
             info = AsyncServiceInfo(service_type, name)
             if not await info.async_request(azc.zeroconf, 3000):
                 continue
+            version = (info.properties.get(b"server_version") or b"").decode() or None
             base_url = (info.properties.get(b"base_url") or b"").decode()
             if base_url:
-                return base_url
+                return base_url, version
             addresses = info.parsed_addresses()
             if addresses and info.port:
-                return f"http://{addresses[0]}:{info.port}"
+                return f"http://{addresses[0]}:{info.port}", version
     return None
