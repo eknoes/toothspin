@@ -21,7 +21,7 @@ dependencies = [
 Homepage = "https://github.com/eknoes/toothspin"
 Source = "https://github.com/eknoes/toothspin"
 Issues = "https://github.com/eknoes/toothspin/issues"
-Changelog = "https://github.com/eknoes/toothspin/blob/main/toothspin/CHANGELOG.md"
+Changelog = "https://github.com/eknoes/toothspin/releases"
 
 [project.optional-dependencies]
 codecs = ["aiosendspin[source]==9.1.1"]

@@ -155,6 +155,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The commits since the previous release make up the notes.
+          fetch-depth: 0
       - name: Check the tag matches the package version
         run: |
           version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
@@ -163,6 +166,13 @@ jobs:
         with:
           name: sbom
           path: sbom
+      - name: Release notes from the commits (cliff.toml)
+        uses: orhun/git-cliff-action@v4.9.1
+        with:
+          config: cliff.toml
+          args: --latest --strip all
+        env:
+          OUTPUT: notes.md
       - name: Create the GitHub release with the SBOMs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -170,6 +180,10 @@ jobs:
           version=${GITHUB_REF_NAME#v}
           mv sbom/toothspin.spdx.json "toothspin-$version.spdx.json"
           mv sbom/toothspin.cdx.json "toothspin-$version.cdx.json"
-          gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag \
-            --notes "Image: \`ghcr.io/${{ github.repository_owner }}/toothspin:$version\`. SBOMs (SPDX, CycloneDX) are attached; the image in the registry also carries SBOM and provenance attestations." \
+          {
+            cat notes.md
+            echo
+            echo "Image: \`ghcr.io/${{ github.repository_owner }}/toothspin:$version\`. SBOMs (SPDX, CycloneDX) are attached; the image in the registry also carries SBOM and provenance attestations."
+          } > release.md
+          gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file release.md \
             "toothspin-$version.spdx.json" "toothspin-$version.cdx.json"

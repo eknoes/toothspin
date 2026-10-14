@@ -61,12 +61,14 @@ release:
 
 1. Bump `version` in `pyproject.toml` and in
    [toothspin/config.yaml](toothspin/config.yaml) (the image tag the App
-   installs; CI checks both match), add a
-   [changelog](toothspin/CHANGELOG.md) entry, and commit.
+   installs; CI checks both match), and commit.
 2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
 
 CI then publishes `ghcr.io/eknoes/toothspin:0.2.0` (plus `:0.2` and
-`:latest`) and creates a GitHub release with generated notes.
+`:latest`) and creates a GitHub release. Its notes are generated from the
+commits since the previous release ([cliff.toml](cliff.toml)): `feat`,
+`fix`, `perf`, `build` and `docs` commits, grouped by type, so write their
+subjects for users. Preview them with `git cliff --unreleased`.
 
 ## Vulnerabilities and SBOM
 
