@@ -62,6 +62,11 @@ def _parse_args() -> argparse.Namespace:
         help="The loudest a speaker starts at when a phone starts playing on it (0-100)",
     )
     parser.add_argument(
+        "--allow-phone-connect", action=argparse.BooleanOptionalAction,
+        default=_flag(env("ALLOW_PHONE_CONNECT", "")),
+        help="Accept connections phones start themselves (default: only from the web UI)",
+    )
+    parser.add_argument(
         "--pairing-seconds", type=float, default=float(env("BT_PAIRING_SECONDS", "120"))
     )
     parser.add_argument(
@@ -82,6 +87,10 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
+def _flag(value: str) -> bool:
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 async def _run(args: argparse.Namespace) -> None:
     audio = AudioStack() if args.bundled_pipewire else None
     if audio:
@@ -96,6 +105,7 @@ async def _run(args: argparse.Namespace) -> None:
     volume_sync: VolumeSync | None = None
     bluetooth = BluetoothManager(
         bus, args.adapter, alias=args.bt_name, on_change=on_bluetooth_change,
+        allow_phone_connect=args.allow_phone_connect,
     )
     receivers = Receivers(
         bluetooth, args.data_dir, args.url, AudioCodec(args.codec), args.name, args.manufacturer

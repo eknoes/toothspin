@@ -3,10 +3,11 @@
 Phones pair "Just Works" (no PIN) but only while the pairing window is open;
 the window closes once a device has paired.
 
-Connections are only ever started from here: paired phones stay *untrusted*,
-so BlueZ asks our agent before it accepts a phone's own profile connections,
-and the agent only allows them while the pairing window is open or after
-``connect_device()`` — until that connection ends.
+By default, connections are only ever started from here: paired phones stay
+*untrusted*, so BlueZ asks our agent before it accepts a phone's own profile
+connections, and the agent only allows them while the pairing window is open
+or after ``connect_device()`` — until that connection ends. With
+``allow_phone_connect``, phones may connect by themselves too.
 """
 
 # No ``from __future__ import annotations``: dbus-fast reads the agent's
@@ -74,11 +75,13 @@ class BluetoothManager:
         adapter: str = "hci0",
         alias: str | None = None,
         on_change: Callable[[], None] | None = None,
+        allow_phone_connect: bool = False,
     ) -> None:
         self._bus = bus
         self._adapter_path = f"/org/bluez/{adapter}"
         self._alias = alias
         self._on_change = on_change or (lambda: None)
+        self._allow_phone_connect = allow_phone_connect
         self._adapter: dict[str, Any] = {}
         self._devices: dict[str, dict[str, Any]] = {}
         # AVRCP players, keyed by object path (below their device's path).
@@ -223,7 +226,11 @@ class BluetoothManager:
         return device_path.startswith(self._adapter_path + "/")
 
     def connection_allowed(self, path: str) -> bool:
-        return path in self._connect_allowed or self.pairing_remaining is not None
+        return (
+            self._allow_phone_connect
+            or path in self._connect_allowed
+            or self.pairing_remaining is not None
+        )
 
     # --- actions ---
 

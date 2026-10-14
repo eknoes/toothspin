@@ -31,7 +31,7 @@ The phone's volume buttons control those speakers.
 By default, connections only start from ToothSpin, never from the phone:
 walking in the front door with your phone won't suddenly blast your
 playlist through the whole house. And when a phone starts on a speaker
-someone left loud, the speaker starts at 20% instead (configurable).
+someone left loud, the speaker starts at 20% instead (both configurable).
 
 > [!NOTE]
 > ToothSpin is in an early state. It was put together over a couple of
@@ -116,6 +116,7 @@ are optional:
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
 | `START_VOLUME` | `20` | the loudest a speaker starts at (0-100) when a phone starts playing on it; quieter speakers keep their volume, `100` always keeps it |
+| `ALLOW_PHONE_CONNECT` | `false` | `true` lets paired phones connect by themselves instead of only from the web UI |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
 | `LOG_LEVEL` | `INFO` | |

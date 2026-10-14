@@ -18,6 +18,12 @@ configuration:
       The loudest a speaker starts at (0-100) when a phone starts playing on
       it, so a speaker left loud doesn't blast. Quieter speakers keep their
       volume; 100 always keeps the speaker's volume.
+  allow_phone_connect:
+    name: Phones may connect by themselves
+    description: >-
+      Off: connections only start from the app, so a phone coming home
+      doesn't start playing through the house. On: paired phones may also
+      connect by themselves, like to any Bluetooth speaker.
   ma_token:
     name: Music Assistant token
     description: >-

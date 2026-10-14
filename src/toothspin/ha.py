@@ -28,6 +28,7 @@ OPTION_ENV = {
     "input_name": "SENDSPIN_NAME",
     "adapter": "BT_ADAPTER",
     "start_volume": "START_VOLUME",
+    "allow_phone_connect": "ALLOW_PHONE_CONNECT",
     "sendspin_url": "SENDSPIN_URL",
     "ma_url": "MA_URL",
     "ma_token": "MA_TOKEN",

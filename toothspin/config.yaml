@@ -23,12 +23,14 @@ options:
   input_name: "{device} (Bluetooth)"
   adapter: hci0
   start_volume: 20
+  allow_phone_connect: false
   log_level: info
 schema:
   bluetooth_name: str
   input_name: str
   adapter: match(^hci[0-9]+$)
   start_volume: int(0,100)
+  allow_phone_connect: bool
   ma_token: password?
   ma_url: url?
   sendspin_url: match(^wss?://.+)?
