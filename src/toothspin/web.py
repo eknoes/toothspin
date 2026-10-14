@@ -8,6 +8,7 @@ Supervisor's ingress proxy may reach.
 from __future__ import annotations
 
 import asyncio
+import itertools
 import logging
 from dataclasses import asdict
 from typing import Any
@@ -125,6 +126,8 @@ def create_app(
     # Quick clicks on several speakers arrive nearly at once; each plans from
     # the grouping the one before left, not all from the same old one.
     routing = asyncio.Lock()
+    tickets = itertools.count()
+    latest: dict[tuple[str, str], int] = {}
 
     async def post_speaker_toggle(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
@@ -132,13 +135,18 @@ def create_app(
             raise web.HTTPNotFound
         body = await request.json()
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
+        player_id = str(body["player_id"])
+        # Only the latest click on a speaker matters: one still waiting
+        # behind a slow request is skipped once a newer one arrives.
+        key = (uri, player_id)
+        ticket = latest[key] = next(tickets)
         try:
             async with routing:
-                await speakers.toggle(
-                    backend, uri, str(body["player_id"]), bool(body["on"]), start_volume
-                )
+                if latest[key] != ticket:
+                    return web.json_response({"ok": True, "superseded": True})
+                await speakers.toggle(backend, uri, player_id, bool(body["on"]), start_volume)
         except (BackendError, TimeoutError) as err:
-            return web.json_response({"ok": False, "error": str(err)}, status=502)
+            return _backend_error(err)
         return web.json_response({"ok": True})
 
     async def post_speaker_move(request: web.Request) -> web.Response:
@@ -151,7 +159,7 @@ def create_app(
             async with routing:
                 await speakers.move(backend, uri, str(body["player_id"]), start_volume)
         except (BackendError, TimeoutError) as err:
-            return web.json_response({"ok": False, "error": str(err)}, status=502)
+            return _backend_error(err)
         return web.json_response({"ok": True})
 
     async def post_speaker_hidden(request: web.Request) -> web.Response:
@@ -174,7 +182,7 @@ def create_app(
             else:
                 await volumes.set_volume(str(body["player_id"]), int(body["volume"]))
         except (BackendError, TimeoutError) as err:
-            return web.json_response({"ok": False, "error": str(err)}, status=502)
+            return _backend_error(err)
         return web.json_response({"ok": True})
 
     async def post_sendspin_pairing(request: web.Request) -> web.Response:
@@ -257,6 +265,15 @@ def _base_app(ingress_port: int | None) -> web.Application:
     app.router.add_static("/static/", str(static))
     app.router.add_get("/sw.js", get_sw)
     return app
+
+
+def _backend_error(err: Exception) -> web.Response:
+    # A timeout has no message of its own.
+    message = str(err) or (
+        "Music Assistant didn't answer in time. Try again in a moment."
+        if isinstance(err, TimeoutError) else type(err).__name__
+    )
+    return web.json_response({"ok": False, "error": message}, status=502)
 
 
 def _problem(problem: setup_check.Problem | None) -> dict[str, Any] | None:
