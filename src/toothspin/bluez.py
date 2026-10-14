@@ -34,6 +34,9 @@ BLUEZ = "org.bluez"
 ROUTING_CHECK_S = 15.0
 ROUTING_STUCK_S = 3.0
 ROUTING_POLL_S = 0.5
+# Pause between disconnecting and reconnecting such a phone, per attempt:
+# reconnected within a second or so, Android stays stuck the same way.
+ROUTING_RECONNECT_GAPS_S = (5.0, 10.0)
 ADAPTER = "org.bluez.Adapter1"
 DEVICE = "org.bluez.Device1"
 PLAYER = "org.bluez.MediaPlayer1"
@@ -284,7 +287,7 @@ class BluetoothManager:
         await dbus.call(self._bus, BLUEZ, self._adapter_path, ADAPTER, "RemoveDevice", "o", [path])
         logger.info("Removed Bluetooth device %s", address)
 
-    async def connect_device(self, address: str, *, check_routing: bool = True) -> None:
+    async def connect_device(self, address: str, *, routing_attempt: int = 0) -> None:
         """Connect a paired phone; its connections are accepted until it disconnects."""
         path = self._path_for(address)
         self._connect_allowed.add(path)
@@ -297,18 +300,21 @@ class BluetoothManager:
                 self._connect_allowed.discard(path)
             raise
         logger.info("Connected %s", self.device_name(path))
-        if check_routing:
-            task = asyncio.create_task(self._check_routing(address), name=f"routing {address}")
+        if routing_attempt < len(ROUTING_RECONNECT_GAPS_S):
+            task = asyncio.create_task(
+                self._check_routing(address, routing_attempt), name=f"routing {address}"
+            )
             self._routing_checks.add(task)
             task.add_done_callback(self._routing_checks.discard)
 
-    async def _check_routing(self, address: str) -> None:
-        """Reconnect once if the phone plays, but not to us.
+    async def _check_routing(self, address: str, attempt: int) -> None:
+        """Reconnect if the phone plays, but not to us.
 
         Right after a connection Android sometimes keeps playing on its own
         speaker: it reports "playing" over AVRCP, but never starts the A2DP
-        stream. A fresh connection makes it switch; only shortly after the
-        user pressed Connect, so a later choice of other headphones stands.
+        stream. A fresh connection, a few seconds later, makes it switch; only
+        shortly after the user pressed Connect, so a later choice of other
+        headphones stands, and at most twice.
         """
         loop = asyncio.get_running_loop()
         deadline = loop.time() + ROUTING_CHECK_S
@@ -327,12 +333,21 @@ class BluetoothManager:
                 break
         else:
             return
-        name = self.device_name(self._path_for(address))
-        logger.warning("%s plays, but not over Bluetooth; reconnecting it", name)
+        path = self._path_for(address)
+        name = self.device_name(path)
+        gap = ROUTING_RECONNECT_GAPS_S[attempt]
+        logger.warning(
+            "%s plays, but not over Bluetooth; reconnecting it in %.0fs", name, gap
+        )
         try:
             await self.disconnect_device(address)
-            await asyncio.sleep(1.0)
-            await self.connect_device(address, check_routing=False)
+            # Wait until it's really gone, then give the phone time to settle.
+            for _ in range(20):
+                if not self._devices.get(path, {}).get("Connected"):
+                    break
+                await asyncio.sleep(0.5)
+            await asyncio.sleep(gap)
+            await self.connect_device(address, routing_attempt=attempt + 1)
         except (DBusError, TimeoutError, KeyError) as err:
             logger.warning("Reconnecting %s failed: %s", name, err)
 

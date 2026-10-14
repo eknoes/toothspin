@@ -161,6 +161,7 @@ def test_reconnects_once_when_the_phone_plays_but_not_to_us(monkeypatch) -> None
     monkeypatch.setattr(bluez, "ROUTING_POLL_S", 0.01)
     monkeypatch.setattr(bluez, "ROUTING_STUCK_S", 0.05)
     monkeypatch.setattr(bluez, "ROUTING_CHECK_S", 0.5)
+    monkeypatch.setattr(bluez, "ROUTING_RECONNECT_GAPS_S", (0.01, 0.02))
     device = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
 
     async def scenario(transport_state: str, player_status: str) -> list[str]:
@@ -177,11 +178,15 @@ def test_reconnects_once_when_the_phone_plays_but_not_to_us(monkeypatch) -> None
         manager._transports[device + "/fd0"] = {"State": transport_state}
         manager._players[device + "/avrcp/player0"] = {"Status": player_status}
         await manager.connect_device("34:39:16:5D:41:B9")
-        await asyncio.gather(*manager._routing_checks)
+        while manager._routing_checks:
+            await asyncio.gather(*list(manager._routing_checks))
         return calls
 
-    # Playing, but the stream to us never starts: one reconnect, no more.
-    assert asyncio.run(scenario("idle", "playing")) == ["Connect", "Disconnect", "Connect"]
+    # Playing, but the stream to us never starts: two reconnects, then it
+    # gives up.
+    assert asyncio.run(scenario("idle", "playing")) == [
+        "Connect", "Disconnect", "Connect", "Disconnect", "Connect"
+    ]
     # Streaming to us, or simply paused: leave it alone.
     assert asyncio.run(scenario("active", "playing")) == ["Connect"]
     assert asyncio.run(scenario("idle", "paused")) == ["Connect"]
