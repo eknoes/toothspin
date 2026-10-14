@@ -56,3 +56,39 @@ def test_a_failed_flow_is_aborted() -> None:
     with pytest.raises(BackendError, match="rejected"):
         asyncio.run(pair(ma, source))  # type: ignore[arg-type]
     assert ma.calls[-1] == ("config/flows/abort", {"flow_id": "f2"})
+
+
+def _choice(step_id: str, key: str, values: list[str]) -> dict:
+    return {"flow_id": "f3", "type": "form", "step_id": step_id,
+            "entries": [{"key": key, "options": [{"value": v} for v in values]}]}
+
+
+def test_music_assistant_2_11_consent_step_chooses_pairing() -> None:
+    source = FakeSource()
+    ma = FakeMA([
+        _choice("approve_device_source", "connect_method", ["unpaired", "pair"]),
+        {"flow_id": "f3", "type": "form", "step_id": "enter_token"},
+        {"flow_id": "f3", "type": "finish"},
+    ])
+    asyncio.run(pair(ma, source))  # type: ignore[arg-type]
+    assert ma.calls[1] == ("config/flows/submit",
+                           {"flow_id": "f3", "values": {"connect_method": "pair"}})
+
+
+def test_music_assistant_2_11_input_step_pairs_the_input() -> None:
+    source = FakeSource()
+    ma = FakeMA([
+        _choice("source_input", "source_input_action", ["pair", "dismiss"]),
+        {"flow_id": "f3", "type": "form", "step_id": "enter_token"},
+        {"flow_id": "f3", "type": "finish"},
+    ])
+    asyncio.run(pair(ma, source))  # type: ignore[arg-type]
+    assert ma.calls[1][1]["values"] == {"source_input_action": "pair"}
+
+
+def test_never_settles_for_unpaired_when_pairing_isnt_offered() -> None:
+    source = FakeSource()
+    ma = FakeMA([_choice("approve_device", "connect_method", ["unpaired"]), None])
+    with pytest.raises(BackendError, match="doesn't offer to pair"):
+        asyncio.run(pair(ma, source))  # type: ignore[arg-type]
+    assert ma.calls[-1] == ("config/flows/abort", {"flow_id": "f3"})

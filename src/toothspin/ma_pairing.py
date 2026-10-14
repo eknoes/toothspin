@@ -91,6 +91,14 @@ async def pair(ma: MusicAssistant, source: SendspinSource) -> None:
             if kind == "progress":
                 await asyncio.sleep(1.0)
                 step = await ma.call("config/flows/get", flow_id=step["flow_id"])
+            elif kind == "form" and step_id in ("approve_device", "approve_device_source"):
+                # Music Assistant 2.11 first asks to allow the device unpaired or
+                # pair it; unpaired would leave its audio input off.
+                step = await _choose(ma, step, "connect_method", "pair")
+            elif kind == "form" and step_id == "source_input":
+                # 2.11, for a device that already plays: pair its audio input or
+                # decline it. It's the input we're here for.
+                step = await _choose(ma, step, "source_input_action", "pair")
             elif kind == "form" and step_id == "select_method":
                 step = await ma.call(
                     "config/flows/submit", flow_id=step["flow_id"],
@@ -111,3 +119,21 @@ async def pair(ma: MusicAssistant, source: SendspinSource) -> None:
             except (BackendError, TimeoutError):
                 pass
         raise
+
+
+async def _choose(ma: MusicAssistant, step: dict[str, Any], key: str, value: str) -> dict[str, Any]:
+    """Answer a choice in the setup flow, if Music Assistant offers ``value``."""
+    logger.debug("Setup step %s: %s", step.get("step_id"), step)
+    if value not in _options(step, key):
+        raise BackendError(
+            f"Music Assistant doesn't offer to {value} at step {step.get('step_id')}"
+        )
+    return await ma.call("config/flows/submit", flow_id=step["flow_id"], values={key: value})
+
+
+def _options(step: dict[str, Any], key: str) -> set[str]:
+    """The values a form step offers for ``key``."""
+    for entry in step.get("entries") or []:
+        if entry.get("key") == key:
+            return {str(o.get("value")) for o in entry.get("options") or []}
+    return set()
