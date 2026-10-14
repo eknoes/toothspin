@@ -31,6 +31,9 @@ Sendspin source), which you can play on any speaker or group.
 picks one Home Assistant's Bluetooth integration doesn't use, and shares one
 only if there's no other.
 
+The [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) and the
+[FAQ](https://eknoes.github.io/toothspin/faq.html) have more detail.
+
 ## Setup checks
 
 On every start, and while running, ToothSpin checks:
@@ -119,7 +122,8 @@ instead: select a player, open **Browse**, pick the phone's input and press
 
 ## Support
 
-Questions and bugs: [GitHub issues](https://github.com/eknoes/toothspin/issues).
+First look at the [FAQ](https://eknoes.github.io/toothspin/faq.html). Questions and bugs:
+[GitHub issues](https://github.com/eknoes/toothspin/issues).
 
 ## License
 

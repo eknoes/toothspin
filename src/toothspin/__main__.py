@@ -105,6 +105,7 @@ def _flag(value: str) -> bool:
 
 
 SETUP_NOTIFICATION = "toothspin_setup"
+FAQ_URL = "https://eknoes.github.io/toothspin/faq.html"
 # How often to look again while setup is blocked, and while running.
 RECHECK_S = 15.0
 WATCH_S = 60.0
@@ -177,7 +178,8 @@ async def _report(
             await ha.notify(
                 SETUP_NOTIFICATION,
                 f"ToothSpin: {problem.title}",
-                problem.as_markdown() + "\n\nDetails: open ToothSpin from the sidebar.",
+                problem.as_markdown() + "\n\nDetails: open ToothSpin from the sidebar. "
+                f"Help: [FAQ]({FAQ_URL}).",
             )
     except (aiohttp.ClientError, OSError) as err:
         logger.warning("Couldn't update the notification in Home Assistant: %s", err)

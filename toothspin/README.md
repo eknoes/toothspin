@@ -39,5 +39,8 @@ be better (no adapter, an adapter shared with Home Assistant, no token), it
 says what to do, in the app, in the log and, if it can't start, as a Home
 Assistant notification.
 
+Step by step: [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) ·
+[FAQ](https://eknoes.github.io/toothspin/faq.html)
+
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg

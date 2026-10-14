@@ -39,8 +39,8 @@ those speakers.
 > users who report bugs without any technical details directly at the maintainer, without filing an issue.
 > Expect rough edges; bug reports (any volume) are welcome.
 
-**You need:** Music Assistant **2.10.6 or newer** and a USB Bluetooth dongle
-just for ToothSpin. How it's built:
+**You need:** Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
+ideally a USB dongle just for ToothSpin. How it's built:
 [technical overview](https://eknoes.github.io/toothspin/overview.html).
 
 ## Install
@@ -64,7 +64,8 @@ Pick whatever fits your setup:
 
 Add `https://github.com/eknoes/toothspin` as an app repository (**Settings →
 Apps → App store → ⋮ → Repositories**) and install **ToothSpin**. Setup
-details, e.g. giving ToothSpin a dongle of its own, are in the [app's documentation](toothspin/DOCS.md). The web UI opens
+details, e.g. giving ToothSpin a dongle of its own, are in the [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) and the
+[FAQ](https://eknoes.github.io/toothspin/faq.html). The web UI opens
 through Home Assistant.
 
 ### With Docker or Podman
