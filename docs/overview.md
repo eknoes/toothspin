@@ -46,9 +46,13 @@ passthrough works fine, because it has its own kernel.
 - Each phone shows up as a PipeWire capture node
   (`bluez5.media-source-role = input`), which only exists while the phone is
   playing. The service finds it via `pw-dump`.
-- Several phones can stream on one adapter at once. PipeWire only acquires a
-  phone's stream once its node runs, so `node.always-process = true` is set
-  on `bluez_input.*`.
+- Several phones can stream on one adapter at once. The early assumption
+  that BlueZ only allows one was wrong (`bluez/bluez#1037` is about a PC
+  *sending* to two speakers). What actually blocked a second stream was
+  PipeWire, which only acquires a phone's stream once its node runs, so
+  `node.always-process = true` is set on `bluez_input.*`.
+- Capture stays at full scale (`bluez5.enable-hw-volume = false`); the
+  phone's volume buttons control the speakers instead, see below.
 - The service runs its own BlueZ pairing agent (Just Works). Pairing is
   refused outside the window you open in the web UI, and connections are
   started from the receiver, not the phone.
@@ -65,6 +69,40 @@ passthrough works fine, because it has its own kernel.
 - With a Music Assistant API token, the web UI can start the phone on
   speakers and group them directly.
 - Stream codec towards Music Assistant: PCM (default), FLAC or Opus.
+
+## Volume
+
+While a phone streams, its volume and the volume of the speaker (or group)
+it plays on are kept in sync both ways. ToothSpin polls the phone's AVRCP
+absolute volume (`MediaTransport1.Volume`, 0–127) and Music Assistant's
+player or group volume. When a phone starts streaming, the speaker wins:
+its volume is written to the phone (BlueZ forwards that to the phone while
+the transport is active), so a phone left at full volume doesn't blast the
+room. After that, whichever side changes is copied to the other, ignoring
+the echo of its own last write for a few seconds.
+
+## Running confined
+
+- The container needs no Linux capabilities: it runs with `--cap-drop ALL`
+  and `no-new-privileges`, and rootless with `--userns keep-id`, so D-Bus
+  sees the user's own uid.
+- On SELinux hosts, the standard `container_t` may not connect to the
+  host's system bus. Rather than disabling SELinux for the container,
+  `deploy/selinux/toothspin.cil` defines `toothspin.process` from the udica
+  templates container-selinux ships, plus the bus socket, `send_msg` to the
+  bus and `bluetoothd` only, and mapping PipeWire's memfd buffers.
+- The web UI has no login. As a Home Assistant App it's served through
+  ingress, and the ingress port only answers the Supervisor's proxy
+  (172.30.32.2). Outside Home Assistant it relies on the home network.
+
+## As a Home Assistant App
+
+The App (`toothspin/` in the repository) runs the same multi-arch image.
+Its options arrive as `/data/options.json` and are mapped onto the same
+environment variables the plain container uses. It reaches `bluetoothd`
+via `host_dbus`, finds Music Assistant via mDNS on the host network and asks
+the Supervisor for its ingress port (`ingress_port: 0`). Images are built
+and scanned in CI; each release ships SPDX and CycloneDX SBOMs.
 
 ## Versions
 

@@ -1,49 +1,64 @@
 # ToothSpin
 
-**Bluetooth audio input for Sendspin and Music Assistant.** Stream any
-phone over Bluetooth into Music Assistant.
+<img src="assets/toothspin.svg" width="96" alt="ToothSpin icon" align="right">
 
-<img src="assets/toothspin.svg" width="96" alt="ToothSpin icon">
+**Stream any phone over Bluetooth into Music Assistant.**
 
-Turns a Bluetooth dongle into a speaker that phones can pair with. Whatever
-a phone plays shows up in Music Assistant as a live input (a Sendspin
-**source**), which you can play on any player or group.
+I fell for multi-room audio built from open-source software and hardware:
+every room in sync, nothing in the cloud. My household was less impressed.
+Their review: *"Nice. Where's the Bluetooth?"* Then they paired their phones
+with whichever speaker was closest and left my carefully synchronised setup
+to play to an empty house. ToothSpin is my peace offering: to a phone it's
+just another Bluetooth speaker, and whatever it plays can fill one room or
+all of them.
 
-```
-Phone ─A2DP─> bluetoothd (host) ─D-Bus─> PipeWire/WirePlumber (in the container)
-      ─pw-record─> toothspin ─Sendspin source@v1 over WebSocket─>
-      Music Assistant (sendspin_source provider)
-```
+<p align="center">
+  <img src="assets/how-it-works.svg" width="760"
+    alt="Your phone sends audio via Bluetooth to ToothSpin, which forwards it via Sendspin to Music Assistant">
+</p>
 
-Needs Music Assistant **2.10.6 or newer** (it ships the `sendspin_source`
-provider; the service pins `aiosendspin==9.1.1` to match). See
-[CLAUDE.md](CLAUDE.md) for background and scope: one dongle; every paired
-phone becomes its own Live Input in Music Assistant.
+## How it works
 
-## Setup
+A USB Bluetooth dongle becomes a speaker your phones can pair with. Each
+phone shows up in [Music Assistant](https://music-assistant.io) as its own
+live input, and ToothSpin's web UI plays it on any speaker or group.
+
+After pairing your phone with ToothSpin over Bluetooth, it needs one pairing
+with Music Assistant to set it up. From then on: press **Connect** in
+ToothSpin, play something on the phone and switch on the speakers you want.
+The phone's volume buttons control those speakers.
+
+Connections only ever start from ToothSpin, never from the phone. Walking
+in the front door with your phone won't suddenly blast your playlist
+through the whole house.
+
+> [!NOTE]
+> ToothSpin is in an early state. It was put together over a couple of
+> evenings with [Claude](https://claude.ai) and so far runs in exactly one
+> home. Expect rough edges; bug reports are welcome.
+
+**You need:** Music Assistant **2.10.6 or newer** and a USB Bluetooth dongle
+just for ToothSpin. How it's built:
+[technical overview](https://eknoes.github.io/toothspin/overview.html).
+
+## Install
 
 ### As a Home Assistant App
 
 [![Add the repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feknoes%2Ftoothspin)
 
 Add `https://github.com/eknoes/toothspin` as an app repository (**Settings →
-Apps → App store → ⋮ → Repositories**) and install **ToothSpin**. The app
-runs the same image (see [toothspin/DOCS.md](toothspin/DOCS.md) for setup:
-use a dedicated dongle and disable it in HA's Bluetooth integration). Its
-web UI opens through Home Assistant (ingress).
+Apps → App store → ⋮ → Repositories**) and install **ToothSpin**. Setup
+details, e.g. keeping Home Assistant's Bluetooth integration off the dongle,
+are in the [app's documentation](toothspin/DOCS.md). The web UI opens
+through Home Assistant.
 
-### Requirements outside Home Assistant
+### With Docker or Podman
 
-The container image is self-contained (its own PipeWire, ~120 MB, on Alpine). The host
-only needs:
-
-- **BlueZ** (`bluetoothd`) running with the USB dongle. Recommended: our
-  [main.conf](deploy/bluetooth/main.conf), so phones see a speaker and BlueZ
-  doesn't reconnect phones by itself.
-- **No other Bluetooth audio stack** on the host (a desktop PipeWire or
-  PulseAudio with Bluetooth would compete for the phones).
-
-### Any Linux host (Docker / Podman)
+The host needs **BlueZ** (`bluetoothd`) with the dongle, ideally with our
+[main.conf](deploy/bluetooth/main.conf) so phones see a speaker, and **no
+other Bluetooth audio stack** (a desktop PipeWire or PulseAudio would
+compete for the phones). The image brings everything else.
 
 ```bash
 docker build -t toothspin .
@@ -52,13 +67,13 @@ docker run -d --name toothspin --restart unless-stopped \
   -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
   -v toothspin-data:/data \
   --cap-drop ALL --security-opt no-new-privileges \
-  -e MA_URL=http://<music-assistant>:8095 -e MA_TOKEN=<token> \
+  -e MA_TOKEN=<token> \
   toothspin
 ```
 
 `--network host` is for finding Music Assistant via mDNS and the web UI on
-:8080. The container needs no capabilities. Rootless Podman also needs
-`--userns keep-id`, so D-Bus sees your own uid.
+:8080. Rootless Podman also needs `--userns keep-id`, so D-Bus sees your own
+uid.
 
 On SELinux hosts (Fedora, RHEL, CoreOS), containers may not use the host's
 D-Bus. [deploy/selinux/toothspin.cil](deploy/selinux/toothspin.cil) adds a
@@ -70,115 +85,69 @@ sudo semodule -i deploy/selinux/toothspin.cil \
   /usr/share/udica/templates/{base_container,net_container}.cil
 ```
 
-### A dedicated Fedora CoreOS machine
+### On a dedicated Fedora CoreOS machine
 
 [deploy/coreos](deploy/coreos/) has a Butane config for a machine (e.g. a
-VM with the dongle passed through) that sets everything up on first boot:
-BlueZ, the SELinux policy and ToothSpin as a rootless Quadlet unit. Its
-README walks through adding your SSH key and installing.
+VM with the dongle passed through) that sets everything up on first boot.
+Its README walks through adding your SSH key and installing.
 
-The web UI is then on `http://<host>:8080/`. It has no login — keep it on the
-home LAN.
+The web UI is on `http://<host>:8080/`. It has no login, so keep it on your
+home network.
 
 ### Configuration
 
-Optional, in `~/.config/toothspin.env` (then
-`systemctl --user restart toothspin`):
+Outside Home Assistant, set these as environment variables (on CoreOS: in
+`~/.config/toothspin.env`, then `systemctl --user restart toothspin`). All
+are optional:
 
 | Variable | Default | |
 |---|---|---|
+| `MA_TOKEN` | – | long-lived Music Assistant token (your profile → **Tokens**); enables choosing speakers in the web UI |
+| `MA_URL` | discovered via mDNS | e.g. `http://192.168.178.91:8095` |
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
+| `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
+| `BT_ADAPTER` | `hci0` | the dongle |
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
-| `MA_URL` | – | Music Assistant URL, e.g. `http://192.168.178.91:8095`; enables speaker control |
-| `MA_TOKEN` | – | long-lived Music Assistant API token (MA profile → tokens); keep the env file `chmod 600` |
-| `BT_NAME` | `Music Assistant` | Bluetooth name phones see |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
-| `BT_PAIRING_SECONDS` | `120` | how long "Add phone" keeps pairing open |
+| `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
 | `LOG_LEVEL` | `INFO` | |
 
-## Pairing
+## Usage
 
-Each phone is paired twice, once per layer.
+**Add a phone:** press **Add phone** in the web UI; the dongle is visible
+for two minutes. On the phone, connect to the Bluetooth name (default
+"Music Assistant"). Outside that window, pairing is refused.
 
-**Phone ↔ Bluetooth:**
+**Pair it with Music Assistant:** the phone now appears in Music Assistant
+as a new device, e.g. "Pixel 10 (Bluetooth)". Open it in Music Assistant's
+settings and choose **Pair the device**; then press **Allow** on the phone's
+card in ToothSpin and type the code it shows into Music Assistant.
 
-1. In the web UI, press **Add phone**. The dongle is discoverable for two
-   minutes.
-2. On the phone, connect to `BT_NAME`. Pairing closes again once a phone has
-   paired; outside that window pairing is refused.
+**Play:** press **Connect** on the phone's card, play something on the
+phone, then switch on speakers on its card. Several speakers form a group
+on the fly (only speakers that can play in sync are offered together), each
+with its own volume and mute. On connecting, the phone takes over the
+speaker's current volume, so nothing suddenly gets loud; after that, its
+volume buttons control the speaker or group. The eye icon hides speakers
+you don't need on that phone's card.
 
-Connections always start from the receiver: press **Connect** on the
-phone's card. A phone trying to connect on its own is refused, and the
-receiver doesn't reconnect by itself after the link drops.
+Without a Music Assistant token, start the input from Music Assistant
+instead: select a player, open **Browse**, pick the phone's input and press
+**Play**. Or set the device's **Automatically play line-in on** setting:
+Music Assistant then starts it when the phone plays and stops a minute after
+it goes quiet.
 
-**That phone ↔ Music Assistant:** pairing the phone creates its own
-Sendspin source, e.g. "Pixel 10 (Bluetooth)", which connects to MA
-unpaired. Music Assistant only accepts audio from paired sources.
+**Remove** on a phone's card also forgets its Music Assistant pairing;
+remove the matching device in Music Assistant too.
 
-1. In Music Assistant's settings, open that device and choose **Pair the
-   device**, using the dynamic pairing code.
-2. On the phone's card in the web UI, press **Allow**. A pairing code
-   appears; type it into Music Assistant.
+## More
 
-**Playing:** with `MA_URL`/`MA_TOKEN` set, each paired phone's card lists
-Music Assistant's speakers as toggles. Turning one on plays the phone there
-right away; turning on more groups them on the fly (only speakers that can
-play in sync are offered); turning one off takes it out. A speaker playing
-another phone is taken over. The eye icon hides a speaker on that phone's
-card (dimmed and moved to the end). While a phone plays, its volume buttons
-control the speaker or group; on starting, the phone adopts the speaker's
-current volume rather than imposing its own. Without the token: select a player in Music
-Assistant, open **Browse**, pick the phone's input and press **Play**. Or set the device's **Automatically play
-line-in on** setting: the service reports a signal while the phone plays
-non-silent audio, and MA stops a minute after it goes quiet.
-
-Each phone's card in the web UI shows what it plays (title/artist from the
-phone), its Music Assistant state, and **Disconnect** / **Remove**.
-Removing a phone also forgets its Sendspin identity; remove the matching
-device in Music Assistant too.
-
-## Development
-
-```bash
-python -m venv .venv && .venv/bin/pip install -e '.[test]'
-.venv/bin/pytest
-```
-
-`tests/test_source_integration.py` runs the source client against an
-in-process aiosendspin server (the library Music Assistant uses): pairing,
-line-sense, server-requested start/stop and bit-exact PCM delivery. Phone
-capture itself can only be tested with real hardware.
-
-## Releasing
-
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests and
-builds the amd64/arm64 image on every push and pull request. Pushes to
-`main` publish `ghcr.io/<owner>/toothspin:edge`. To release:
-
-1. Bump `version` in `pyproject.toml` and commit.
-2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-
-The tag must match the version; CI then publishes
-`ghcr.io/<owner>/toothspin:0.2.0` (and `:0.2`) and creates a GitHub release
-with generated notes. Bump `version` in
-[toothspin/config.yaml](toothspin/config.yaml) along with it: it is the
-image tag the Home Assistant App installs, and CI checks both match.
-
-Every run also generates SBOMs of the image (SPDX and CycloneDX, with syft)
-and scans them with grype: high or critical vulnerabilities that have a fix
-fail the build; all findings are listed in the run's summary. Releases
-attach both SBOMs, and published images carry SBOM and provenance
-attestations. The latest release is rescanned weekly
-([scan.yml](.github/workflows/scan.yml)), since new vulnerabilities turn up
-after an image was built; a failed scan means it's time to release again,
-which rebuilds on Alpine's current packages. Dependabot proposes new Alpine
-releases and action versions.
-
-## Security
-
-Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
+- [Technical overview](https://eknoes.github.io/toothspin/overview.html):
+  how audio gets from the phone into Music Assistant.
+- [DEVELOPMENT.md](DEVELOPMENT.md): running the tests, releasing.
+- [SECURITY.md](SECURITY.md): reporting vulnerabilities.
 
 ## License
 

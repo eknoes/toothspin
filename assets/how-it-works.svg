@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="210" viewBox="0 0 760 210" role="img" aria-label="Phone, via Bluetooth, to ToothSpin, via Sendspin, to Music Assistant">
+<style>
+  .label { font: 600 18px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #0f1b2d; }
+  .wire { font: 600 15px system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .tile { fill: #e9e7dc; }
+  .glyph { stroke: #0f1b2d; }
+  .glyph-fill { fill: #0f1b2d; }
+  .bt { fill: #2a6fd1; } .bt-line { stroke: #2a6fd1; }
+  .ss { fill: #c4473a; } .ss-line { stroke: #c4473a; }
+  @media (prefers-color-scheme: dark) {
+    .label { fill: #f5f4ec; }
+    .tile { fill: #172539; }
+    .glyph { stroke: #f5f4ec; }
+    .glyph-fill { fill: #f5f4ec; }
+    .bt { fill: #4c9bff; } .bt-line { stroke: #4c9bff; }
+    .ss { fill: #e25c4c; } .ss-line { stroke: #e25c4c; }
+  }
+</style>
+<!-- Phone -->
+<rect class="tile" x="40" y="20" width="130" height="130" rx="29"/>
+<g class="glyph" fill="none" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+  <rect x="80" y="40" width="50" height="90" rx="9"/>
+  <path d="M97 118 h16"/>
+</g>
+<text class="label" x="105" y="185" text-anchor="middle">Your phone</text>
+
+<!-- Bluetooth -->
+<g class="bt-line" stroke-width="5" stroke-linecap="round" fill="none">
+  <path d="M190 85 H300"/><path d="M290 75 L302 85 L290 95"/>
+</g>
+<text class="wire bt" x="245" y="70" text-anchor="middle">Bluetooth</text>
+
+<!-- ToothSpin -->
+<svg x="315" y="20" width="130" height="130" viewBox="0 0 512 512">
+
+<defs><clipPath id="tsClip"><rect width="512" height="512" rx="115"></rect></clipPath></defs>
+<g  clip-path="url(#tsClip)">
+<rect width="512" height="512" rx="115" fill="#0F1B2D"></rect>
+<g transform="translate(-56,0)">
+<path d="M-18 106 A176 176 0 0 1 -18 406" fill="none" stroke="#4C9BFF" stroke-width="24" stroke-linecap="round"></path>
+<path d="M56.6 86 A238 238 0 0 1 56.6 426" fill="none" stroke="#4C9BFF" stroke-width="24" stroke-linecap="round" opacity="0.72"></path>
+<path d="M94 36 A300 300 0 0 1 94 476" fill="none" stroke="#4C9BFF" stroke-width="24" stroke-linecap="round" opacity="0.45"></path>
+</g>
+<g transform="translate(512,0) scale(-1,1)">
+<g transform="translate(-56,0)">
+<path d="M-18 106 A176 176 0 0 1 -18 406" fill="none" stroke="#E25C4C" stroke-width="24" stroke-linecap="round" opacity="0.45"></path>
+<path d="M56.6 86 A238 238 0 0 1 56.6 426" fill="none" stroke="#E25C4C" stroke-width="24" stroke-linecap="round" opacity="0.72"></path>
+<path d="M94 36 A300 300 0 0 1 94 476" fill="none" stroke="#E25C4C" stroke-width="24" stroke-linecap="round"></path>
+</g>
+</g>
+<path d="M256 240 L336 320 L336 420 L176 420 L176 320 Z" fill="#F5F4EC" stroke="#F5F4EC" stroke-width="10" stroke-linejoin="round"></path>
+<g fill="none" stroke="#E25C4C" stroke-width="16" stroke-linecap="round">
+<path d="M200 400 L200 370"></path>
+<path d="M228 400 L228 344"></path>
+<path d="M256 400 L256 358"></path>
+<path d="M284 400 L284 334"></path>
+<path d="M312 400 L312 366"></path>
+</g>
+<g transform="translate(194 172) rotate(-24) scale(0.75)">
+<path d="M5 12 L5 -20 C 7 -10 20 -8 18 6" fill="none" stroke="#E25C4C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"></path>
+<ellipse cx="-4" cy="14" rx="11" ry="9" transform="rotate(-20 -4 14)" fill="#E25C4C"></ellipse>
+</g>
+<g transform="translate(250 128) rotate(-6) scale(1.1)">
+<path d="M5 12 L5 -20 C 7 -10 20 -8 18 6" fill="none" stroke="#E25C4C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"></path>
+<ellipse cx="-4" cy="14" rx="11" ry="9" transform="rotate(-20 -4 14)" fill="#E25C4C"></ellipse>
+</g>
+<g transform="translate(314 152) rotate(16) scale(0.9)">
+<path d="M5 12 L5 -20 C 7 -10 20 -8 18 6" fill="none" stroke="#E25C4C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"></path>
+<ellipse cx="-4" cy="14" rx="11" ry="9" transform="rotate(-20 -4 14)" fill="#E25C4C"></ellipse>
+</g>
+<g transform="translate(334 214) rotate(28) scale(0.72)">
+<path d="M5 12 L5 -20 C 7 -10 20 -8 18 6" fill="none" stroke="#E25C4C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"></path>
+<ellipse cx="-4" cy="14" rx="11" ry="9" transform="rotate(-20 -4 14)" fill="#E25C4C"></ellipse>
+</g>
+<circle cx="222" cy="214" r="7" fill="#E25C4C"></circle>
+<circle cx="288" cy="204" r="6" fill="#F5F4EC" opacity="0.7"></circle>
+<circle cx="344" cy="118" r="7" fill="#E25C4C" opacity="0.7"></circle>
+<circle cx="180" cy="124" r="6" fill="#F5F4EC" opacity="0.5"></circle>
+<circle cx="360" cy="186" r="5" fill="#E25C4C" opacity="0.5"></circle>
+<circle cx="300" cy="94" r="5" fill="#F5F4EC" opacity="0.5"></circle>
+</g>
+
+</svg>
+<text class="label" x="380" y="185" text-anchor="middle">ToothSpin</text>
+
+<!-- Sendspin -->
+<g class="ss-line" stroke-width="5" stroke-linecap="round" fill="none">
+  <path d="M465 85 H575"/><path d="M565 75 L577 85 L565 95"/>
+</g>
+<text class="wire ss" x="520" y="70" text-anchor="middle">Sendspin</text>
+
+<!-- Music Assistant: speakers -->
+<rect class="tile" x="590" y="20" width="130" height="130" rx="29"/>
+<g class="glyph" fill="none" stroke-width="7" stroke-linejoin="round">
+  <rect x="617" y="45" width="44" height="80" rx="8"/>
+  <circle cx="639" cy="98" r="12"/>
+  <rect x="671" y="65" width="26" height="60" rx="6"/>
+</g>
+<circle class="glyph-fill" cx="639" cy="64" r="5"/>
+<circle class="glyph-fill" cx="684" cy="104" r="6"/>
+<text class="label" x="655" y="185" text-anchor="middle">Music Assistant</text>
+</svg>
