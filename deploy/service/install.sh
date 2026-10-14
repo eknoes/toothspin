@@ -1,21 +1,28 @@
 #!/bin/bash
-# Build the service image and (re)start it as a rootless Quadlet unit.
-# Run on the VM as `core` from a checkout of this repo.
+# Build the image from this checkout and (re)start it as a rootless Quadlet
+# unit, e.g. for development. Run as the user the service should run as.
+# Hosts provisioned from deploy/coreos run the released image instead.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
+units=~/.config/containers/systemd
 
 podman build -t localhost/toothspin:latest "$repo"
 
 # The container's SELinux type, which may use the host's D-Bus.
-if command -v semodule >/dev/null && selinuxenabled; then
+if command -v selinuxenabled >/dev/null && selinuxenabled; then
     sudo semodule -i "$repo/deploy/selinux/toothspin.cil" \
         /usr/share/udica/templates/{base_container,net_container}.cil
 fi
 
-# Keep core's user services running without an SSH session.
+# Keep the user's services running without a login.
 loginctl enable-linger "$USER"
-install -D -m 0644 "$repo/deploy/service/toothspin.container" \
-    ~/.config/containers/systemd/toothspin.container
+install -D -m 0644 "$repo/deploy/service/toothspin.container" "$units/toothspin.container"
+# Run the image just built rather than the released one.
+install -D -m 0644 /dev/stdin "$units/toothspin.container.d/local.conf" <<'UNIT'
+[Container]
+Image=localhost/toothspin:latest
+AutoUpdate=local
+UNIT
 touch ~/.config/toothspin.env
 chmod 600 ~/.config/toothspin.env
 # The image runs its own PipeWire; a host PipeWire would register a second

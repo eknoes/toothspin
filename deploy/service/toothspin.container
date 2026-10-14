@@ -1,7 +1,7 @@
 # Rootless Quadlet unit for the `core` user:
 # ~/.config/containers/systemd/toothspin.container
 [Unit]
-Description=Sendspin Bluetooth source
+Description=ToothSpin, Bluetooth audio input for Music Assistant
 
 [Quadlet]
 # Quadlet would otherwise wait for the system network-online.target, which
@@ -10,7 +10,9 @@ Description=Sendspin Bluetooth source
 DefaultDependencies=false
 
 [Container]
-Image=localhost/toothspin:latest
+Image=ghcr.io/eknoes/toothspin:latest
+# podman-auto-update.timer pulls new releases and restarts the service.
+AutoUpdate=registry
 ContainerName=toothspin
 # Host network: mDNS discovery of Music Assistant and the web UI on :8080.
 Network=host
@@ -25,12 +27,16 @@ SecurityLabelType=toothspin.process
 DropCapability=all
 NoNewPrivileges=true
 Volume=toothspin-data:/data
-# Optional overrides (SENDSPIN_URL, SENDSPIN_NAME, BT_NAME, ...).
+# Optional overrides (MA_TOKEN, SENDSPIN_URL, BT_NAME, ...).
 EnvironmentFile=%h/.config/toothspin.env
 
 [Service]
+# Until BlueZ and the SELinux policy are in place on first boot, starting
+# fails; keep retrying.
 Restart=always
 RestartSec=5
+# The first start pulls the image.
+TimeoutStartSec=900
 
 [Install]
 WantedBy=default.target

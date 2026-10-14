@@ -1,23 +1,110 @@
+# Fedora CoreOS host for ToothSpin. From the repository root:
+#   butane --pretty --strict --files-dir . deploy/coreos/config.bu -o toothspin.ign
+# On first boot it layers BlueZ, loads the container's SELinux policy and
+# starts ToothSpin as a rootless Quadlet unit of the `core` user.
 variant: fcos
 version: 1.6.0
 passwd:
   users:
     - name: core
-      ssh_authorized_keys:
-        - "ssh-ed25519 AAAA... your-public-key"
+      # Your SSH public key(s); the file is ignored by git.
+      ssh_authorized_keys_local:
+        - deploy/coreos/authorized_keys
 storage:
+  directories:
+    # Ignition would create these owned by root.
+    - path: /home/core/.config
+      user: {name: core}
+      group: {name: core}
+    - path: /home/core/.config/containers
+      user: {name: core}
+      group: {name: core}
+    - path: /home/core/.config/containers/systemd
+      user: {name: core}
+      group: {name: core}
+    - path: /home/core/.config/systemd
+      user: {name: core}
+      group: {name: core}
+    - path: /home/core/.config/systemd/user
+      user: {name: core}
+      group: {name: core}
+    - path: /home/core/.config/systemd/user/timers.target.wants
+      user: {name: core}
+      group: {name: core}
   files:
     - path: /etc/hostname
       mode: 0644
       contents:
-        inline: sendspin-bt
-    - path: /etc/vconsole.conf
+        inline: toothspin
+    # Phones see a speaker; connections only start from ToothSpin.
+    - path: /etc/bluetooth/main.conf
       mode: 0644
       contents:
-        inline: KEYMAP=de
+        local: deploy/bluetooth/main.conf
+    - path: /etc/toothspin/toothspin.cil
+      mode: 0644
+      contents:
+        local: deploy/selinux/toothspin.cil
+    - path: /home/core/.config/containers/systemd/toothspin.container
+      mode: 0644
+      user: {name: core}
+      group: {name: core}
+      contents:
+        local: deploy/service/toothspin.container
+    - path: /home/core/.config/toothspin.env
+      mode: 0600
+      user: {name: core}
+      group: {name: core}
+      contents:
+        inline: |
+          # ToothSpin settings (see README), e.g. MA_TOKEN=... for choosing
+          # speakers. Apply with: systemctl --user restart toothspin
+    # Start core's user services (ToothSpin) at boot, without a login.
+    - path: /var/lib/systemd/linger/core
+      mode: 0644
+  links:
+    # Pull new images of ToothSpin daily (AutoUpdate=registry).
+    - path: /home/core/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      user: {name: core}
+      group: {name: core}
 systemd:
   units:
-    - name: podman.socket
+    # BlueZ isn't part of Fedora CoreOS; layer it once, without a reboot.
+    - name: rpm-ostree-install-bluez.service
       enabled: true
-    - name: bluetooth.service
+      contents: |
+        [Unit]
+        Description=Layer BlueZ with rpm-ostree
+        Wants=network-online.target
+        After=network-online.target
+        # Avoid conflicting rpm-ostree transactions.
+        Before=zincati.service
+        ConditionPathExists=!/var/lib/%N.stamp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/rpm-ostree install --apply-live --allow-inactive --idempotent bluez
+        ExecStart=/usr/bin/systemctl daemon-reload
+        ExecStart=/usr/bin/systemctl enable --now bluetooth.service
+        ExecStart=/usr/bin/touch /var/lib/%N.stamp
+
+        [Install]
+        WantedBy=multi-user.target
+    # Lets the container use the host's D-Bus (deploy/selinux).
+    - name: toothspin-selinux.service
       enabled: true
+      contents: |
+        [Unit]
+        Description=Load ToothSpin's SELinux policy
+        ConditionPathExists=!/var/lib/%N.stamp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/sbin/semodule -i /etc/toothspin/toothspin.cil /usr/share/udica/templates/base_container.cil /usr/share/udica/templates/net_container.cil
+        ExecStart=/usr/bin/touch /var/lib/%N.stamp
+
+        [Install]
+        WantedBy=multi-user.target

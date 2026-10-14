@@ -70,15 +70,12 @@ sudo semodule -i deploy/selinux/toothspin.cil \
   /usr/share/udica/templates/{base_container,net_container}.cil
 ```
 
-### The CoreOS VM
+### A dedicated Fedora CoreOS machine
 
-On the VM ([deploy/coreos](deploy/coreos/)), as `core`, from a copy of this
-repo:
-
-1. Layer BlueZ (once): `sudo rpm-ostree install --apply-live bluez usbutils`
-2. Install our BlueZ config: `deploy/bluetooth/install.sh`
-3. Build and start the rootless Quadlet unit: `deploy/service/install.sh`
-   (it also masks a host PipeWire, if one is installed).
+[deploy/coreos](deploy/coreos/) has a Butane config for a machine (e.g. a
+VM with the dongle passed through) that sets everything up on first boot:
+BlueZ, the SELinux policy and ToothSpin as a rootless Quadlet unit. Its
+README walks through adding your SSH key and installing.
 
 The web UI is then on `http://<host>:8080/`. It has no login — keep it on the
 home LAN.

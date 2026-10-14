@@ -2,3 +2,6 @@ data/
 __pycache__/
 *.egg-info/
 .venv/
+# Ignition configs are built from deploy/coreos/config.bu; keys stay local.
+*.ign
+deploy/coreos/authorized_keys
