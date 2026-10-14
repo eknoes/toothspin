@@ -1,6 +1,9 @@
-# Findings that don't apply to the image, read by grype in CI. Only add
-# false positives here, each with why; unreachable but real ones stay in
-# the report.
+# Findings that don't affect ToothSpin, read by grype in CI. Each has a
+# reason; re-check it when the code or the image changes.
+#
+# Rules with fix-state: unknown only hide a finding while no fix is known.
+# Once Alpine (or NVD) records a fixed version, it's reported again and the
+# release gate fails on high ones, so the next release picks the fix up.
 ignore:
   # A Linux kernel bug (BleedingTooth "BadVibes", net/bluetooth, fixed in
   # 5.8) that NVD files under "BlueZ", so it matches the userspace library.
@@ -8,3 +11,47 @@ ignore:
   - vulnerability: CVE-2020-24490
     package:
       name: bluez-libs
+    reason: Linux kernel bug, not in the bluez-libs userspace library.
+
+  # alsa-lib: all need a crafted ALSA configuration, topology or state file.
+  # PipeWire's ALSA support is disabled (deploy/pipewire/40-container.conf)
+  # and the only ALSA files are the image's own. A hard dependency of
+  # pipewire-libs, so it can't be removed.
+  - vulnerability: CVE-2026-56109
+    package:
+      name: alsa-lib
+    fix-state: unknown
+    reason: Needs a crafted ALSA config file; ALSA is disabled in PipeWire.
+  - vulnerability: CVE-2026-90781
+    package:
+      name: alsa-lib
+    fix-state: unknown
+    reason: Needs a crafted control element id or state file; ALSA is disabled.
+  - vulnerability: CVE-2026-96674
+    package:
+      name: alsa-lib
+    fix-state: unknown
+    reason: Needs a crafted ALSA topology file; nothing loads topologies.
+  - vulnerability: CVE-2026-96675
+    package:
+      name: alsa-lib
+    fix-state: unknown
+    reason: Needs a crafted ALSA config file; ALSA is disabled in PipeWire.
+
+  # BusyBox wget (busybox, busybox-binsh and ssl_client match it): nothing in
+  # the image runs wget.
+  - vulnerability: CVE-2025-60876
+    fix-state: unknown
+    reason: Only affects BusyBox wget, which ToothSpin never runs.
+
+  # Python standard library modules ToothSpin doesn't use.
+  - vulnerability: CVE-2025-15367
+    package:
+      name: python3
+    fix-state: unknown
+    reason: Only affects poplib, which ToothSpin doesn't use.
+  - vulnerability: CVE-2026-12345
+    package:
+      name: python3
+    fix-state: unknown
+    reason: Only affects tempfile.TemporaryDirectory, which ToothSpin doesn't use.
