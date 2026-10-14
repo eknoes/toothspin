@@ -12,3 +12,7 @@ else
 fi
 sudo systemctl daemon-reload
 sudo systemctl restart bluetooth.service
+if [[ "${1:-}" != "--pin" ]]; then
+    # bluetoothd doesn't switch Secure Simple Pairing back on by itself.
+    sudo btmgmt --index 0 ssp on >/dev/null
+fi
