@@ -52,8 +52,8 @@ Pick whatever fits your setup:
   everything on first boot. A Raspberry Pi 4 works too, since Fedora
   CoreOS [supports it](https://docs.fedoraproject.org/en-US/fedora-coreos/provisioning-raspberry-pi4/)
   (the Pi 5 isn't supported yet).
-- **A Home Assistant App**, if you have a second Bluetooth dongle: Home
-  Assistant keeps its own adapter, ToothSpin gets the other one.
+- **A Home Assistant App**. It can share Home Assistant's Bluetooth adapter,
+  but a second dongle just for ToothSpin is more reliable.
 - **A container on your own Linux machine** (Docker or Podman) also works,
   but you install and configure the host side yourself: BlueZ, and no other
   Bluetooth audio stack.
@@ -64,8 +64,7 @@ Pick whatever fits your setup:
 
 Add `https://github.com/eknoes/toothspin` as an app repository (**Settings →
 Apps → App store → ⋮ → Repositories**) and install **ToothSpin**. Setup
-details, e.g. keeping Home Assistant's Bluetooth integration off the dongle,
-are in the [app's documentation](toothspin/DOCS.md). The web UI opens
+details, e.g. giving ToothSpin a dongle of its own, are in the [app's documentation](toothspin/DOCS.md). The web UI opens
 through Home Assistant.
 
 ### With Docker or Podman
@@ -122,7 +121,7 @@ are optional:
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
 | `BT_NAME` | `ToothSpin` | Bluetooth name phones see |
 | `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN instead of only during the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
-| `BT_ADAPTER` | `hci0` | the dongle |
+| `BT_ADAPTER` | `hci0` | the dongle, e.g. `hci1`; `auto` takes the first one (as a Home Assistant App: preferably one Home Assistant doesn't use) |
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |

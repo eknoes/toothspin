@@ -9,25 +9,45 @@ Sendspin source), which you can play on any speaker or group.
 - **Music Assistant 2.10.6 or newer**, with its Sendspin player provider
   enabled (it is by default). Its "Sendspin Source" plugin turns each phone
   into a live input.
-- **A dedicated USB Bluetooth dongle.** ToothSpin takes over the adapter:
-  it sets its name, makes it visible while pairing and handles its
-  connections. Don't use the adapter Home Assistant uses for its own
-  Bluetooth devices.
+- **A Bluetooth adapter.** ToothSpin takes over the adapter: it sets its
+  name, makes it visible while pairing and handles its connections. It can
+  share the adapter with Home Assistant's Bluetooth integration, which only
+  scans for Bluetooth Low Energy devices, but **a USB dongle just for
+  ToothSpin is recommended**: phones stay connected more reliably.
 
 ## Installation
 
-1. Add this repository to Home Assistant: **Settings → Apps → App store →
-   ⋮ → Repositories**, then add `https://github.com/eknoes/toothspin`.
-2. Install **ToothSpin**.
-3. In **Settings → Devices & services → Bluetooth**, open the dongle you
-   want ToothSpin to use and **disable** it there, so Home Assistant doesn't
-   use it for its own Bluetooth devices at the same time.
-4. In the app's **Configuration**, set **Bluetooth adapter** to that dongle
-   (e.g. `hci1`; the Bluetooth integration shows which is which).
-5. Optional, for choosing speakers in the app: create a long-lived token in
-   Music Assistant (your profile → **Tokens**) and enter it as **Music
-   Assistant token**.
-6. Start the app and open it with **Open web UI** (or from the sidebar).
+1. Install ToothSpin.
+2. **Recommended:** create a long-lived token in Music Assistant (your
+   profile → **Tokens**) and enter it as **Music Assistant token** in the
+   app's **Configuration**.
+3. With a dongle just for ToothSpin (for a virtual machine: pass it
+   through), set **Bluetooth adapter** to it, e.g. `hci1` or `auto`, and in
+   **Settings → Devices & services → Bluetooth** choose **Ignore** for it if
+   it's listed under *Discovered*, or **disable** it if it was added.
+4. Start the app and open it from the sidebar.
+
+**Bluetooth adapter** is `hci0`, the first adapter, by default. `auto`
+picks one Home Assistant's Bluetooth integration doesn't use, and shares one
+only if there's no other.
+
+## Setup checks
+
+On every start, and while running, ToothSpin checks:
+
+- **Is there a Bluetooth adapter?** If not, or if the configured one (e.g.
+  `hci1`) doesn't exist, it lists the adapters it found and waits.
+- **Does Home Assistant use it too?** ToothSpin asks Home Assistant's
+  Bluetooth integration and recommends a dongle of its own if it shares
+  one. If Home Assistant discovered ToothSpin's dongle and offers to add it,
+  ToothSpin recommends ignoring it.
+- **Music Assistant token and connection:** missing token, a token Music
+  Assistant rejects, or Music Assistant not found.
+
+The app shows what to do, step by step, and the log says it too. If
+ToothSpin can't start (no adapter), it also raises a Home Assistant
+notification, checks again every few seconds and starts by itself once the
+problem is fixed; the notification then disappears.
 
 ## Usage
 
@@ -74,8 +94,8 @@ instead: select a player, open **Browse**, pick the phone's input and press
 |---|---|
 | Bluetooth name | The name phones see. Default: `ToothSpin`. |
 | Input name in Music Assistant | Default name for each phone's input; `{device}` is the phone's name. Each input can be renamed in the app. |
-| Bluetooth adapter | The dongle phones connect to, e.g. `hci0` or `hci1`. |
-| Music Assistant token | Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |
+| Bluetooth adapter | `hci0` (default) is the first adapter; set a dedicated dongle, e.g. `hci1`, or `auto` for one Home Assistant doesn't use. |
+| Music Assistant token | Recommended. Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |
 | Music Assistant URL | Only needed if Music Assistant isn't found automatically, e.g. `http://homeassistant.local:8095`. |
 | Sendspin server URL | Only needed if Music Assistant's Sendspin server isn't found automatically, e.g. `ws://homeassistant.local:8927/sendspin`. |
 | Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker left loud doesn't blast. Quieter speakers keep their volume; `100` (default) always keeps it. |

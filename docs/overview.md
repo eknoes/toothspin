@@ -107,6 +107,16 @@ via `host_dbus`, finds Music Assistant via mDNS on the host network and asks
 the Supervisor for its ingress port (`ingress_port: 0`). Images are built
 and scanned in CI; each release ships SPDX and CycloneDX SBOMs.
 
+The App asks Home Assistant's Bluetooth integration (WebSocket
+`config_entries/get` and `config_entries/flow/progress` via
+`homeassistant_api`) which adapters it uses, reading each adapter's address
+from its config entry title. The integration only scans for Bluetooth Low
+Energy, so sharing an adapter works, but ToothSpin recommends a dongle of its
+own when it shares one; `BT_ADAPTER=auto` prefers a free one. Setup problems
+are shown in the web UI and the log; blocking ones also as a persistent
+notification, re-checked until solved. On its first start the App puts
+itself in the sidebar (`ingress_panel`, once, so turning it off sticks).
+
 ## Pairing with Music Assistant automatically
 
 Pairing a phone over Bluetooth already is the user's consent. With a token
