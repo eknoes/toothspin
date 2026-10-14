@@ -45,8 +45,68 @@ jobs:
           app=$(python3 -c "import yaml; print(yaml.safe_load(open('toothspin/config.yaml'))['version'])")
           test "$package" = "$app" || { echo "pyproject.toml has $package, toothspin/config.yaml has $app"; exit 1; }
 
+  sbom:
+    # SBOM of the image, checked for known vulnerabilities. Fails on high or
+    # critical ones that have a fix (an upgrade would remove them); all
+    # findings are listed in the job summary.
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the image (amd64) for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Containerfile
+          platforms: linux/amd64
+          load: true
+          tags: toothspin:scan
+          cache-from: type=gha
+      - name: SBOM (SPDX)
+        uses: anchore/sbom-action@v0.24.2
+        with:
+          image: toothspin:scan
+          format: spdx-json
+          output-file: toothspin.spdx.json
+          upload-artifact: false
+      - name: SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0.24.2
+        with:
+          image: toothspin:scan
+          format: cyclonedx-json
+          output-file: toothspin.cdx.json
+          upload-artifact: false
+      - name: All known vulnerabilities (report)
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: toothspin.spdx.json
+          fail-build: false
+          output-format: table
+          output-file: vulnerabilities.txt
+          cache-db: true
+      - name: Add the report to the job summary
+        run: |
+          { echo '## Known vulnerabilities in the image'; echo '```'; cat vulnerabilities.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail on fixable high/critical vulnerabilities
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: toothspin.spdx.json
+          only-fixed: true
+          severity-cutoff: high
+          fail-build: true
+          output-format: table
+          cache-db: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            toothspin.spdx.json
+            toothspin.cdx.json
+            vulnerabilities.txt
+
   image:
-    needs: [test, app]
+    needs: [test, app, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -81,6 +141,9 @@ jobs:
           push: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Per-architecture SBOM and provenance attestations in the registry.
+          sbom: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
+          provenance: ${{ (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && 'mode=max' || 'false' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -96,9 +159,17 @@ jobs:
         run: |
           version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
           test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != v$version in pyproject.toml"; exit 1; }
-      - name: Create the GitHub release
+      - uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: sbom
+      - name: Create the GitHub release with the SBOMs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          version=${GITHUB_REF_NAME#v}
+          mv sbom/toothspin.spdx.json "toothspin-$version.spdx.json"
+          mv sbom/toothspin.cdx.json "toothspin-$version.cdx.json"
           gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag \
-            --notes "Image: \`ghcr.io/${{ github.repository_owner }}/toothspin:${GITHUB_REF_NAME#v}\`"
+            --notes "Image: \`ghcr.io/${{ github.repository_owner }}/toothspin:$version\`. SBOMs (SPDX, CycloneDX) are attached; the image in the registry also carries SBOM and provenance attestations." \
+            "toothspin-$version.spdx.json" "toothspin-$version.cdx.json"
