@@ -11,3 +11,5 @@ nav:
     url: /overview.html
   - title: Install
     url: /install.html
+  - title: FAQ
+    url: /faq.html

@@ -37,8 +37,9 @@ with Music Assistant 2.10.6.
 ## What you need
 
 - Music Assistant 2.10.6 or newer.
-- A Linux host with a Bluetooth dongle and `bluetoothd`, with no other
-  Bluetooth audio stack on it.
-- Docker or Podman. The image brings its own PipeWire.
+- A Bluetooth adapter, ideally a USB dongle just for ToothSpin.
+- Home Assistant (ToothSpin installs as an App), or a Linux host with
+  `bluetoothd` and Docker or Podman.
 
-How it fits together: [technical overview]({{ '/overview.html' | relative_url }}).
+[Install it]({{ '/install.html' | relative_url }}), or read the
+[FAQ]({{ '/faq.html' | relative_url }}). How it fits together: [technical overview]({{ '/overview.html' | relative_url }}).
