@@ -215,6 +215,14 @@ def quiet_start(
     return [("players/cmd/volume_set", {"player_id": player_id, "volume_level": start_volume})]
 
 
+class GroupingRefused(BackendError):
+    """Music Assistant accepted a grouping command but didn't group.
+
+    Seen when a stale player record (e.g. of a former Squeezelite player)
+    shares the speaker's ID and hides its Sendspin output; see the FAQ.
+    """
+
+
 async def toggle(
     backend: PlayerBackend, uri: str, player_id: str, on: bool, start_volume: int = 100
 ) -> None:
@@ -266,6 +274,13 @@ async def _run(backend: PlayerBackend, commands: list[Command]) -> None:
             if _applied(backend.players, command, args):
                 break
             if loop.time() > deadline:
+                if command == "players/cmd/set_members" and args.get("player_ids_to_add"):
+                    names = {s.player_id: s.name for s in speakers(backend.players)}
+                    added = ", ".join(names.get(p, p) for p in args["player_ids_to_add"])
+                    target = names.get(args["target_player"], args["target_player"])
+                    raise GroupingRefused(
+                        f"Music Assistant didn't group {added} with {target}"
+                    )
                 break
             await asyncio.sleep(SETTLE_POLL_S)
 

@@ -234,6 +234,29 @@ def test_mute_uses_native_mute_or_emulates_it() -> None:
     asyncio.run(scenario())
 
 
+def test_a_refused_grouping_is_an_error_not_a_success(monkeypatch) -> None:
+    import asyncio
+
+    from toothspin import speakers as speakers_module
+
+    monkeypatch.setattr(speakers_module, "SETTLE_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(speakers_module, "SETTLE_POLL_S", 0.01)
+    ma = FakeMA([_player("kitchen", playing=PIXEL), _player("bath")])
+    ma_players = {p["player_id"]: p for p in ma.players}
+    original = ma.call
+
+    async def call(command, **args):  # noqa: ANN001, ANN003
+        await original(command, **args)
+        if command == "player_queues/play_media":
+            ma_players[args["queue_id"]].update(playback_state="playing", active_source=args["media"])
+        if command == "players/cmd/stop":
+            ma_players[args["player_id"]].update(playback_state="idle")
+
+    ma.call = call  # type: ignore[method-assign]
+    with pytest.raises(BackendError, match="didn.t group Bath with Kitchen"):
+        asyncio.run(speakers_module.toggle(ma, PIXEL, "bath", True))  # type: ignore[arg-type]
+
+
 def test_a_speaker_just_taken_out_of_a_group_waits_before_starting(monkeypatch) -> None:
     import asyncio
     import time
