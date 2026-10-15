@@ -19,7 +19,7 @@ import aiohttp
 from aiohttp import web
 from dbus_fast.errors import DBusError
 
-from . import ha, ma, setup_check, speakers
+from . import build_info, ha, ma, setup_check, speakers
 from .bluez import BluetoothManager
 from .ha import INGRESS_PROXY_IP
 from .backend import BackendError, PlayerBackend
@@ -65,6 +65,7 @@ def create_app(
         remaining = bluetooth.pairing_remaining
         return web.json_response(
             {
+                "about": build_info(),
                 "auto_pairing": auto_pairing,
                 "setup": _setup_state(status, backend, bluetooth) if status else None,
                 "bluetooth": {
@@ -250,7 +251,7 @@ def create_setup_app(status: setup_check.Status, ingress_port: int | None) -> we
     """Before Bluetooth starts: only explains what blocks ToothSpin."""
 
     async def get_state(_: web.Request) -> web.Response:
-        return web.json_response({"setup": _setup_state(status, None, None)})
+        return web.json_response({"about": build_info(), "setup": _setup_state(status, None, None)})
 
     app = _base_app(ingress_port)
     app.router.add_get("/api/state", get_state)

@@ -63,6 +63,7 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: toothspin:scan
+          build-args: GIT_COMMIT=${{ github.sha }}
           # Written here so the image job reuses these amd64 layers instead
           # of building them a second time.
           cache-from: type=gha
@@ -142,6 +143,7 @@ jobs:
           context: .
           file: Containerfile
           platforms: linux/amd64,linux/arm64
+          build-args: GIT_COMMIT=${{ github.sha }}
           push: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

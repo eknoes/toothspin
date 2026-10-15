@@ -151,6 +151,9 @@
   #app-ui { display: grid; gap: 16px; }
   #app-ui[hidden] { display: none; }
   a { color: var(--ok); }
+  /* There if you look for it, not otherwise. */
+  .about { text-align: center; font-size: 12px; color: var(--muted); opacity: .7; padding: 4px 0 8px; }
+  .about a { color: inherit; }
   code { font-size: 12px; padding: 1px 4px; border-radius: 4px; background: var(--line); }
   .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 6px; }
 </style>
@@ -182,6 +185,7 @@
   </section>
   </div>
 
+  <footer class="about" id="about"></footer>
 </main>
 <div class="toast" id="toast" role="alert" hidden></div>
 <script>
@@ -524,7 +528,15 @@ function renderSetup() {
   }
 }
 
+function renderAbout() {
+  const about = state.about;
+  if (!about) return;
+  const build = `v${esc(about.version)}${about.commit ? ` (${esc(about.commit)})` : ""}`;
+  setHtml($("about"), `<a href="https://github.com/eknoes/toothspin" target="_blank" rel="noopener">ToothSpin</a> ${build}`);
+}
+
 function render() {
+  renderAbout();
   renderSetup();
   if (!state.bluetooth || (state.setup && state.setup.problem)) return;
   const bt = state.bluetooth;

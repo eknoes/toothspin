@@ -35,7 +35,11 @@ COPY --from=build /opt/venv /opt/venv
 COPY deploy/pipewire/*.conf /etc/wireplumber/wireplumber.conf.d/
 COPY deploy/pipewire/pipewire.conf.d/*.conf /etc/pipewire/pipewire.conf.d/
 
+# The commit the image is built from, shown in the web UI. Last, so a new
+# commit only rebuilds this layer.
+ARG GIT_COMMIT=""
 ENV PATH=/opt/venv/bin:$PATH \
+    TOOTHSPIN_COMMIT=${GIT_COMMIT} \
     DATA_DIR=/data \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
