@@ -51,6 +51,31 @@ removed it: **Settings → Apps → ToothSpin → Show in sidebar**.
 
 ## Using it
 
+### How do I put ToothSpin on my phone's home screen? {#home-screen}
+
+With the Home Assistant Companion app (Android), a shortcut opens ToothSpin
+directly, with Home Assistant's login and also away from home:
+
+1. Find ToothSpin's address: open it from Home Assistant's sidebar in a
+   browser and look at the address bar, e.g.
+   `http://homeassistant.local:8123/app/8558c230_toothspin`. You need the
+   part from `/app/` on.
+2. In the Companion app, open **Settings → Companion app → Manage
+   shortcuts** and add a shortcut, e.g. labelled *ToothSpin*.
+3. Choose the type **Dashboard**. Despite its name, the field *Dashboard
+   view or Dashboard* takes any page of Home Assistant: enter the path from
+   step 1, e.g. `/app/8558c230_toothspin`.
+4. Save it, then long-press the shortcut (or the app icon) to pin it to the
+   home screen.
+
+For ToothSpin from `https://github.com/eknoes/toothspin`, the path is
+`/app/8558c230_toothspin`.
+
+Without the Companion app: set the **LAN port** option (e.g. `8080`) and use
+"Add to Home screen" in the phone's browser on `http://<Home Assistant's
+address>:8080/`. That page has no login of its own, so keep it to your home
+network.
+
 ### My phone doesn't find ToothSpin {#not-found}
 
 Phones can only pair while the pairing window is open: press **Add phone**
