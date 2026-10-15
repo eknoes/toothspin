@@ -116,8 +116,14 @@ def test_phones_may_connect_on_their_own_unless_restricted() -> None:
     path = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
     strict = BluetoothManager(bus=None, allow_phone_connect=False)  # type: ignore[arg-type]
     allowing = BluetoothManager(bus=None)  # type: ignore[arg-type]  # the default
+    for manager in (strict, allowing):
+        manager._devices[path] = {"Address": "34:39:16:5D:41:B9", "Paired": True}
     assert not strict.connection_allowed(path)
     assert allowing.connection_allowed(path)
+    # A device that never paired is refused outside the pairing window.
+    stranger = "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF"
+    allowing._devices[stranger] = {"Address": "AA:BB:CC:DD:EE:FF", "Paired": False}
+    assert not allowing.connection_allowed(stranger)
     # The agent accepts the phone's own A2DP connection without raising.
     _Agent(allowing).AuthorizeService.__wrapped__(
         _Agent(allowing), path, "0000110a-0000-1000-8000-00805f9b34fb"
@@ -301,6 +307,7 @@ def test_agent_refuses_call_profiles_but_not_music() -> None:
     manager = BluetoothManager(bus=None, adapter="hci0")  # type: ignore[arg-type]
     agent = _Agent(manager)
     phone = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+    manager._devices[phone] = {"Address": "34:39:16:5D:41:B9", "Paired": True}
     authorize = agent.AuthorizeService.__wrapped__
     for uuid in ("0000111f-0000-1000-8000-00805f9b34fb", "00001112-0000-1000-8000-00805F9B34FB"):
         with pytest.raises(DBusError):

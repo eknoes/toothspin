@@ -248,11 +248,11 @@ class BluetoothManager:
         return device_path.startswith(self._adapter_path + "/")
 
     def connection_allowed(self, path: str) -> bool:
-        return (
-            self._allow_phone_connect
-            or path in self._connect_allowed
-            or self.pairing_remaining is not None
-        )
+        if path in self._connect_allowed or self.pairing_remaining is not None:
+            return True
+        # Only paired phones: one that isn't may not get past BlueZ's own
+        # checks without pairing, but if it does, it's still refused here.
+        return self._allow_phone_connect and bool(self._devices.get(path, {}).get("Paired"))
 
     # --- actions ---
 
