@@ -19,14 +19,16 @@ from array import array
 
 from . import pipewire
 from .pipewire import CAPTURE_FORMAT, Source
-from .source import SendspinSource
+from .source import PAUSE_FILL_S, SendspinSource
 
 logger = logging.getLogger(__name__)
 
 CHUNK_MS = 20
 SIGNAL_THRESHOLD_DBFS = -60.0
-# Silence this long counts as "signal gone" (pause, end of playlist).
-SIGNAL_HOLD_S = 5.0
+# Silence this long counts as "signal gone". Music Assistant stops an input
+# 60 s after its signal goes, so a short one would end every pause; the
+# speakers are kept as long as the source fills a pause with silence.
+SIGNAL_HOLD_S = PAUSE_FILL_S
 # Arrival jitter beyond this resyncs the timeline instead of smoothing it.
 RESYNC_US = 200_000
 # How often to look for a phone node appearing or disappearing.
@@ -125,11 +127,9 @@ class Capture:
     async def _signal_loop(self) -> None:
         while True:
             last = self._last_loud_us
-            present = (
-                self.active is not None
-                and last is not None
-                and self._now_us() - last < SIGNAL_HOLD_S * 1_000_000
-            )
+            # Also while paused: the phone stops its stream then, and the
+            # capture ends.
+            present = last is not None and self._now_us() - last < SIGNAL_HOLD_S * 1_000_000
             self._source.set_signal(present)
             await asyncio.sleep(0.5)
 

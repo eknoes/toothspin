@@ -86,3 +86,40 @@ def test_stops_recording_when_node_disappears() -> None:
         task.cancel()
 
     asyncio.run(scenario())
+
+
+def test_signal_outlasts_a_pause_but_not_the_hold(monkeypatch) -> None:
+    from toothspin import capture as capture_module
+
+    clock = [0]
+    reports: list[bool] = []
+    source = FakeSource()
+    source.set_signal = reports.append  # type: ignore[method-assign]
+    loud = np.full(CHUNK_MS * 48, 8000, dtype="<i2").tobytes() * 2
+
+    async def record(found: Source, frames: int):
+        for i in range(5):
+            clock[0] = 1_000_000 + i * CHUNK_US
+            yield loud
+
+    async def scenario() -> None:
+        capture = Capture(PHONE.address, source, lambda: clock[0], record=record)  # type: ignore[arg-type]
+        await capture._capture(PHONE)  # played, then the phone paused: capture ended
+        monkeypatch.setattr(capture_module.asyncio, "sleep", _stop_after_one)
+        for minutes in (1, capture_module.SIGNAL_HOLD_S / 60 + 1):
+            clock[0] = 1_000_000 + int(minutes * 60_000_000)
+            try:
+                await capture._signal_loop()
+            except _Stop:
+                pass
+
+    asyncio.run(scenario())
+    assert reports == [True, False]  # still there a minute into the pause, gone after the hold
+
+
+class _Stop(Exception):
+    pass
+
+
+async def _stop_after_one(_seconds: float) -> None:
+    raise _Stop
