@@ -14,11 +14,13 @@ configuration:
       a dongle just for ToothSpin, set it here (e.g. hci1), or auto to pick
       one Home Assistant's Bluetooth integration doesn't use.
   start_volume:
-    name: Start volume
+    name: Maximum start volume
     description: >-
-      The loudest a speaker starts at (0-100) when a phone starts playing on
-      it, so a speaker left loud doesn't blast; quieter speakers keep their
-      volume. 100 (default) always keeps the speaker's volume.
+      When a phone starts playing on a speaker that is set louder than this
+      (0-100), ToothSpin turns it down to this volume first, so a speaker
+      someone left loud doesn't blast. Speakers set quieter keep their
+      volume, and afterwards you can turn up as you like. 100 (default)
+      never changes a speaker's volume.
   allow_phone_connect:
     name: Phones may connect by themselves
     description: >-

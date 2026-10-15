@@ -130,8 +130,8 @@ speakers.
 ### How do I stop a speaker from getting too loud? {#max-volume}
 
 Set its **Maximum volume** in Music Assistant's player settings. ToothSpin's
-**Start volume** option also limits how loud a speaker starts when a phone
-begins playing on it. Speakers that show **Fixed volume** have their volume
+**Maximum start volume** option also limits how loud a speaker starts when a
+phone begins playing on it. Speakers that show **Fixed volume** have their volume
 set on the speaker or its amplifier.
 
 ### Can I take phone calls through it? {#calls}

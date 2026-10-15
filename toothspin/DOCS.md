@@ -87,7 +87,7 @@ the speaker, or the whole group if it plays on several. When it starts
 playing, the phone takes over the speaker's volume instead of imposing its
 own, so nothing suddenly gets loud. To keep a speaker from ever getting too
 loud, set its **Maximum volume** in Music Assistant's player settings, or
-have speakers start no louder than the **Start volume**.
+have speakers start no louder than the **Maximum start volume**.
 
 **Hide speakers:** the eye icon next to a speaker hides it on that phone's
 card: it is dimmed and moved to the end of the list. Each phone has its own
@@ -107,7 +107,7 @@ instead: select a player, open **Browse**, pick the phone's input and press
 | Music Assistant token | Recommended. Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |
 | Music Assistant URL | Only needed if Music Assistant doesn't run as an App on this Home Assistant, e.g. `http://192.168.1.10:8095`. |
 | Sendspin server URL | Only needed if Music Assistant doesn't run as an App on this Home Assistant, e.g. `ws://192.168.1.10:8927/sendspin`. |
-| Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker left loud doesn't blast. Quieter speakers keep their volume; `100` (default) always keeps it. |
+| Maximum start volume | When a phone starts playing on a speaker set louder than this (0-100), the speaker is turned down to it first, e.g. `20` so a speaker someone left loud doesn't blast. Quieter speakers keep their volume, and you can turn up afterwards. `100` (default) never changes a speaker's volume. |
 | Take Bluetooth audio from Home Assistant | Off by default; ToothSpin asks to turn it on. Turns off Bluetooth in Home Assistant's own audio service, which otherwise takes the phones' streams; Home Assistant's audio service then can't use Bluetooth speakers or headsets. To undo, turn it off and restart Home Assistant. |
 | Phones may connect by themselves | On (default): paired phones connect by themselves, like to any Bluetooth speaker. Off: connections only start from the app. |
 | Log level | `debug`, `info`, `warning` or `error`. |

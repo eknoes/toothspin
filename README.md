@@ -131,7 +131,7 @@ are optional:
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
-| `START_VOLUME` | `100` | the loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker someone left loud doesn't blast; quieter speakers keep their volume, `100` always keeps it |
+| `START_VOLUME` | `100` | maximum start volume (0-100): a speaker set louder is turned down to this when a phone starts playing on it, e.g. `20` so a speaker someone left loud doesn't blast; quieter speakers keep their volume, and you can turn up afterwards; `100` never changes it |
 | `ALLOW_PHONE_CONNECT` | `true` | `false` only accepts connections started from the web UI's **Connect**, never from the phone |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
