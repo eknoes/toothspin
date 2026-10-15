@@ -232,3 +232,32 @@ def test_mute_uses_native_mute_or_emulates_it() -> None:
         assert squeeze["volume_level"] == 25 and "buero" not in volumes.emulated_mutes
 
     asyncio.run(scenario())
+
+
+def test_a_speaker_just_taken_out_of_a_group_waits_before_starting(monkeypatch) -> None:
+    import asyncio
+    import time
+
+    from toothspin import speakers as speakers_module
+
+    monkeypatch.setattr(speakers_module, "RELEASE_GAP_S", 0.3)
+    monkeypatch.setattr(speakers_module, "SETTLE_TIMEOUT_S", 0.0)
+    monkeypatch.setattr(speakers_module, "_released_at", {})
+    ma = FakeMA([
+        _player("living", playing=PIXEL, members=("living", "bath")),
+        _player("bath", playing=PIXEL, synced_to="living"),
+    ])
+    sent: list[tuple[str, float]] = []
+    original = ma.call
+
+    async def call(command, **args):  # noqa: ANN001, ANN003
+        sent.append((command, time.monotonic()))
+        await original(command, **args)
+
+    ma.call = call  # type: ignore[method-assign]
+    # Bath plays in Living's group: playing only on Bath takes it out first.
+    asyncio.run(speakers_module.move(ma, PIXEL, "bath"))  # type: ignore[arg-type]
+    commands = [c for c, _ in sent]
+    removed = sent[commands.index("players/cmd/set_members")][1]
+    started = sent[commands.index("player_queues/play_media")][1]
+    assert started - removed >= 0.3

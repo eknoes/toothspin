@@ -10,6 +10,7 @@ read back from its player state, never stored here.
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,6 +21,13 @@ SOURCE_URI = "sendspin_source://audio_source/{client_id}"
 # counts as synced to a group plays on the group leader instead. So after
 # each command, wait (up to this long) until MA's state reflects it.
 SETTLE_TIMEOUT_S = 5.0
+# A speaker just taken out of a group (or stopped) is still ending its old
+# stream (Music Assistant waits for it to drain its buffer, about a second).
+# Started or grouped again right away, a Sendspin speaker can stay silent.
+RELEASE_GAP_S = 1.5
+# When each speaker was last released, across requests: a quick second click
+# (or the regroup fallback) may start one the click before released.
+_released_at: dict[str, float] = {}
 SETTLE_POLL_S = 0.25
 
 
@@ -225,14 +233,39 @@ async def move(backend: PlayerBackend, uri: str, player_id: str, start_volume: i
     await _run(backend, commands)
 
 
+def _released(command: str, args: dict[str, Any]) -> set[str]:
+    """Speakers a command takes out of what they were playing."""
+    if command == "players/cmd/set_members":
+        return set(args.get("player_ids_to_remove") or ())
+    if command == "players/cmd/stop":
+        return {args["player_id"]}
+    return set()
+
+
+def _started(command: str, args: dict[str, Any]) -> set[str]:
+    """Speakers a command starts or adds to a group."""
+    if command == "player_queues/play_media":
+        return {args["queue_id"]}
+    if command == "players/cmd/set_members":
+        return set(args.get("player_ids_to_add") or ())
+    return set()
+
+
 async def _run(backend: PlayerBackend, commands: list[Command]) -> None:
+    loop = asyncio.get_running_loop()
     for command, args in commands:
+        if waits := [_released_at[p] + RELEASE_GAP_S - time.monotonic()
+                     for p in _started(command, args) if p in _released_at]:
+            await asyncio.sleep(max(0.0, *waits))
         await backend.call(command, **args)
-        loop = asyncio.get_running_loop()
+        for player_id in _released(command, args):
+            _released_at[player_id] = time.monotonic()
         deadline = loop.time() + SETTLE_TIMEOUT_S
         while True:
             await backend.refresh()
-            if _applied(backend.players, command, args) or loop.time() > deadline:
+            if _applied(backend.players, command, args):
+                break
+            if loop.time() > deadline:
                 break
             await asyncio.sleep(SETTLE_POLL_S)
 
