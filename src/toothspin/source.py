@@ -38,6 +38,10 @@ PAUSE_FILL_S = 600.0
 # The phone's audio counts as stopped after a gap this long.
 FILL_GAP_S = 0.3
 FILL_CHUNK_MS = 20
+# A connection ending sooner counts as dropped right away; this many in a row
+# suggest a second client with the same identity.
+SHORT_CONNECTION_S = 10.0
+QUICK_DROPS_WARNING = 5
 
 
 @dataclass(slots=True)
@@ -131,6 +135,8 @@ class SendspinSource:
         fill_task = asyncio.create_task(self._fill_loop())
         try:
             backoff = 1.0
+            quick_drops = 0
+            loop = asyncio.get_running_loop()
             while True:
                 url = self._url or await _discover_server()
                 if url is None:
@@ -139,12 +145,26 @@ class SendspinSource:
                     try:
                         await self.client.connect(url)
                         self._url = self._url or url
-                        backoff = 1.0
+                        connected_at = loop.time()
                         disconnected = asyncio.Event()
                         remove = self.client.add_disconnect_listener(disconnected.set)
                         await disconnected.wait()
                         remove()
                         logger.info("Disconnected from %s", url)
+                        if loop.time() - connected_at >= SHORT_CONNECTION_S:
+                            backoff = 1.0
+                            quick_drops = 0
+                        else:
+                            # The server keeps dropping us right away, e.g. for a
+                            # second client with the same identity: back off.
+                            quick_drops += 1
+                            if quick_drops == QUICK_DROPS_WARNING:
+                                logger.warning(
+                                    "The connection to %s keeps ending right after it "
+                                    "starts. Is another ToothSpin with the same identity "
+                                    "running, e.g. a second copy of the App? Only one may "
+                                    "run at a time.", url,
+                                )
                     except (TimeoutError, OSError, ClientError, RuntimeError) as err:
                         logger.warning("Connecting to %s failed: %s", url, err)
                     await self._reset()
