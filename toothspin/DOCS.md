@@ -44,6 +44,11 @@ On every start, and while running, ToothSpin checks:
   Bluetooth integration and recommends a dongle of its own if it shares
   one. If Home Assistant discovered ToothSpin's dongle and offers to add it,
   ToothSpin recommends ignoring it, and does it for you if you confirm.
+- **Home Assistant's audio service:** it also receives Bluetooth audio and
+  takes the phones' streams before ToothSpin does (the phone connects, but
+  nothing plays). ToothSpin asks to turn that off there; with your OK it sets
+  **Take Bluetooth audio from Home Assistant** and keeps it off, also after
+  the audio service restarts.
 - **Music Assistant token and connection:** missing token, a token Music
   Assistant rejects, or Music Assistant not found.
 
@@ -103,6 +108,7 @@ instead: select a player, open **Browse**, pick the phone's input and press
 | Music Assistant URL | Only needed if Music Assistant isn't found automatically, e.g. `http://homeassistant.local:8095`. |
 | Sendspin server URL | Only needed if Music Assistant's Sendspin server isn't found automatically, e.g. `ws://homeassistant.local:8927/sendspin`. |
 | Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker left loud doesn't blast. Quieter speakers keep their volume; `100` (default) always keeps it. |
+| Take Bluetooth audio from Home Assistant | Off by default; ToothSpin asks to turn it on. Turns off Bluetooth in Home Assistant's own audio service, which otherwise takes the phones' streams; Home Assistant's audio service then can't use Bluetooth speakers or headsets. To undo, turn it off and restart Home Assistant. |
 | Phones may connect by themselves | On (default): paired phones connect by themselves, like to any Bluetooth speaker. Off: connections only start from the app. |
 | LAN port | Also serves the web interface on this port to your whole network, **without** Home Assistant's login. Handy for adding it to a phone's home screen; leave it empty otherwise. |
 | Log level | `debug`, `info`, `warning` or `error`. |

@@ -51,6 +51,15 @@ passthrough works fine, because it has its own kernel.
   *sending* to two speakers). What actually blocked a second stream was
   PipeWire, which only acquires a phone's stream once its node runs, so
   `node.always-process = true` is set on `bluez_input.*`.
+- Only AAC and SBC are offered (`bluez5.codecs`). Phones otherwise pick
+  aptX HD or LDAC, whose bitrate drops out much sooner on a USB dongle, for
+  no gain: the audio goes on as 48 kHz PCM.
+- On Home Assistant OS, the Supervisor's audio plugin (PulseAudio) loads
+  `module-bluetooth-discover` and registers its own A2DP sink, which can win
+  the phone's stream. The App (`audio: true`) sees that through the plugin's
+  socket and, with the user's consent (an App option), unloads those modules
+  with `pactl`, again whenever the plugin restarts, and reconnects the
+  phones it held.
 - Capture stays at full scale (`bluez5.enable-hw-volume = false`); the
   phone's volume buttons control the speakers instead, see below.
 - The service runs its own BlueZ pairing agent (Just Works). Pairing is

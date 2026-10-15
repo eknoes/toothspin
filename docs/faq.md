@@ -64,6 +64,10 @@ which the Home Assistant App can't change. Audio works either way.
 
 ### It's connected, but nothing plays {#no-sound}
 
+As a Home Assistant App: if **Finish setup** asks to *Let ToothSpin receive
+the phones' audio*, do that first. Home Assistant's own audio service also
+receives Bluetooth audio and otherwise takes the phone's stream.
+
 Music plays from the phone into Music Assistant, and from there on speakers.
 Switch on a speaker on the phone's card in ToothSpin (needs the token), or
 in Music Assistant select a player, open **Browse**, pick the phone's input
