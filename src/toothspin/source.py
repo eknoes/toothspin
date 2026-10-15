@@ -30,9 +30,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Music Assistant gives up on an input that sends nothing within 5 s of being
-# asked to start, and the speaker turns off again. Right after Connect the
-# phone isn't playing yet: until it does, send silence (for at most this long).
+# asked to start, and ends one that sends nothing for 30 s; the speakers turn
+# off. Right after Connect the phone isn't playing yet, and a paused phone
+# stops its Bluetooth stream: send silence meanwhile, for at most this long.
 COLD_START_FILL_S = 120.0
+PAUSE_FILL_S = 600.0
+# The phone's audio counts as stopped after a gap this long.
+FILL_GAP_S = 0.3
 FILL_CHUNK_MS = 20
 
 
@@ -80,6 +84,7 @@ class SendspinSource:
         self._start_requested = False
         self._started_at = 0.0
         self._audio_since_start = False
+        self._last_audio = 0.0
         self._stopped_at = 0.0
         self._capture: SourceCapture | None = None
         self._format = CAPTURE_FORMAT
@@ -190,20 +195,25 @@ class SendspinSource:
     async def push(self, pcm: bytes, fmt: PcmFormat, timestamp_us: int) -> None:
         """Feed captured PCM; it's only sent while the server has asked for audio."""
         self._audio_since_start = True
+        self._last_audio = time.monotonic()
         await self._send(pcm, fmt, timestamp_us)
 
+    def _wants_fill(self) -> bool:
+        """The server wants audio, but the phone isn't sending any (yet, or paused)."""
+        if not self._start_requested or not self.client.connected:
+            return False
+        now = time.monotonic()
+        if not self._audio_since_start:
+            return now - self._started_at <= COLD_START_FILL_S
+        return FILL_GAP_S < now - self._last_audio <= PAUSE_FILL_S
+
     async def _fill_loop(self) -> None:
-        """Send silence while the server waits for the phone to start playing."""
+        """Send silence while the server waits for the phone to (re)start playing."""
         chunk_us = FILL_CHUNK_MS * 1000
         next_ts: int | None = None
         while True:
             await asyncio.sleep(FILL_CHUNK_MS / 1000)
-            if (
-                not self._start_requested
-                or self._audio_since_start
-                or time.monotonic() - self._started_at > COLD_START_FILL_S
-                or not self.client.connected
-            ):
+            if not self._wants_fill():
                 next_ts = None
                 continue
             fmt = self._format
@@ -212,7 +222,7 @@ class SendspinSource:
             # Chunks end "now", like the phone's: its audio then follows on.
             if next_ts is None or now - next_ts > 10 * chunk_us:
                 next_ts = now - chunk_us
-            while next_ts + chunk_us <= now and not self._audio_since_start:
+            while next_ts + chunk_us <= now and self._wants_fill():
                 await self._send(silence, fmt, next_ts)
                 next_ts += chunk_us
 
