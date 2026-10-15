@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "toothspin"
-version = "0.1.3"
+version = "0.1.4"
 description = "Bluetooth audio input for Sendspin and Music Assistant"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
