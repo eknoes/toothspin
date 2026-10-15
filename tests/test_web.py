@@ -25,3 +25,18 @@ def test_serves_pwa_files() -> None:
             assert sw.status == 200 and sw.content_type == "application/javascript"
 
     asyncio.run(scenario())
+
+
+def test_posts_from_other_sites_are_refused() -> None:
+    async def scenario() -> None:
+        app = create_app(bluetooth=None, receivers=None, pairing_seconds=120)  # type: ignore[arg-type]
+        async with TestClient(TestServer(app)) as client:
+            # What a form or a no-cors fetch on another website can send.
+            for content_type in ("text/plain", "application/x-www-form-urlencoded"):
+                res = await client.post(
+                    "/api/bluetooth/pairing", data='{"open": true}',
+                    headers={"Content-Type": content_type},
+                )
+                assert res.status == 415
+
+    asyncio.run(scenario())

@@ -272,6 +272,15 @@ def _base_app(ingress_port: int | None) -> web.Application:
             raise web.HTTPForbidden(text="Use Home Assistant to open ToothSpin.")
         return await handler(request)
 
+    @web.middleware
+    async def same_site_only(request: web.Request, handler: Any) -> web.StreamResponse:
+        # Without a login, any website the user visits could send POSTs here
+        # (form posts and plain fetches need no permission). A JSON content
+        # type makes the browser ask first, which this server never answers.
+        if request.method == "POST" and request.content_type != "application/json":
+            raise web.HTTPUnsupportedMediaType(text="Expected application/json")
+        return await handler(request)
+
     async def get_index(_: web.Request) -> web.Response:
         return web.Response(text=index, content_type="text/html")
 
@@ -281,7 +290,8 @@ def _base_app(ingress_port: int | None) -> web.Application:
             text=static.joinpath("sw.js").read_text(), content_type="application/javascript"
         )
 
-    app = web.Application(middlewares=[ingress_only] if ingress_port else [])
+    middlewares = [ingress_only] if ingress_port else []
+    app = web.Application(middlewares=[*middlewares, same_site_only])
     app.router.add_get("/", get_index)
     app.router.add_static("/static/", str(static))
     app.router.add_get("/sw.js", get_sw)
