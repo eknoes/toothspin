@@ -39,6 +39,10 @@ ROUTING_POLL_S = 0.5
 # Pause between disconnecting and reconnecting such a phone, per attempt:
 # reconnected within a second or so, Android stays stuck the same way.
 ROUTING_RECONNECT_GAPS_S = (5.0, 10.0)
+# Headset and hands-free profiles, both roles: calls, never music.
+CALL_UUIDS = frozenset(
+    f"0000{short}-0000-1000-8000-00805f9b34fb" for short in ("1108", "1112", "111e", "111f")
+)
 # How long a freshly paired phone gets to connect by itself.
 CONNECT_AFTER_PAIRING_S = 8.0
 ADAPTER = "org.bluez.Adapter1"
@@ -400,13 +404,16 @@ class BluetoothManager:
             logger.warning("Could not disconnect %s: %s", path, err)
 
     async def _untrust_all(self) -> None:
-        """Phones paired before this policy were trusted, which bypasses the agent."""
+        """A trusted phone bypasses the agent, which decides what may connect.
+
+        That's whether the phone may connect by itself, and never for calls.
+        """
         for path, props in self._devices.items():
-            if props.get("Trusted") and not self._allow_phone_connect:
+            if props.get("Trusted"):
                 await dbus.set_property(
                     self._bus, BLUEZ, path, DEVICE, "Trusted", Variant("b", False)
                 )
-                logger.info("Untrusted %s: connections now start from here", props.get("Alias"))
+                logger.info("Untrusted %s: ToothSpin's agent decides what connects", props.get("Alias"))
             if props.get("Connected"):
                 # Keep an existing connection alive across a service restart.
                 self._connect_allowed.add(path)
@@ -561,6 +568,13 @@ class _Agent(ServiceInterface):
 
     @method()
     def AuthorizeService(self, device: "o", uuid: "s"):  # noqa: F821, N802
+        if self._manager.owns(device) and uuid.lower() in CALL_UUIDS:
+            # ToothSpin only receives music. Another audio stack on the host
+            # (Home Assistant's PulseAudio) may still advertise a headset; the
+            # phone then keeps opening call connections next to the music
+            # stream, which stutters.
+            logger.debug("Refused call profile %s from %s", uuid, device)
+            raise DBusError("org.bluez.Error.Rejected", "ToothSpin only receives music")
         if self._manager.owns(device) and not self._manager.connection_allowed(device):
             logger.info("Rejected connection from %s: not started from here", device)
             asyncio.ensure_future(self._manager.refuse(device))

@@ -290,3 +290,21 @@ def test_connects_a_freshly_paired_phone_that_didnt_connect(monkeypatch) -> None
     assert asyncio.run(scenario(connected=False)) == ["Connect"]
     # It connected by itself: nothing to do.
     assert asyncio.run(scenario(connected=True)) == []
+
+
+def test_agent_refuses_call_profiles_but_not_music() -> None:
+    import pytest
+    from dbus_fast.errors import DBusError
+
+    from toothspin.bluez import _Agent
+
+    manager = BluetoothManager(bus=None, adapter="hci0")  # type: ignore[arg-type]
+    agent = _Agent(manager)
+    phone = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+    authorize = agent.AuthorizeService.__wrapped__
+    for uuid in ("0000111f-0000-1000-8000-00805f9b34fb", "00001112-0000-1000-8000-00805F9B34FB"):
+        with pytest.raises(DBusError):
+            authorize(agent, phone, uuid)  # hands-free / headset gateway: calls
+    authorize(agent, phone, "0000110a-0000-1000-8000-00805f9b34fb")  # A2DP: music
+    # Another adapter's devices are none of ToothSpin's business.
+    authorize(agent, "/org/bluez/hci1/dev_AA_BB_CC_DD_EE_FF", "0000111f-0000-1000-8000-00805f9b34fb")
