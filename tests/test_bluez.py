@@ -262,3 +262,31 @@ def test_connect_waits_for_an_attempt_in_progress(monkeypatch) -> None:  # noqa:
         return manager._devices[device]["Connected"]
 
     assert asyncio.run(scenario())
+
+
+def test_connects_a_freshly_paired_phone_that_didnt_connect(monkeypatch) -> None:  # noqa: ANN001
+    import asyncio
+
+    from toothspin import bluez
+
+    monkeypatch.setattr(bluez, "CONNECT_AFTER_PAIRING_S", 0.01)
+    monkeypatch.setattr(bluez, "ROUTING_RECONNECT_GAPS_S", ())
+    device = "/org/bluez/hci0/dev_34_39_16_5D_41_B9"
+
+    async def scenario(connected: bool) -> list[str]:
+        calls: list[str] = []
+
+        async def call(_bus, _service, _path, _iface, member, *args):  # noqa: ANN001, ANN002
+            calls.append(member)
+
+        monkeypatch.setattr(bluez.dbus, "call", call)
+        manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+        manager._devices[device] = {"Address": "34:39:16:5D:41:B9", "Paired": True,
+                                    "Connected": connected}
+        await manager._on_paired(device)
+        return calls
+
+    # The phone's own connection broke down while pairing: finish it from here.
+    assert asyncio.run(scenario(connected=False)) == ["Connect"]
+    # It connected by itself: nothing to do.
+    assert asyncio.run(scenario(connected=True)) == []

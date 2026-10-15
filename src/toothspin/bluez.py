@@ -39,6 +39,8 @@ ROUTING_POLL_S = 0.5
 # Pause between disconnecting and reconnecting such a phone, per attempt:
 # reconnected within a second or so, Android stays stuck the same way.
 ROUTING_RECONNECT_GAPS_S = (5.0, 10.0)
+# How long a freshly paired phone gets to connect by itself.
+CONNECT_AFTER_PAIRING_S = 8.0
 ADAPTER = "org.bluez.Adapter1"
 DEVICE = "org.bluez.Device1"
 PLAYER = "org.bluez.MediaPlayer1"
@@ -481,6 +483,18 @@ class BluetoothManager:
         self._connect_allowed.add(path)
         if self._pairing_deadline is not None:
             await self.close_pairing()
+        await asyncio.sleep(CONNECT_AFTER_PAIRING_S)
+        props = self._devices.get(path, {})
+        if not props.get("Paired") or props.get("Connected"):
+            return
+        # The phone's own first connection can break down right after pairing
+        # (seen as "error updating services" in bluetoothd), leaving the phone
+        # hanging at "pairing". Connecting from here finishes the job.
+        logger.info("%s didn't connect after pairing; connecting from here", self.device_name(path))
+        try:
+            await self.connect_device(str(props.get("Address", "")))
+        except (DBusError, TimeoutError) as err:
+            logger.warning("Connecting %s after pairing failed: %s", self.device_name(path), err)
 
 
 def _unwrap_player(props: dict[str, Variant]) -> dict[str, Any]:
