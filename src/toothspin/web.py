@@ -325,12 +325,10 @@ def _setup_state(
         todo.append({
             "kind": "todo",
             "title": "Update Music Assistant",
-            "text": f"This Music Assistant is version {version}. ToothSpin needs "
-            f"{'.'.join(map(str, ma.MIN_VERSION))} or newer (2.10.6 or newer recommended): "
-            "older versions can't play phones' audio or pair them.",
+            "text": f"You have Music Assistant {version}. ToothSpin needs "
+            f"{'.'.join(map(str, ma.MIN_VERSION))} or newer (2.10.6 recommended).",
             "steps": [
-                "Update Music Assistant. In Home Assistant: **Settings → Apps → Music "
-                "Assistant → Update**.",
+                "In Home Assistant: **Settings → Apps → Music Assistant → Update**.",
             ],
         })
     if status.warning is not None:
@@ -339,11 +337,11 @@ def _setup_state(
         todo.append({
             "kind": "todo",
             "title": "Add a Music Assistant token",
-            "text": "To pick speakers here, pair phones with Music Assistant by "
-            "themselves, and control the speakers with the phone's volume buttons.",
+            "text": "Lets you pick speakers here, pairs phones with Music Assistant "
+            "automatically, and lets the phone's volume buttons control the speakers.",
             "steps": [
-                "In Music Assistant, click your profile (bottom left) → **Tokens** → "
-                "**Create token**, and copy it.",
+                "In Music Assistant: your profile (bottom left) → **Tokens** → **Create "
+                "token**. Copy it.",
                 (
                     "Paste it as **Music Assistant token** in [ToothSpin's "
                     "configuration](ha:app-config), save and restart ToothSpin."

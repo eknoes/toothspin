@@ -295,7 +295,7 @@ function refreshSoon() {
 function renderAudio(d) {
   if (d.reconnecting) return `<div><span class="dot warn"></span>The phone plays on its own speaker; reconnecting to move its audio here…</div>`;
   if (!d.connected) return `<div class="muted">Not connected</div>`;
-  if (!d.audio) return `<div class="muted">Connected, not streaming</div>`;
+  if (!d.audio) return `<div class="muted">Connected, not playing</div>`;
   const np = d.audio.now_playing, ss = d.sendspin;
   const track = np && np.title
     ? `<div class="track"><b>${esc(np.title)}</b>${np.artist ? ` — ${esc(np.artist)}` : ""}</div>`
@@ -438,16 +438,16 @@ const SETUP_ACTIONS = {
   "ignore-adapter": {
     label: "Ignore in Home Assistant",
     confirm: "Yes, ignore it",
-    note: "This adds an “Ignore” for this adapter in Home Assistant's Bluetooth "
-      + "integration, like its own Ignore button. You can undo it there under Ignored.",
+    note: "Same as Home Assistant's own Ignore button. You can undo it there, "
+      + "under Ignored.",
     done: "Done: Home Assistant ignores the adapter now.",
   },
   "take-bluetooth-audio": {
     label: "Take Bluetooth audio",
     confirm: "Yes, take it",
-    note: "This turns off Bluetooth in Home Assistant's own audio service, now and "
-      + "whenever it restarts, and turns on “Take Bluetooth audio from Home Assistant” "
-      + "in ToothSpin's configuration, where you can undo it. Connected phones reconnect once.",
+    note: "Turns off Bluetooth in Home Assistant's audio service, also after it "
+      + "restarts. You can undo it in ToothSpin's configuration. Connected phones "
+      + "reconnect once.",
     done: "Done: phones' audio now goes to ToothSpin.",
   },
 };
@@ -548,7 +548,7 @@ function render() {
     : bt.pin_pairing
       ? `<span class="muted">Phones can pair any time: connect to <b>${esc(bt.name)}</b> and enter the PIN
          from ToothSpin's configuration. Phones that don't ask for one need the pairing window.</span>`
-      : `<span class="muted">Add a new phone by opening Bluetooth pairing for two minutes.</span>`;
+      : `<span class="muted">To add a phone, make ToothSpin visible for two minutes.</span>`;
   const btn = $("bt-pairing-btn");
   btn.textContent = pairing ? "Stop pairing" : "Add phone";
   btn.className = pairing ? "" : "primary";

@@ -134,15 +134,13 @@ def choose(configured: str, found: list[Adapter], usage: dict[str, str] | None) 
 def _shared(adapter: Adapter) -> Problem:
     return Problem(
         "Bluetooth adapter shared with Home Assistant",
-        f"ToothSpin uses {adapter.label}, which Home Assistant's Bluetooth "
-        "integration uses too (for Bluetooth Low Energy devices like sensors). That "
-        "works, but if phones drop out or the sound stutters, give ToothSpin a "
-        "dongle of its own.",
+        f"Home Assistant's Bluetooth integration uses {adapter.label} too. That "
+        "works, but phones may drop out or stutter. A dongle just for ToothSpin "
+        "avoids that.",
         [
             "Plug in a second USB Bluetooth dongle.",
-            "In Home Assistant, open [Settings → Devices & services → Bluetooth](ha:bluetooth). "
-            "Choose **Ignore** for the new dongle if it's listed under *Discovered*, "
-            "or **disable** it (⋮ menu → Disable).",
+            "In [Settings → Devices & services → Bluetooth](ha:bluetooth), **ignore** "
+            "the new dongle if it's under *Discovered*, or **disable** it (⋮ menu).",
             "Set **Bluetooth adapter** in [ToothSpin's configuration](ha:app-config) to "
             "the new dongle (e.g. `hci1`, or `auto`) and restart ToothSpin.",
         ],
@@ -156,8 +154,7 @@ def _offered(adapter: Adapter, usage: dict[str, str] | None) -> Problem | None:
     return Problem(
         "Let Home Assistant ignore ToothSpin's adapter",
         f"Home Assistant found ToothSpin's adapter ({adapter.address}) and offers to "
-        "add it to its Bluetooth integration. ToothSpin works best when Home "
-        "Assistant leaves it alone.",
+        "add it. ToothSpin works best if Home Assistant leaves it alone.",
         [
             "Press **Ignore in Home Assistant**, or in [Settings → Devices & "
             "services](ha:integrations) choose **Ignore** on the discovered *Bluetooth* "
@@ -226,12 +223,11 @@ def bluetooth_missing() -> Problem:
 def ha_audio_takes_bluetooth() -> Problem:
     return Problem(
         "Let ToothSpin receive the phones' audio",
-        "Home Assistant's own audio service also receives Bluetooth audio and takes "
-        "the phones' streams before ToothSpin does: a phone connects, but nothing "
-        "plays. ToothSpin can turn that off in Home Assistant's audio service.",
+        "Home Assistant's own audio service grabs the phones' audio: they connect, "
+        "but nothing plays. ToothSpin can turn that off.",
         [
-            "Press **Take Bluetooth audio**. Home Assistant's own audio service then "
-            "can't use Bluetooth speakers or headsets (few setups do).",
+            "Press **Take Bluetooth audio**. Home Assistant then can't use Bluetooth "
+            "speakers or headsets itself (few setups do).",
             "To undo it, turn off **Take Bluetooth audio from Home Assistant** in "
             "[ToothSpin's configuration](ha:app-config) and restart Home Assistant.",
         ],
