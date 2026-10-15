@@ -49,7 +49,6 @@ class SourceStatus:
     name: str
     url: str | None
     connected: bool
-    server_name: str | None
     paired: bool
     requested: bool
     """Music Assistant asked for this input's audio."""
@@ -365,7 +364,6 @@ class SendspinSource:
             name=self._name,
             url=self._url,
             connected=client.connected,
-            server_name=info.name if info else None,
             paired=info.server_id in self._paired_servers if info else bool(self._paired_servers),
             # MA stops and restarts the input whenever its speakers regroup;
             # don't flicker to "not playing" for that.

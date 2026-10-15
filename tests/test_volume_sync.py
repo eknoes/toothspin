@@ -86,7 +86,7 @@ def test_sync_applies_to_phone_single_speaker_and_group() -> None:
     from toothspin.speakers import source_uri
     from toothspin.volume_sync import VolumeSync
 
-    phone = BluetoothDevice("AA:AA:AA:AA:AA:AA", "Pixel", paired=True, trusted=False, connected=True)
+    phone = BluetoothDevice("AA:AA:AA:AA:AA:AA", "Pixel", connected=True)
     uri = source_uri("pixel-id")
 
     class FakeBluetooth:

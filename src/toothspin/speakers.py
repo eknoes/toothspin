@@ -26,7 +26,7 @@ SETTLE_TIMEOUT_S = 5.0
 # Started or grouped again right away, a Sendspin speaker can stay silent.
 RELEASE_GAP_S = 1.5
 # When each speaker was last released, across requests: a quick second click
-# (or the regroup fallback) may start one the click before released.
+# may start one the click before released.
 _released_at: dict[str, float] = {}
 SETTLE_POLL_S = 0.25
 

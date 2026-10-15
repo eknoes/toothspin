@@ -17,7 +17,7 @@ class FakeBluetooth:
 
 
 def _device(address: str, name: str) -> BluetoothDevice:
-    return BluetoothDevice(address, name, paired=True, trusted=True, connected=True)
+    return BluetoothDevice(address, name, connected=True)
 
 
 def test_one_receiver_per_paired_phone(tmp_path: Path, monkeypatch) -> None:

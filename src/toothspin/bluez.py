@@ -56,8 +56,6 @@ AGENT_PATH = "/org/toothspin/agent"
 class BluetoothDevice:
     address: str
     name: str
-    paired: bool
-    trusted: bool
     connected: bool
 
 
@@ -79,9 +77,6 @@ class NowPlaying:
     status: str
     title: str | None
     artist: str | None
-    album: str | None
-    duration_ms: int | None
-    position_ms: int | None
 
 
 class BluetoothManager:
@@ -197,8 +192,6 @@ class BluetoothManager:
             BluetoothDevice(
                 address=props.get("Address", ""),
                 name=props.get("Alias") or props.get("Name") or props.get("Address", ""),
-                paired=bool(props.get("Paired")),
-                trusted=bool(props.get("Trusted")),
                 connected=bool(props.get("Connected")),
             )
             for props in self._devices.values()
@@ -237,9 +230,6 @@ class BluetoothManager:
                     status=props.get("Status", ""),
                     title=track.get("Title") or None,
                     artist=track.get("Artist") or None,
-                    album=track.get("Album") or None,
-                    duration_ms=track.get("Duration"),
-                    position_ms=props.get("Position"),
                 )
         return None
 

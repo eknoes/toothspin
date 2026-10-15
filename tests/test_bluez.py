@@ -37,16 +37,11 @@ def test_now_playing_from_avrcp() -> None:
     manager._on_message(
         _signal(
             "PropertiesChanged", "org.freedesktop.DBus.Properties", PLAYER_PATH, "sa{sv}as",
-            ["org.bluez.MediaPlayer1", {"Position": Variant("u", 5000)}, []],
+            ["org.bluez.MediaPlayer1", {"Status": Variant("s", "paused")}, []],
         )
     )
     assert manager.now_playing("84:0f:4c:90:46:af") == NowPlaying(
-        status="playing",
-        title="Crawling",
-        artist="Linkin Park",
-        album="Hybrid Theory",
-        duration_ms=209000,
-        position_ms=5000,
+        status="paused", title="Crawling", artist="Linkin Park"
     )
     assert manager.now_playing("00:11:22:33:44:55") is None
 
