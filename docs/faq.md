@@ -161,6 +161,22 @@ within a few seconds.
     alt="No Bluetooth adapter found, with steps to fix it">
 </figure>
 
+### Some speakers won't group, or won't leave a group {#grouping}
+
+ToothSpin says *Music Assistant didn't group … with …*, or Music Assistant
+reports an error such as *set_members needs to be implemented*. Often only
+one direction fails: the speaker can lead a group, but not join another.
+
+That's usually a stale or reused device in Music Assistant: an old player
+entry with the same ID as the speaker, e.g. from software that ran on the
+same device before (a Raspberry Pi that was a Squeezelite player before it
+became a Sendspin speaker). Music Assistant then mixes the two up and can't
+find the speaker's Sendspin output for grouping.
+
+Remove the old entry in Music Assistant (**Settings → Players**), and add
+the speaker again if needed. If that doesn't help, please
+[open an issue](https://github.com/eknoes/toothspin/issues).
+
 ### Something else {#other}
 
 Look at the log (**Settings → Apps → ToothSpin → Log**) and
