@@ -111,6 +111,16 @@ the phone's card, as far as the phone reports them over Bluetooth. Support
 in Sendspin is being discussed
 ([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)).
 
+### Why are the speakers off after a long pause? {#long-pause}
+
+When you pause the phone, ToothSpin keeps its speakers for up to 10 minutes,
+so playback continues right where it was. After that, Music Assistant lets
+the speakers go, and resuming on the phone doesn't switch them back on:
+switch them on again in ToothSpin.
+
+That's a known limitation. Taking the speakers back by itself could cut off
+whatever someone else started on them in the meantime. It's on our backlog.
+
 ### Can several phones play at once? {#several-phones}
 
 Yes. Each phone is its own input in Music Assistant and can play on its own
