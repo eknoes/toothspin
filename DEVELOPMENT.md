@@ -40,6 +40,16 @@ It builds the image, loads the SELinux policy where needed and runs the
 build as a rootless Quadlet unit (a drop-in points the unit at the local
 image instead of the release). Logs: `journalctl --user -u toothspin`.
 
+### As a Home Assistant App
+
+`deploy/ha/dev-push.sh root@<ha-host> [build-host]` builds the working tree
+(uncommitted changes included) with podman or docker, locally or on
+`build-host` via SSH, loads it on the Home Assistant OS host under the tag the
+installed App runs, and restarts the App. It needs the host's developer SSH
+access on port 22222. Only the code changes this way: the App's `config.yaml`
+(options, permissions) stays the installed release's. The next App update
+replaces the test build.
+
 ## Rules of thumb
 
 - **aiosendspin follows Music Assistant.** `source@v1` is young and still
