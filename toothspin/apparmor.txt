@@ -1,0 +1,67 @@
+#include <tunables/global>
+
+# ToothSpin as a Home Assistant App. The Supervisor names the profile after
+# the App's slug when it loads it.
+profile toothspin flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # No Linux capabilities: ToothSpin runs fine without any (--cap-drop ALL
+  # outside Home Assistant). PipeWire's request for realtime scheduling is
+  # refused and it carries on.
+
+  # Network: Music Assistant, Sendspin, mDNS, the web UI (TCP/UDP), D-Bus and
+  # PipeWire (unix sockets), the kernel's netlink for interface lookups.
+  network inet,
+  network inet6,
+  network unix,
+  network netlink raw,
+
+  # BlueZ (host D-Bus) and Home Assistant's audio service (PulseAudio socket).
+  dbus,
+  /run/dbus/system_bus_socket rw,
+  /run/audio/ r,
+  /run/audio/** rw,
+  /etc/pulse/client.conf r,
+  /etc/asound.conf r,
+
+  # The image's programs: the service (Python in /opt/venv), PipeWire,
+  # WirePlumber, pw-record/pw-dump and pactl.
+  /init ix,
+  /bin/** ix,
+  /sbin/** ix,
+  /usr/bin/** ix,
+  /usr/sbin/** ix,
+  /opt/venv/bin/** ix,
+  / r,
+  /{,usr/,usr/local/}lib/ r,
+  /lib/** mr,
+  /usr/lib/** mr,
+  /opt/venv/** mr,
+  /usr/share/** r,
+  /etc/** r,
+
+  # The App's data (phones' identities, settings) and runtime files.
+  /data/ r,
+  /data/** rwk,
+  /tmp/ rw,
+  /tmp/** rwkl,
+  /dev/shm/ r,
+  /dev/shm/** rwk,
+  /run/** rwk,
+  # pactl keeps a PulseAudio cookie in the home directory.
+  /root/.config/ rw,
+  /root/.config/pulse/ rw,
+  /root/.config/pulse/** rwk,
+
+  # Process and system information PipeWire and Python read; PipeWire's
+  # tools name their threads.
+  @{PROC}/** r,
+  @{PROC}/@{pid}/comm w,
+  @{PROC}/@{pid}/task/@{tid}/comm w,
+  /sys/** r,
+
+  # Its own processes, and Docker stopping the container.
+  signal (send, receive) peer=@{profile_name},
+  signal (receive) set=(kill, term, int, hup) peer=unconfined,
+  signal (receive) set=(kill, term) peer=/usr/bin/docker,
+}

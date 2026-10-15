@@ -103,6 +103,10 @@ the echo of its own last write for a few seconds.
   `deploy/selinux/toothspin.cil` defines `toothspin.process` from the udica
   templates container-selinux ships, plus the bus socket, `send_msg` to the
   bus and `bluetoothd` only, and mapping PipeWire's memfd buffers.
+- As a Home Assistant App it runs under its own AppArmor profile
+  (`toothspin/apparmor.txt`): no Linux capabilities, files limited to its
+  programs, its data, `/tmp`, the D-Bus socket and Home Assistant's audio
+  socket.
 - The web UI has no login. As a Home Assistant App it's served through
   ingress, and the ingress port only answers the Supervisor's proxy
   (172.30.32.2). Outside Home Assistant it relies on the home network.
