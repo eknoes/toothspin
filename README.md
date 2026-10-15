@@ -68,10 +68,9 @@ Pick whatever fits your setup:
 [![Add the repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feknoes%2Ftoothspin)
 
 Add `https://github.com/eknoes/toothspin` as an app repository (**Settings →
-Apps → App store → ⋮ → Repositories**) and install **ToothSpin**. Setup
-details, e.g. giving ToothSpin a dongle of its own, are in the [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) and the
-[FAQ](https://eknoes.github.io/toothspin/faq.html). The web UI opens
-through Home Assistant.
+Apps → App store → ⋮ → Repositories**) and install **ToothSpin**. Step by
+step: [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant),
+[FAQ](https://eknoes.github.io/toothspin/faq.html).
 
 ### With Docker or Podman
 
@@ -122,59 +121,49 @@ are optional:
 
 | Variable | Default | |
 |---|---|---|
-| `MA_TOKEN` | – | long-lived Music Assistant token (your profile → **Tokens**); enables choosing speakers in the web UI and pairing phones with Music Assistant automatically |
+| `MA_TOKEN` | – | Music Assistant token (your profile → **Tokens**); lets you pick speakers in the web UI and pairs phones automatically |
 | `MA_URL` | discovered via mDNS | e.g. `http://192.168.178.91:8095` |
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
 | `BT_NAME` | `ToothSpin` | Bluetooth name phones see |
-| `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN instead of only during the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
-| `BT_ADAPTER` | `hci0` | the dongle, e.g. `hci1`; `auto` takes the first one (as a Home Assistant App: preferably one Home Assistant doesn't use) |
+| `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN, not only in the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
+| `BT_ADAPTER` | `hci0` | the dongle, e.g. `hci1`; `auto` takes the first one |
 | `SENDSPIN_NAME` | `{device} (Bluetooth)` | default name of each phone's input in Music Assistant (rename per phone in the web UI) |
 | `SENDSPIN_MANUFACTURER` | host name | manufacturer shown for the inputs in Music Assistant |
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
-| `START_VOLUME` | `100` | maximum start volume (0-100): a speaker set louder is turned down to this when a phone starts playing on it, e.g. `20` so a speaker someone left loud doesn't blast; quieter speakers keep their volume, and you can turn up afterwards; `100` never changes it |
-| `ALLOW_PHONE_CONNECT` | `true` | `false` only accepts connections started from the web UI's **Connect**, never from the phone |
+| `START_VOLUME` | `100` | maximum start volume (0-100): a speaker set louder is turned down to it when a phone starts on it, e.g. `20`; `100` never changes the volume |
+| `ALLOW_PHONE_CONNECT` | `true` | `false`: phones only connect via the web UI's **Connect** |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
 | `LOG_LEVEL` | `INFO` | |
 
 ## Usage
 
-**Add a phone:** press **Add phone** in the web UI; the dongle is visible
-for two minutes. On the phone, connect to the Bluetooth name (default
-"ToothSpin"). Outside that window, pairing is refused, unless you set
-a `BT_PIN`: then phones can pair any time by entering it.
+**Add a phone:** press **Add phone**, then connect to "ToothSpin" in the
+phone's Bluetooth settings within two minutes. Outside that window pairing
+is refused, unless you set a `BT_PIN`: then phones can pair any time with it.
 
-**Pair it with Music Assistant:** the phone now appears in Music Assistant
-as a new device, e.g. "Pixel 10 (Bluetooth)". With `MA_TOKEN` set, ToothSpin
-pairs it by itself within a few seconds. Without, open it in Music
-Assistant's settings and choose **Pair the device**; then press **Allow** on
-the phone's card in ToothSpin and type the code it shows into Music
-Assistant.
+**Pair it with Music Assistant:** the phone appears there as a new device,
+e.g. "Pixel 10 (Bluetooth)". With `MA_TOKEN`, ToothSpin pairs it by itself.
+Without, open it in Music Assistant's settings, choose **Pair the device**,
+press **Allow pairing** on the phone's card in ToothSpin and enter the code.
 
-**Play:** press **Connect** on the phone's card, play something on the
-phone, then switch on speakers on its card. Several speakers form a group
-on the fly (only speakers that can play in sync are offered together), each
-with its own volume and mute. To switch rooms, the arrow next to a speaker
-moves the phone there in one go, off all the others. On connecting, the
-phone takes over the speaker's volume instead of imposing its own, so
-nothing suddenly gets loud; after that, its volume buttons control the
-speaker or group. The eye icon hides speakers you don't need on that phone's
-card.
+**Play:** connect the phone, play something and switch on speakers on its
+card. Several speakers form a group (only speakers that can play in sync
+are offered together), each with its own volume and mute. The arrow next to
+a speaker moves the phone to just that one. A speaker keeps its volume when
+a phone starts; then the phone's volume buttons control it. The eye icon
+hides speakers on that phone's card.
 
-**Speakers that get too loud:** cap them where the sound is made, e.g. the
-amplifier's hardware volume on the speaker, or Music Assistant's per-player
-**Maximum volume** (which rescales 0-100% to that maximum). Or have speakers
-start no louder than `START_VOLUME` when a phone starts on them.
+**Too loud:** cap a speaker where the sound is made (e.g. its amplifier), or
+with Music Assistant's per-player **Maximum volume**. `START_VOLUME` turns a
+loud speaker down when a phone starts on it.
 
-Without a Music Assistant token, start the input from Music Assistant
-instead: select a player, open **Browse**, pick the phone's input and press
-**Play**. Or set the device's **Automatically play line-in on** setting:
-Music Assistant then starts it when the phone plays and stops a minute after
-it goes quiet.
+**Without a token:** play the input from Music Assistant (select a player,
+**Browse**, pick the input, **Play**), or set the device's **Automatically
+play line-in on**: Music Assistant then starts it when the phone plays.
 
-**Remove** on a phone's card also forgets its Music Assistant pairing. With
-`MA_TOKEN` set, ToothSpin removes the phone's input from Music Assistant too;
-otherwise remove the matching device there yourself.
+**Remove** on a phone's card also forgets its Music Assistant pairing, and
+with `MA_TOKEN` removes its input there too.
 
 ## Design decisions
 
