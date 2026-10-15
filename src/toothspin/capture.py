@@ -19,7 +19,7 @@ from array import array
 
 from . import pipewire
 from .pipewire import CAPTURE_FORMAT, Source
-from .source import PAUSE_FILL_S, SendspinSource
+from .source import FILL_GAP_S, PAUSE_FILL_S, SendspinSource
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,8 @@ POLL_S = 2.0
 # the node only once the phone starts its stream.
 BURST_POLL_S = 0.25
 BURST_S = 4.0
+# Report late audio (a gap the source fills with silence) at most this often.
+LATE_REPORT_S = 60.0
 
 
 class Capture:
@@ -101,13 +103,17 @@ class Capture:
         logger.info("Capturing %s (%s)", found.description, found.codec)
         self.active = found
         next_ts: int | None = None
+        late = _LateAudio(found.description, self._now_us())
         try:
             async for chunk in self._record(found, frames):
                 now = self._now_us()
+                late.arrived(now)
                 arrived = now - chunk_us
                 # Bluetooth delivers in bursts; keep a steady timeline and only
                 # nudge it towards arrival time so jitter doesn't reach MA.
                 if next_ts is None or abs(arrived - next_ts) > RESYNC_US:
+                    if next_ts is not None:
+                        late.resyncs += 1
                     next_ts = arrived
                 else:
                     next_ts += (arrived - next_ts) // 64
@@ -122,6 +128,7 @@ class Capture:
             await asyncio.sleep(1.0)
         finally:
             self.active = None
+            late.report(self._now_us())
             logger.info("Capture from %s ended", found.description)
 
     async def _signal_loop(self) -> None:
@@ -132,6 +139,41 @@ class Capture:
             present = last is not None and self._now_us() - last < SIGNAL_HOLD_S * 1_000_000
             self._source.set_signal(present)
             await asyncio.sleep(0.5)
+
+
+class _LateAudio:
+    """Counts gaps in a phone's audio: a weak Bluetooth link stutters there."""
+
+    def __init__(self, name: str, now_us: int) -> None:
+        self._name = name
+        self._since_us = now_us
+        self._last_us: int | None = None
+        self.gaps = 0
+        self.longest_us = 0
+        self.resyncs = 0
+
+    def arrived(self, now_us: int) -> None:
+        if self._last_us is not None:
+            gap = now_us - self._last_us
+            if gap > FILL_GAP_S * 1_000_000:
+                self.gaps += 1
+                self.longest_us = max(self.longest_us, gap)
+        self._last_us = now_us
+        if now_us - self._since_us >= LATE_REPORT_S * 1_000_000:
+            self.report(now_us)
+
+    def report(self, now_us: int) -> None:
+        if self.gaps or self.resyncs:
+            logger.info(
+                "%s: audio came late %d times in %.0f s (longest gap %d ms), timing restarted %d times",
+                self._name,
+                self.gaps,
+                (now_us - self._since_us) / 1_000_000,
+                self.longest_us // 1000,
+                self.resyncs,
+            )
+        self._since_us = now_us
+        self.gaps = self.longest_us = self.resyncs = 0
 
 
 def _dbfs(pcm: bytes) -> float:

@@ -123,3 +123,18 @@ class _Stop(Exception):
 
 async def _stop_after_one(_seconds: float) -> None:
     raise _Stop
+
+
+def test_reports_late_audio(caplog) -> None:
+    caplog.set_level("INFO", logger="toothspin.capture")
+    arrivals = [1_000_000 + i * CHUNK_US for i in range(10)]
+    arrivals += [1_800_000 + i * CHUNK_US for i in range(10)]
+    _run(arrivals)
+    assert "Pixel: audio came late 1 times" in caplog.text
+    assert "longest gap 620 ms), timing restarted 1 times" in caplog.text
+
+
+def test_steady_audio_reports_nothing(caplog) -> None:
+    caplog.set_level("INFO", logger="toothspin.capture")
+    _run([1_000_000 + i * CHUNK_US for i in range(20)])
+    assert "came late" not in caplog.text
