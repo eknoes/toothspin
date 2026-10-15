@@ -61,10 +61,6 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--web-host", default=env("WEB_HOST", "0.0.0.0"))
     parser.add_argument("--web-port", type=int, default=int(env("WEB_PORT", "8080")))
     parser.add_argument(
-        "--lan-port", type=int, default=int(env("LAN_PORT")) if env("LAN_PORT") else None,
-        help="As a Home Assistant App: also serve the web UI on this port to the LAN",
-    )
-    parser.add_argument(
         "--start-volume", type=int, default=int(env("START_VOLUME", str(DEFAULT_START_VOLUME))),
         help="The loudest a speaker starts at when a phone starts playing on it (0-100)",
     )
@@ -319,10 +315,16 @@ async def _run(args: argparse.Namespace) -> None:
         take_bluetooth_audio=args.take_bluetooth_audio,
     )
     ingress_port = None
+    lan = False
     if status.app:
-        ingress_port, status.app_slug = await ha.app_info()
+        ingress_port, status.app_slug, lan = await ha.app_info()
+        # No host network, so no mDNS: Music Assistant's App runs on the host.
+        if not args.ma_url:
+            args.ma_url = f"http://{ha.HOST_IP}:8095"
+        if not args.url:
+            args.url = f"ws://{ha.HOST_IP}:8927/sendspin"
     if ingress_port:
-        ports = [ingress_port] + ([args.lan_port] if args.lan_port else [])
+        ports = [ingress_port] + ([ha.LAN_PORT] if lan else [])
     else:
         ports = [args.web_port]
     site = _Web(args.web_host, ports, ingress_port)

@@ -24,6 +24,12 @@ OPTIONS_PATH = Path("/data/options.json")
 # Source address of the Supervisor's ingress proxy; only it may reach the
 # ingress port (https://developers.home-assistant.io/docs/apps/presentation).
 INGRESS_PROXY_IP = "172.30.32.2"
+# The host, as seen from an App's container. The Music Assistant App runs on
+# the host network, so this is where ToothSpin finds it.
+HOST_IP = "172.30.32.1"
+# The web UI's port inside the container for the LAN; the App's Network
+# section maps it to a host port (off unless the user sets one).
+LAN_PORT = 8080
 
 # App option -> environment variable read by the service.
 OPTION_ENV = {
@@ -35,7 +41,6 @@ OPTION_ENV = {
     "sendspin_url": "SENDSPIN_URL",
     "ma_url": "MA_URL",
     "ma_token": "MA_TOKEN",
-    "lan_port": "LAN_PORT",
     "take_bluetooth_audio": "TAKE_BLUETOOTH_AUDIO",
     "log_level": "LOG_LEVEL",
 }
@@ -58,9 +63,9 @@ def apply_options(path: Path = OPTIONS_PATH) -> bool:
     return True
 
 
-async def app_info() -> tuple[int, str]:
-    """The ingress port the Supervisor assigned (``ingress_port: 0``) and our
-    slug, which Home Assistant's pages for the App are named after."""
+async def app_info() -> tuple[int, str, bool]:
+    """The ingress port, our slug (Home Assistant's pages for the App are
+    named after it) and whether the user mapped the LAN port."""
     api = os.environ.get("SUPERVISOR_API", "http://supervisor")
     headers = {"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"}
     async with (
@@ -69,7 +74,12 @@ async def app_info() -> tuple[int, str]:
     ):
         response.raise_for_status()
         data = await response.json(content_type=None)
-    return int(data["data"]["ingress_port"]), str(data["data"]["slug"])
+    network = data["data"].get("network") or {}
+    return (
+        int(data["data"]["ingress_port"]),
+        str(data["data"]["slug"]),
+        network.get(f"{LAN_PORT}/tcp") is not None,
+    )
 
 
 async def set_option(key: str, value: Any) -> None:

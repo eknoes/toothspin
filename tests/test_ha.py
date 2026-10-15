@@ -20,7 +20,6 @@ def test_app_options_become_environment_defaults(tmp_path, monkeypatch) -> None:
         "adapter": "hci1",
         "ma_token": "secret",
         "ma_url": "",
-        "lan_port": 8080,
         "log_level": "debug",
     }))
     assert ha.apply_options(options)
@@ -28,7 +27,6 @@ def test_app_options_become_environment_defaults(tmp_path, monkeypatch) -> None:
     assert os.environ["BT_ADAPTER"] == "hci1"
     assert os.environ["MA_TOKEN"] == "secret"
     assert "MA_URL" not in os.environ  # empty options are left unset
-    assert os.environ["LAN_PORT"] == "8080"
     assert os.environ["LOG_LEVEL"] == "DEBUG"
     assert not ha.apply_options(tmp_path / "missing.json")
 

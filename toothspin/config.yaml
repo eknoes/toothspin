@@ -8,12 +8,12 @@ image: ghcr.io/eknoes/toothspin
 arch:
   - aarch64
   - amd64
-# Finds Music Assistant via mDNS and reaches it as a Sendspin client.
-host_network: true
+# No host network: Music Assistant (its App runs on the host) is reached via
+# the host's address on Home Assistant's internal network.
 # Uses the host's BlueZ (bluetoothd) over D-Bus; no raw Bluetooth access.
 host_dbus: true
-# Only to read the ingress port the Supervisor assigns (ingress_port: 0)
-# and to show the app in the sidebar on its first start.
+# Only to read the App's ingress port and port mapping, and to show the app
+# in the sidebar on its first start.
 hassio_api: true
 # Home Assistant's audio service also receives Bluetooth audio and takes the
 # phones' streams; with the user's consent, ToothSpin turns that off there.
@@ -22,7 +22,9 @@ audio: true
 # adapter too, and to raise a notification when setup needs the user.
 homeassistant_api: true
 ingress: true
-ingress_port: 0
+# Optional: the web interface on the network, without Home Assistant's login.
+ports:
+  8080/tcp: null
 panel_icon: mdi:home-sound-in
 panel_title: ToothSpin
 options:
@@ -44,5 +46,4 @@ schema:
   ma_token: password?
   ma_url: url?
   sendspin_url: match(^wss?://.+)?
-  lan_port: port?
   log_level: list(debug|info|warning|error)

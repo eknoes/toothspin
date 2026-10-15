@@ -41,12 +41,6 @@ configuration:
     description: >-
       Only needed if Music Assistant's Sendspin server isn't found
       automatically, e.g. ws://homeassistant.local:8927/sendspin.
-  lan_port:
-    name: LAN port
-    description: >-
-      Also serve the web interface on this port to the whole network,
-      without Home Assistant's login. Leave empty to only use it through
-      Home Assistant.
   take_bluetooth_audio:
     name: Take Bluetooth audio from Home Assistant
     description: >-
@@ -57,3 +51,7 @@ configuration:
   log_level:
     name: Log level
     description: How much the app logs.
+network:
+  8080/tcp: >-
+    Web interface on your network, without Home Assistant's login. Leave
+    empty to only use it through Home Assistant.

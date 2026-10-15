@@ -372,7 +372,12 @@ def _setup_state(
             "unreachable": (
                 "Music Assistant unreachable",
                 "Music Assistant can't be reached right now; ToothSpin keeps retrying.",
-                ["Check that Music Assistant is running."],
+                ["Check that Music Assistant is running."] + (
+                    ["If it doesn't run as an App on this Home Assistant, set **Music "
+                     "Assistant URL** and **Sendspin server URL** in [ToothSpin's "
+                     "configuration](ha:app-config)."]
+                    if status.app else []
+                ),
             ),
         }.get(problem or "", ("Connecting to Music Assistant…", "", []))
         todo.append({"kind": "wait" if problem is None else "todo",
