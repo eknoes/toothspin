@@ -1,59 +1,55 @@
 configuration:
   bluetooth_name:
     name: Bluetooth name
-    description: The name phones see when they search for Bluetooth devices.
+    description: The name phones see when searching for Bluetooth devices.
   input_name:
     name: Input name in Music Assistant
     description: >-
-      Default name of each phone's input in Music Assistant. {device} is the
-      phone's Bluetooth name. Each input can also be renamed in the app.
+      Default name of each phone's input. {device} is the phone's name. You
+      can rename each input in the app.
   adapter:
     name: Bluetooth adapter
     description: >-
-      The adapter phones connect to: hci0 (default) is the first one. With
-      a dongle just for ToothSpin, set it here (e.g. hci1), or auto to pick
-      one Home Assistant's Bluetooth integration doesn't use.
+      hci0 (default) is the first adapter. For a dongle just for ToothSpin,
+      enter it here (e.g. hci1), or auto to pick one Home Assistant doesn't
+      use.
   start_volume:
     name: Maximum start volume
     description: >-
-      When a phone starts playing on a speaker that is set louder than this
-      (0-100), ToothSpin turns it down to this volume first, so a speaker
-      someone left loud doesn't blast. Speakers set quieter keep their
-      volume, and afterwards you can turn up as you like. 100 (default)
-      never changes a speaker's volume.
+      When a phone starts on a speaker set louder than this (0-100), the
+      speaker is turned down to it first. You can turn up afterwards. 100
+      (default) never changes the volume.
   allow_phone_connect:
     name: Phones may connect by themselves
     description: >-
-      On (default): paired phones connect by themselves, like to any
-      Bluetooth speaker. Off: connections only start from the app, so a
-      phone coming home doesn't start playing through the house.
+      On (default): paired phones connect like to any Bluetooth speaker.
+      Off: only the app's Connect button connects them.
   ma_token:
     name: Music Assistant token
     description: >-
-      Recommended. A long-lived token from Music Assistant (your profile,
-      Tokens). Lets you pick speakers per phone in the app and pairs phones
-      with Music Assistant automatically.
+      Recommended. Create one in Music Assistant (your profile → Tokens).
+      Lets you pick speakers in the app and pairs phones with Music
+      Assistant automatically.
   ma_url:
     name: Music Assistant URL
     description: >-
-      Only needed if Music Assistant isn't found automatically, e.g.
-      http://homeassistant.local:8095.
+      Only if Music Assistant doesn't run as an App on this Home Assistant,
+      e.g. http://192.168.1.10:8095.
   sendspin_url:
     name: Sendspin server URL
     description: >-
-      Only needed if Music Assistant's Sendspin server isn't found
-      automatically, e.g. ws://homeassistant.local:8927/sendspin.
+      Only if Music Assistant doesn't run as an App on this Home Assistant,
+      e.g. ws://192.168.1.10:8927/sendspin.
   take_bluetooth_audio:
     name: Take Bluetooth audio from Home Assistant
     description: >-
-      Home Assistant's own audio service also receives Bluetooth audio and
-      takes the phones' streams. On: ToothSpin turns that off there, also
-      after it restarts. Home Assistant's audio service then can't use
-      Bluetooth speakers or headsets. ToothSpin asks before turning it on.
+      Home Assistant's own audio service also grabs the phones' audio. On:
+      ToothSpin turns that off, so Home Assistant can't use Bluetooth
+      speakers or headsets itself. ToothSpin asks before turning it on.
   log_level:
     name: Log level
     description: How much the app logs.
 network:
   8080/tcp: >-
-    Web interface on your network, without Home Assistant's login. Leave
-    empty to only use it through Home Assistant.
+    The web interface on your network, without Home Assistant's login.
+    Leave empty to use it only through Home Assistant.

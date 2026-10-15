@@ -5,41 +5,31 @@
 
 Stream any phone over Bluetooth into Music Assistant.
 
-ToothSpin turns a Bluetooth dongle into a speaker your phones can pair
-with. Whatever a phone plays shows up in Music Assistant as a live input,
-which you can play on any speaker or group, and pick the speakers right from
-the app.
+Your phones pair with ToothSpin like with a Bluetooth speaker. What they
+play shows up in Music Assistant as a live input, and you pick the speakers
+right in the app.
 
 ## Before you install
 
-You need:
-
 - **Music Assistant 2.10.6 or newer.**
-- **A Bluetooth adapter.** ToothSpin can share it with Home Assistant's
-  Bluetooth integration, which only uses Bluetooth Low Energy (sensors,
-  locks, ...). **We recommend a USB Bluetooth dongle just for ToothSpin**:
-  phones stay connected more reliably. If Home Assistant runs in a virtual
-  machine, pass the dongle through to it.
+- **A Bluetooth adapter.** ToothSpin can share Home Assistant's, but **a
+  USB dongle just for ToothSpin is recommended**: phones stay connected more
+  reliably. For a virtual machine, pass the dongle through.
 
 ## Installation
 
 1. Install ToothSpin and open its **Configuration** tab.
-2. **Recommended: in Music Assistant, open your profile → Tokens, create a
-   token and paste it as Music Assistant token.** Without it you can't pick
-   speakers in ToothSpin, and you have to pair every phone with Music
-   Assistant by hand.
+2. **Recommended: paste a Music Assistant token** (in Music Assistant: your
+   profile → Tokens → Create token). Without it you can't pick speakers in
+   ToothSpin and must pair each phone with Music Assistant by hand.
 3. With a dongle just for ToothSpin: set **Bluetooth adapter** to it (e.g.
-   `hci1`, or `auto`), and in **Settings → Devices & services → Bluetooth**
-   **ignore or disable that dongle**, so Home Assistant leaves it alone.
-   Otherwise keep the default `hci0`.
+   `hci1`), and **ignore or disable it in Settings → Devices & services →
+   Bluetooth**. Otherwise keep `hci0`.
 4. Start ToothSpin and open it from the sidebar.
 
-ToothSpin checks its setup when it starts. If something is missing or could
-be better (no adapter, an adapter shared with Home Assistant, no token), it
-says what to do, in the app, in the log and, if it can't start, as a Home
-Assistant notification.
+If anything is missing, ToothSpin tells you what to do.
 
-Step by step: [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) ·
+[Installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) ·
 [FAQ](https://eknoes.github.io/toothspin/faq.html)
 
 ![ToothSpin's web UI: a speaker joins the phone's group, its volume goes up, then the phone plays only there](https://eknoes.github.io/toothspin/assets/screenshots/demo.gif)

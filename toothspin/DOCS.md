@@ -1,143 +1,103 @@
 # ToothSpin
 
-ToothSpin turns a Bluetooth dongle into a speaker your phones can pair with.
-Whatever a phone plays shows up in Music Assistant as a live input (a
-Sendspin source), which you can play on any speaker or group.
+Your phones pair with ToothSpin like with a Bluetooth speaker. What they
+play shows up in Music Assistant as a live input, which you can play on any
+speaker or group.
 
 ## Requirements
 
-- **Music Assistant 2.10.6 or newer**, with its Sendspin player provider
-  enabled (it is by default). Its "Sendspin Source" plugin turns each phone
-  into a live input.
-- **A Bluetooth adapter.** ToothSpin takes over the adapter: it sets its
-  name, makes it visible while pairing and handles its connections. It can
-  share the adapter with Home Assistant's Bluetooth integration, which only
-  scans for Bluetooth Low Energy devices, but **a USB dongle just for
-  ToothSpin is recommended**: phones stay connected more reliably.
+- **Music Assistant 2.10.6 or newer** (its Sendspin provider is on by
+  default).
+- **A Bluetooth adapter.** ToothSpin can share Home Assistant's, but **a
+  USB dongle just for ToothSpin is recommended**: phones stay connected more
+  reliably.
 
 ## Installation
 
 1. Install ToothSpin.
-2. **Recommended:** create a long-lived token in Music Assistant (your
-   profile → **Tokens**) and enter it as **Music Assistant token** in the
-   app's **Configuration**.
-3. With a dongle just for ToothSpin (for a virtual machine: pass it
-   through), set **Bluetooth adapter** to it, e.g. `hci1` or `auto`, and in
-   **Settings → Devices & services → Bluetooth** choose **Ignore** for it if
-   it's listed under *Discovered*, or **disable** it if it was added.
+2. **Recommended:** create a token in Music Assistant (your profile →
+   **Tokens**) and enter it as **Music Assistant token** in the app's
+   **Configuration**.
+3. With a dongle just for ToothSpin (in a virtual machine: pass it
+   through): set **Bluetooth adapter** to it, e.g. `hci1` or `auto`. In
+   **Settings → Devices & services → Bluetooth**, **ignore** it if it's
+   listed under *Discovered*, or **disable** it if it was added.
 4. Start the app and open it from the sidebar.
 
-**Bluetooth adapter** is `hci0`, the first adapter, by default. `auto`
-picks one Home Assistant's Bluetooth integration doesn't use, and shares one
-only if there's no other.
-
-The [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant) and the
-[FAQ](https://eknoes.github.io/toothspin/faq.html) have more detail.
+More help: [installation guide](https://eknoes.github.io/toothspin/install.html#home-assistant)
+and [FAQ](https://eknoes.github.io/toothspin/faq.html).
 
 ## Setup checks
 
-On every start, and while running, ToothSpin checks:
+ToothSpin checks its setup when it starts and while it runs: the Bluetooth
+adapter, whether Home Assistant uses it too, Home Assistant's own audio
+service (which can grab the phones' audio), the Music Assistant token and
+connection, and Music Assistant's version.
 
-- **Is there a Bluetooth adapter?** If not, or if the configured one (e.g.
-  `hci1`) doesn't exist, it lists the adapters it found and waits.
-- **Does Home Assistant use it too?** ToothSpin asks Home Assistant's
-  Bluetooth integration and recommends a dongle of its own if it shares
-  one. If Home Assistant discovered ToothSpin's dongle and offers to add it,
-  ToothSpin recommends ignoring it, and does it for you if you confirm.
-- **Home Assistant's audio service:** it also receives Bluetooth audio and
-  takes the phones' streams before ToothSpin does (the phone connects, but
-  nothing plays). ToothSpin asks to turn that off there; with your OK it sets
-  **Take Bluetooth audio from Home Assistant** and keeps it off, also after
-  the audio service restarts.
-- **Music Assistant token and connection:** missing token, a token Music
-  Assistant rejects, or Music Assistant not found.
-
-What's left shows up as **Finish setup** on top of the app, with steps and
-links into Home Assistant; it goes away once done. The log says it too. If
-ToothSpin can't start (no adapter), it also raises a Home Assistant
-notification, checks again every few seconds and starts by itself once the
-problem is fixed; the notification then disappears.
+Anything left to do shows up as **Finish setup** at the top of the app, with
+steps and links into Home Assistant. If ToothSpin can't start at all (e.g.
+no adapter), you also get a Home Assistant notification, and it starts by
+itself once that's fixed.
 
 ## Usage
 
-Each phone is paired twice, once over Bluetooth and once with Music
-Assistant.
-
-**Add a phone:** press **Add phone**. The dongle is visible for two minutes;
-on the phone, connect to the **Bluetooth name** (default "ToothSpin").
-Pairing closes again once a phone has paired.
+**Add a phone:** press **Add phone**, then connect to "ToothSpin" in the
+phone's Bluetooth settings within two minutes.
 
 **Pair with Music Assistant:** each phone becomes its own input, e.g.
-"Pixel 10 (Bluetooth)". With a **Music Assistant token** set, ToothSpin
-pairs it with Music Assistant by itself. Without, open that device in Music
-Assistant's settings and choose **Pair the device**; then press **Allow** on
-the phone's card in ToothSpin and type the code it shows into Music
-Assistant.
+"Pixel 10 (Bluetooth)". With a token, ToothSpin pairs it by itself. Without,
+open the input in Music Assistant's settings, choose **Pair the device**,
+press **Allow pairing** on the phone's card in ToothSpin and enter the code
+it shows.
 
-**Connect and play:** connect the phone to ToothSpin like to any Bluetooth
-speaker, or press **Connect** on its card. Play something on the phone, then
-switch
-on one or more speakers on its card. Several speakers form a group on the fly; only speakers that
-can play in sync are offered together. Each speaker has its own volume and
-mute. To switch rooms, the arrow next to a speaker plays the phone only
-there, in one go.
+**Play:** connect the phone (by itself, or with **Connect** on its card),
+play something and switch on speakers on its card. Several speakers form a
+group; only speakers that can play in sync are offered together. The arrow
+next to a speaker moves the phone to just that speaker.
 
-**Volume from the phone:** while a phone plays, its volume buttons control
-the speaker, or the whole group if it plays on several. When it starts
-playing, the phone takes over the speaker's volume instead of imposing its
-own, so nothing suddenly gets loud. To keep a speaker from ever getting too
-loud, set its **Maximum volume** in Music Assistant's player settings, or
-have speakers start no louder than the **Maximum start volume**.
+**Volume:** while a phone plays, its volume buttons control the speaker or
+group. A speaker keeps its volume when a phone starts on it. To limit how
+loud a speaker gets, set its **Maximum volume** in Music Assistant, or use
+**Maximum start volume**.
 
-**Hide speakers:** the eye icon next to a speaker hides it on that phone's
-card: it is dimmed and moved to the end of the list. Each phone has its own
-hidden speakers.
+**Hide speakers:** the eye icon hides a speaker on that phone's card.
 
-Without a Music Assistant token, play the input from Music Assistant
-instead: select a player, open **Browse**, pick the phone's input and press
-**Play**.
+**Without a token:** play the input from Music Assistant: select a player,
+open **Browse**, pick the phone's input and press **Play**.
 
 ## Configuration
 
 | Option | Description |
 |---|---|
 | Bluetooth name | The name phones see. Default: `ToothSpin`. |
-| Input name in Music Assistant | Default name for each phone's input; `{device}` is the phone's name. Each input can be renamed in the app. |
-| Bluetooth adapter | `hci0` (default) is the first adapter; set a dedicated dongle, e.g. `hci1`, or `auto` for one Home Assistant doesn't use. |
-| Music Assistant token | Recommended. Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |
-| Music Assistant URL | Only needed if Music Assistant doesn't run as an App on this Home Assistant, e.g. `http://192.168.1.10:8095`. |
-| Sendspin server URL | Only needed if Music Assistant doesn't run as an App on this Home Assistant, e.g. `ws://192.168.1.10:8927/sendspin`. |
-| Maximum start volume | When a phone starts playing on a speaker set louder than this (0-100), the speaker is turned down to it first, e.g. `20` so a speaker someone left loud doesn't blast. Quieter speakers keep their volume, and you can turn up afterwards. `100` (default) never changes a speaker's volume. |
-| Take Bluetooth audio from Home Assistant | Off by default; ToothSpin asks to turn it on. Turns off Bluetooth in Home Assistant's own audio service, which otherwise takes the phones' streams; Home Assistant's audio service then can't use Bluetooth speakers or headsets. To undo, turn it off and restart Home Assistant. |
-| Phones may connect by themselves | On (default): paired phones connect by themselves, like to any Bluetooth speaker. Off: connections only start from the app. |
+| Input name in Music Assistant | Default name of each phone's input; `{device}` is the phone's name. |
+| Bluetooth adapter | `hci0` (default) is the first adapter. For your own dongle e.g. `hci1`, or `auto` for one Home Assistant doesn't use. |
+| Music Assistant token | Recommended. Lets you pick speakers in the app and pairs phones automatically. |
+| Music Assistant URL | Only if Music Assistant doesn't run as an App on this Home Assistant, e.g. `http://192.168.1.10:8095`. |
+| Sendspin server URL | Same, e.g. `ws://192.168.1.10:8927/sendspin`. |
+| Maximum start volume | A speaker set louder than this (0-100) is turned down to it when a phone starts on it, e.g. `20`. `100` (default) never changes the volume. |
+| Take Bluetooth audio from Home Assistant | Turns off Bluetooth in Home Assistant's own audio service, which otherwise grabs the phones' audio. ToothSpin asks first. To undo, turn it off and restart Home Assistant. |
+| Phones may connect by themselves | On (default): like any Bluetooth speaker. Off: only **Connect** in the app connects a phone. |
 | Log level | `debug`, `info`, `warning` or `error`. |
 
-**Web interface on your network:** in the App's **Network** section, set a
-host port for `8080/tcp` (e.g. `8080`). ToothSpin's web interface is then
-also at `http://<Home Assistant>:8080/`, **without** Home Assistant's login,
-handy for a phone's home screen. Leave it empty to use it only through Home
-Assistant.
+**Web interface on your network:** in the app's **Network** section, set a
+port for `8080/tcp` (e.g. `8080`). The web interface is then also at
+`http://<Home Assistant>:8080/`, **without** Home Assistant's login.
 
 ## Notes
 
-- Phones may list the dongle as a computer rather than a speaker: the
-  device class is set in the host's BlueZ configuration, which the app
-  doesn't change. Audio works either way.
-- ToothSpin's audio stack offers to receive Bluetooth audio on every
-  adapter of the host, not only the configured one. Phones can only pair
-  through ToothSpin's pairing window on its own adapter, so in practice only
-  that one is used.
-- Music Assistant identifies each phone's input by a key stored in the
-  app's data. Removing a phone in ToothSpin also removes that key, and with
-  a Music Assistant token the device in Music Assistant too (without, remove
-  it there yourself). App backups include the keys.
+- Phones may show ToothSpin as a computer instead of a speaker. Audio works
+  either way.
+- Removing a phone in ToothSpin also removes it from Music Assistant (with a
+  token; otherwise remove it there yourself). App backups include each
+  phone's Music Assistant pairing.
 
 ## Support
 
-First look at the [FAQ](https://eknoes.github.io/toothspin/faq.html). Questions and bugs:
-[GitHub issues](https://github.com/eknoes/toothspin/issues).
+See the [FAQ](https://eknoes.github.io/toothspin/faq.html), or ask on
+[GitHub](https://github.com/eknoes/toothspin/issues).
 
 ## License
 
-GPL-3.0-or-later. Third-party components and their licenses are listed in
+GPL-3.0-or-later. Third-party components:
 [LICENSING.md](https://github.com/eknoes/toothspin/blob/main/LICENSING.md).
