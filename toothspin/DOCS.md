@@ -105,13 +105,18 @@ instead: select a player, open **Browse**, pick the phone's input and press
 | Input name in Music Assistant | Default name for each phone's input; `{device}` is the phone's name. Each input can be renamed in the app. |
 | Bluetooth adapter | `hci0` (default) is the first adapter; set a dedicated dongle, e.g. `hci1`, or `auto` for one Home Assistant doesn't use. |
 | Music Assistant token | Recommended. Enables choosing speakers in the app, and pairs phones with Music Assistant automatically. |
-| Music Assistant URL | Only needed if Music Assistant isn't found automatically, e.g. `http://homeassistant.local:8095`. |
-| Sendspin server URL | Only needed if Music Assistant's Sendspin server isn't found automatically, e.g. `ws://homeassistant.local:8927/sendspin`. |
+| Music Assistant URL | Only needed if Music Assistant doesn't run as an App on this Home Assistant, e.g. `http://192.168.1.10:8095`. |
+| Sendspin server URL | Only needed if Music Assistant doesn't run as an App on this Home Assistant, e.g. `ws://192.168.1.10:8927/sendspin`. |
 | Start volume | The loudest a speaker starts at (0-100) when a phone starts playing on it, e.g. `20` so a speaker left loud doesn't blast. Quieter speakers keep their volume; `100` (default) always keeps it. |
 | Take Bluetooth audio from Home Assistant | Off by default; ToothSpin asks to turn it on. Turns off Bluetooth in Home Assistant's own audio service, which otherwise takes the phones' streams; Home Assistant's audio service then can't use Bluetooth speakers or headsets. To undo, turn it off and restart Home Assistant. |
 | Phones may connect by themselves | On (default): paired phones connect by themselves, like to any Bluetooth speaker. Off: connections only start from the app. |
-| LAN port | Also serves the web interface on this port to your whole network, **without** Home Assistant's login. Handy for adding it to a phone's home screen; leave it empty otherwise. |
 | Log level | `debug`, `info`, `warning` or `error`. |
+
+**Web interface on your network:** in the App's **Network** section, set a
+host port for `8080/tcp` (e.g. `8080`). ToothSpin's web interface is then
+also at `http://<Home Assistant>:8080/`, **without** Home Assistant's login,
+handy for a phone's home screen. Leave it empty to use it only through Home
+Assistant.
 
 ## Notes
 

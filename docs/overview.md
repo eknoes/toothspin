@@ -116,8 +116,10 @@ the echo of its own last write for a few seconds.
 The App (`toothspin/` in the repository) runs the same multi-arch image.
 Its options arrive as `/data/options.json` and are mapped onto the same
 environment variables the plain container uses. It reaches `bluetoothd`
-via `host_dbus`, finds Music Assistant via mDNS on the host network and asks
-the Supervisor for its ingress port (`ingress_port: 0`). Images are built
+via `host_dbus` and runs without the host network: it reaches the Music
+Assistant App, which runs on the host network, at the host's address on Home
+Assistant's internal network (172.30.32.1). An optional port mapping in the
+App's Network section serves the web UI to the LAN. Images are built
 and scanned in CI; each release ships SPDX and CycloneDX SBOMs.
 
 The App asks Home Assistant's Bluetooth integration (WebSocket

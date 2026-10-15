@@ -71,7 +71,8 @@ directly, with Home Assistant's login and also away from home:
 For ToothSpin from `https://github.com/eknoes/toothspin`, the path is
 `/app/8558c230_toothspin`.
 
-Without the Companion app: set the **LAN port** option (e.g. `8080`) and use
+Without the Companion app: in the App's **Network** section, set a port for
+the web interface (e.g. `8080`) and use
 "Add to Home screen" in the phone's browser on `http://<Home Assistant's
 address>:8080/`. That page has no login of its own, so keep it to your home
 network.
