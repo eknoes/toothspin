@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import re
@@ -116,6 +117,9 @@ RECHECK_S = 15.0
 WATCH_S = 60.0
 MA_VERSION_S = 1800.0
 AUDIO_S = 20.0
+RECONNECT_FILE = "reconnect.json"
+# Let BlueZ see ToothSpin's audio endpoints before reconnecting.
+RECONNECT_DELAY_S = 3.0
 
 
 class _Web:
@@ -269,6 +273,35 @@ async def _watch_ha_audio(bluetooth: BluetoothManager, status: setup_check.Statu
         await asyncio.sleep(AUDIO_S)
 
 
+def _remember_connected(bluetooth: BluetoothManager, path: Path) -> None:
+    connected = [d.address for d in bluetooth.devices() if d.connected]
+    try:
+        path.write_text(json.dumps(connected))
+    except OSError as err:
+        logger.warning("Couldn't remember the connected phones: %s", err)
+
+
+async def _reconnect_after_restart(bluetooth: BluetoothManager, path: Path) -> None:
+    """Reconnect the phones that were connected when ToothSpin last stopped.
+
+    A restart (an update, a changed option) drops them: BlueZ ends their
+    audio connection once ToothSpin's audio stack is gone.
+    """
+    try:
+        addresses = json.loads(path.read_text())
+        path.unlink()
+    except (OSError, ValueError):
+        return
+    await asyncio.sleep(RECONNECT_DELAY_S)
+    for device in bluetooth.devices():
+        if device.address in addresses and not device.connected:
+            logger.info("Reconnecting %s after the restart", device.name)
+            try:
+                await bluetooth.connect_device(device.address)
+            except (DBusError, TimeoutError) as err:
+                logger.warning("Reconnecting %s failed: %s", device.name, err)
+
+
 async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None:
     """Without a token: look up Music Assistant's version now and then (it may update)."""
     while True:
@@ -334,6 +367,8 @@ async def _run(args: argparse.Namespace) -> None:
     )
     await bluetooth.start()
     await receivers.sync()
+    reconnect_file = args.data_dir / RECONNECT_FILE
+    reconnect = asyncio.create_task(_reconnect_after_restart(bluetooth, reconnect_file))
 
     await site.serve(
         create_app(
@@ -381,6 +416,9 @@ async def _run(args: argparse.Namespace) -> None:
                 "Bluetooth stack lost, PipeWire exited or a receiver failed; exiting to restart"
             )
     finally:
+        # Our audio stack going away drops the phones; reconnect them next start.
+        _remember_connected(bluetooth, reconnect_file)
+        reconnect.cancel()
         for task in tasks:
             task.cancel()
         if ma_task:
