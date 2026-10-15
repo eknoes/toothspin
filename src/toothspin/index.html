@@ -566,7 +566,7 @@ function render() {
           ? `<button data-addr="${esc(d.address)}" data-action="disconnect"
                ${pending.has(`disconnect|${d.address}`) ? "disabled" : ""}>${pending.has(`disconnect|${d.address}`) ? "Disconnecting…" : "Disconnect"}</button>`
           : `<button class="primary" data-addr="${esc(d.address)}" data-action="connect"
-               ${pending.has(d.address) ? "disabled" : ""}>${pending.has(d.address) ? "Connecting…" : "Connect"}</button>`}
+               ${pending.has(d.address) || pending.has(`settle|${d.address}`) ? "disabled" : ""}>${pending.has(d.address) ? "Connecting…" : "Connect"}</button>`}
         <button class="danger" data-addr="${esc(d.address)}" data-action="remove">${confirmRemove === d.address ? "Really remove?" : "Remove"}</button>
       </div>
     </div>`).join("") : `<div class="muted">No phones paired yet.</div>`;
@@ -586,7 +586,17 @@ function render() {
         // Both take a few seconds: say so until the phone's state changed.
         const key = b.dataset.action === "connect" ? b.dataset.addr : `disconnect|${b.dataset.addr}`;
         pending.add(key); render();
-        post(url).then(refresh).finally(() => { pending.delete(key); render(); });
+        post(url).then(refresh).finally(() => {
+          pending.delete(key);
+          // Connect appears where Disconnect was: don't let a second tap on a
+          // slow Disconnect reconnect the phone.
+          if (b.dataset.action === "disconnect") {
+            const settle = `settle|${b.dataset.addr}`;
+            pending.add(settle);
+            setTimeout(() => { pending.delete(settle); render(); }, 2000);
+          }
+          render();
+        });
       } else {
         post(url);
       }
