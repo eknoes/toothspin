@@ -42,4 +42,6 @@ else
 fi
 
 ha "ha apps restart $slug >/dev/null 2>&1 || ha addons restart $slug >/dev/null"
+# Drop earlier test builds this one replaced (the release image stays).
+ha "docker image prune -f --filter label=dev.toothspin.commit >/dev/null"
 echo "Restarted $slug on $(ha "docker inspect app_$slug --format '{{index .Config.Labels \"dev.toothspin.commit\"}}'")"
