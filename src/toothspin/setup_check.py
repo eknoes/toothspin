@@ -198,6 +198,11 @@ class Status:
     """The App's slug, for links to its pages in Home Assistant."""
     ma_version: str | None = None
     """Music Assistant's version when there's no API connection to tell it."""
+    take_bluetooth_audio: bool = False
+    """The user agreed that ToothSpin takes Bluetooth audio from Home Assistant's
+    own audio service."""
+    audio_conflict: Problem | None = None
+    """Home Assistant's audio service takes the phones' audio (no consent yet)."""
     adapter: Adapter | None = None
     problem: Problem | None = None
     """Blocks ToothSpin from starting: the web UI shows only this."""
@@ -216,3 +221,21 @@ def bluetooth_missing() -> Problem:
             "D-Bus socket mounted into the container (see the README).",
         ],
     )
+
+
+def ha_audio_takes_bluetooth() -> Problem:
+    return Problem(
+        "Let ToothSpin receive the phones' audio",
+        "Home Assistant's own audio service also receives Bluetooth audio and takes "
+        "the phones' streams before ToothSpin does: a phone connects, but nothing "
+        "plays. ToothSpin can turn that off in Home Assistant's audio service.",
+        [
+            "Press **Take Bluetooth audio**. Home Assistant's own audio service then "
+            "can't use Bluetooth speakers or headsets (few setups do).",
+            "To undo it, turn off **Take Bluetooth audio from Home Assistant** in "
+            "[ToothSpin's configuration](ha:app-config) and restart Home Assistant.",
+        ],
+        fatal=False,
+        action="take-bluetooth-audio",
+    )
+

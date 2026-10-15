@@ -36,6 +36,7 @@ OPTION_ENV = {
     "ma_url": "MA_URL",
     "ma_token": "MA_TOKEN",
     "lan_port": "LAN_PORT",
+    "take_bluetooth_audio": "TAKE_BLUETOOTH_AUDIO",
     "log_level": "LOG_LEVEL",
 }
 
@@ -69,6 +70,20 @@ async def app_info() -> tuple[int, str]:
         response.raise_for_status()
         data = await response.json(content_type=None)
     return int(data["data"]["ingress_port"]), str(data["data"]["slug"])
+
+
+async def set_option(key: str, value: Any) -> None:
+    """Change one of the App's options, as if done in its Configuration tab."""
+    headers = {"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"{_api()}/addons/self/info", headers=headers) as response:
+            response.raise_for_status()
+            options = (await response.json(content_type=None))["data"]["options"]
+        options[key] = value
+        async with session.post(
+            f"{_api()}/addons/self/options", headers=headers, json={"options": options}
+        ) as response:
+            response.raise_for_status()
 
 
 SIDEBAR_MARKER = Path("/data/.sidebar_shown")

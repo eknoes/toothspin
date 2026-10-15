@@ -11,6 +11,7 @@ import asyncio
 import itertools
 import logging
 from dataclasses import asdict
+from collections.abc import Awaitable, Callable
 from typing import Any
 from importlib.resources import files
 
@@ -36,6 +37,7 @@ def create_app(
     start_volume: int = 100,
     auto_pairing: bool = False,
     status: setup_check.Status | None = None,
+    take_bluetooth_audio: Callable[[], Awaitable[None]] | None = None,
 ) -> web.Application:
     volumes = speakers.Volumes(backend) if backend else None
 
@@ -212,9 +214,27 @@ def create_app(
             )
         return web.json_response({"ok": True})
 
+    async def post_setup_take_bluetooth_audio(_: web.Request) -> web.Response:
+        # Only on the user's confirmed click: it changes Home Assistant's audio
+        # service, and turns on the App option that keeps it that way.
+        if status is None or take_bluetooth_audio is None:
+            raise web.HTTPNotFound
+        try:
+            await ha.set_option("take_bluetooth_audio", True)
+        except (aiohttp.ClientError, OSError) as err:
+            return web.json_response({"ok": False, "error": f"Home Assistant: {err}"}, status=502)
+        status.take_bluetooth_audio = True
+        try:
+            await take_bluetooth_audio()
+        except Exception as err:  # noqa: BLE001 - reported to the user, retried by the watch
+            logger.warning("Taking Bluetooth audio from Home Assistant failed: %s", err)
+            return web.json_response({"ok": False, "error": str(err)}, status=502)
+        return web.json_response({"ok": True})
+
     app = _base_app(ingress_port)
     app.router.add_get("/api/state", get_state)
     app.router.add_post("/api/setup/ignore-adapter", post_setup_ignore_adapter)
+    app.router.add_post("/api/setup/take-bluetooth-audio", post_setup_take_bluetooth_audio)
     app.router.add_post("/api/bluetooth/pairing", post_bt_pairing)
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)
@@ -296,6 +316,9 @@ def _setup_state(
     finished steps drop out, and once it's empty the web UI shows nothing.
     """
     todo: list[dict[str, Any]] = []
+    if status.audio_conflict is not None:
+        # First: without it, phones connect but nothing plays.
+        todo.append(_problem(status.audio_conflict) | {"kind": "todo"})
     version = getattr(backend, "server_version", None) or status.ma_version
     if ma.too_old(version):
         todo.append({

@@ -47,6 +47,13 @@ configuration:
       Also serve the web interface on this port to the whole network,
       without Home Assistant's login. Leave empty to only use it through
       Home Assistant.
+  take_bluetooth_audio:
+    name: Take Bluetooth audio from Home Assistant
+    description: >-
+      Home Assistant's own audio service also receives Bluetooth audio and
+      takes the phones' streams. On: ToothSpin turns that off there, also
+      after it restarts. Home Assistant's audio service then can't use
+      Bluetooth speakers or headsets. ToothSpin asks before turning it on.
   log_level:
     name: Log level
     description: How much the app logs.

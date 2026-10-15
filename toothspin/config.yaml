@@ -15,6 +15,9 @@ host_dbus: true
 # Only to read the ingress port the Supervisor assigns (ingress_port: 0)
 # and to show the app in the sidebar on its first start.
 hassio_api: true
+# Home Assistant's audio service also receives Bluetooth audio and takes the
+# phones' streams; with the user's consent, ToothSpin turns that off there.
+audio: true
 # Only to check whether Home Assistant's Bluetooth integration uses the
 # adapter too, and to raise a notification when setup needs the user.
 homeassistant_api: true
@@ -29,6 +32,7 @@ options:
   ma_token: ""
   start_volume: 100
   allow_phone_connect: true
+  take_bluetooth_audio: false
   log_level: info
 schema:
   bluetooth_name: str
@@ -36,6 +40,7 @@ schema:
   adapter: match(^(auto|hci[0-9]+)$)
   start_volume: int(0,100)
   allow_phone_connect: bool
+  take_bluetooth_audio: bool
   ma_token: password?
   ma_url: url?
   sendspin_url: match(^wss?://.+)?

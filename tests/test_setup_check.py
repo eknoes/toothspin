@@ -79,7 +79,13 @@ def _fake_home_assistant(entries, flows, calls):  # noqa: ANN001, ANN202
         calls.append(await request.json())
         return web.json_response({"result": "ok", "data": {}})
 
+    async def info(_: web.Request) -> web.Response:
+        return web.json_response({"result": "ok", "data": {
+            "ingress_port": 1234, "slug": "abc_toothspin",
+            "options": {"bluetooth_name": "Kitchen", "take_bluetooth_audio": False}}})
+
     app = web.Application()
+    app.router.add_get("/addons/self/info", info)
     app.router.add_get("/core/websocket", websocket)
     app.router.add_post("/addons/self/options", options)
     return app
@@ -184,3 +190,26 @@ def test_too_old_music_assistant_is_on_the_list() -> None:
     assert todo[0]["title"] == "Update Music Assistant" and "2.10.1" in todo[0]["text"]
     status.ma_version = "2.11.0b5"
     assert all(t["title"] != "Update Music Assistant" for t in _setup_state(status, None, None)["todo"])
+
+
+def test_setting_an_option_keeps_the_others(monkeypatch) -> None:
+    calls: list[dict] = []
+
+    async def scenario() -> None:
+        async with TestServer(_fake_home_assistant([], [], calls)) as server:
+            monkeypatch.setenv("SUPERVISOR_API", str(server.make_url("")).rstrip("/"))
+            await ha.set_option("take_bluetooth_audio", True)
+
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "token")
+    asyncio.run(scenario())
+    assert calls == [{"options": {"bluetooth_name": "Kitchen", "take_bluetooth_audio": True}}]
+
+
+def test_audio_conflict_comes_first_with_its_action() -> None:
+    from toothspin.web import _setup_state
+
+    status = setup_check.Status(app=True, ma_token=False)
+    status.audio_conflict = setup_check.ha_audio_takes_bluetooth()
+    todo = _setup_state(status, None, None)["todo"]
+    assert todo[0]["action"] == "take-bluetooth-audio"
+    assert "token" in todo[1]["title"]

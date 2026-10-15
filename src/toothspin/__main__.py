@@ -18,7 +18,7 @@ from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 from dbus_fast.errors import DBusError
 
-from . import ha, ma_pairing, setup_check
+from . import ha, ha_audio, ma_pairing, setup_check
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant, check_version, probe_version
@@ -68,6 +68,11 @@ def _parse_args() -> argparse.Namespace:
         help="The loudest a speaker starts at when a phone starts playing on it (0-100)",
     )
     parser.add_argument(
+        "--take-bluetooth-audio", action=argparse.BooleanOptionalAction,
+        default=_flag(env("TAKE_BLUETOOTH_AUDIO", "false")),
+        help="As a Home Assistant App: turn off Bluetooth in Home Assistant's audio service",
+    )
+    parser.add_argument(
         "--allow-phone-connect", action=argparse.BooleanOptionalAction,
         default=_flag(env("ALLOW_PHONE_CONNECT", "true")),
         help="Accept connections phones start themselves (default); without, only the web UI's Connect",
@@ -110,6 +115,7 @@ FAQ_URL = "https://eknoes.github.io/toothspin/faq.html"
 RECHECK_S = 15.0
 WATCH_S = 60.0
 MA_VERSION_S = 1800.0
+AUDIO_S = 20.0
 
 
 class _Web:
@@ -215,6 +221,54 @@ async def _watch_adapter(
         await _report(status, result.problem, shown)
 
 
+async def _take_bluetooth_audio(bluetooth: BluetoothManager, status: setup_check.Status) -> None:
+    """Turn off Bluetooth in Home Assistant's audio service; reconnect the phones it held."""
+    held = await ha_audio.release()
+    status.audio_conflict = None
+    logger.info("Turned off Bluetooth in Home Assistant's audio service")
+    ours = {d.address for d in bluetooth.devices() if d.connected}
+    for address in held:
+        if address not in ours:
+            continue
+        # Its stream sits in Home Assistant's audio service: a new connection
+        # negotiates it with ToothSpin.
+        logger.info("Reconnecting %s so its audio reaches ToothSpin", address)
+        try:
+            await bluetooth.disconnect_device(address)
+            await asyncio.sleep(2)
+            await bluetooth.connect_device(address)
+        except (DBusError, TimeoutError) as err:
+            logger.warning("Reconnecting %s failed: %s", address, err)
+
+
+async def _watch_ha_audio(bluetooth: BluetoothManager, status: setup_check.Status) -> None:
+    """Keep Home Assistant's audio service off Bluetooth if the user agreed, else ask.
+
+    It loads its Bluetooth modules again whenever it restarts (e.g. after an update).
+    """
+    failing = False
+    while True:
+        try:
+            if await ha_audio.bluetooth_modules():
+                if status.take_bluetooth_audio:
+                    await _take_bluetooth_audio(bluetooth, status)
+                elif status.audio_conflict is None:
+                    status.audio_conflict = setup_check.ha_audio_takes_bluetooth()
+                    logger.warning(
+                        "Home Assistant's audio service also receives Bluetooth audio and "
+                        "takes the phones' streams. Allow ToothSpin to turn that off in "
+                        "its web UI (Finish setup)."
+                    )
+            else:
+                status.audio_conflict = None
+            failing = False
+        except ha_audio.AudioServiceError as err:
+            if not failing:
+                logger.warning("Couldn't check Home Assistant's audio service: %s", err)
+            failing = True
+        await asyncio.sleep(AUDIO_S)
+
+
 async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None:
     """Without a token: look up Music Assistant's version now and then (it may update)."""
     while True:
@@ -227,7 +281,10 @@ async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None
 
 
 async def _run(args: argparse.Namespace) -> None:
-    status = setup_check.Status(app=ha.running_as_app(), ma_token=bool(args.ma_token))
+    status = setup_check.Status(
+        app=ha.running_as_app(), ma_token=bool(args.ma_token),
+        take_bluetooth_audio=args.take_bluetooth_audio,
+    )
     ingress_port = None
     if status.app:
         ingress_port, status.app_slug = await ha.app_info()
@@ -282,6 +339,8 @@ async def _run(args: argparse.Namespace) -> None:
         create_app(
             bluetooth, receivers, args.pairing_seconds, ma, ingress_port=ingress_port,
             start_volume=args.start_volume, auto_pairing=ma is not None, status=status,
+            take_bluetooth_audio=(lambda: _take_bluetooth_audio(bluetooth, status))
+            if ha_audio.available() else None,
         )
     )
 
@@ -297,6 +356,10 @@ async def _run(args: argparse.Namespace) -> None:
     watch = asyncio.create_task(_watch_adapter(bus, adapter.name, status, shown))
     # With a token, the API connection reports Music Assistant's version.
     version_watch = None if ma else asyncio.create_task(_watch_ma_version(args.ma_url, status))
+    audio_watch = (
+        asyncio.create_task(_watch_ha_audio(bluetooth, status))
+        if status.app and ha_audio.available() else None
+    )
     if audio:
         tasks.append(asyncio.create_task(audio.exited.wait()))
     ma_task = asyncio.create_task(ma.run()) if ma else None
@@ -324,8 +387,9 @@ async def _run(args: argparse.Namespace) -> None:
             ma_task.cancel()
             await asyncio.gather(ma_task, return_exceptions=True)
         watch.cancel()
-        if version_watch:
-            version_watch.cancel()
+        for task in (version_watch, audio_watch):
+            if task:
+                task.cancel()
         await receivers.close()
         await site.close()
         bus.disconnect()

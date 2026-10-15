@@ -29,6 +29,7 @@ RUN apk mkpkg --output /tmp/no-camera.apk \
     && rm /tmp/no-camera.apk \
     && apk upgrade --no-cache \
     && apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools \
+        pulseaudio-utils \
     && ! apk info -e libcamera mesa
 COPY --from=build /opt/venv /opt/venv
 COPY deploy/pipewire/*.conf /etc/wireplumber/wireplumber.conf.d/

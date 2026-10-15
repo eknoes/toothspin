@@ -436,6 +436,15 @@ const SETUP_ACTIONS = {
     confirm: "Yes, ignore it",
     note: "This adds an “Ignore” for this adapter in Home Assistant's Bluetooth "
       + "integration, like its own Ignore button. You can undo it there under Ignored.",
+    done: "Done: Home Assistant ignores the adapter now.",
+  },
+  "take-bluetooth-audio": {
+    label: "Take Bluetooth audio",
+    confirm: "Yes, take it",
+    note: "This turns off Bluetooth in Home Assistant's own audio service, now and "
+      + "whenever it restarts, and turns on “Take Bluetooth audio from Home Assistant” "
+      + "in ToothSpin's configuration, where you can undo it. Connected phones reconnect once.",
+    done: "Done: phones' audio now goes to ToothSpin.",
   },
 };
 let confirmAction = null;
@@ -509,7 +518,8 @@ function renderSetup() {
     b.onclick = async () => {
       confirmAction = null;
       b.disabled = true;
-      if (await post(`api/setup/${encodeURIComponent(b.dataset.setupDo)}`)) toast("Done: Home Assistant ignores the adapter now.");
+      const action = SETUP_ACTIONS[b.dataset.setupDo];
+      if (await post(`api/setup/${encodeURIComponent(b.dataset.setupDo)}`)) toast(action.done);
     };
   }
 }
