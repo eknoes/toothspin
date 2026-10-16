@@ -85,7 +85,8 @@ docker run -d --name toothspin --restart unless-stopped \
   --network host \
   -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
   -v toothspin-data:/data \
-  --cap-drop ALL --security-opt no-new-privileges \
+  --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID \
+  --security-opt no-new-privileges \
   -e MA_TOKEN=<token> \
   toothspin
 ```

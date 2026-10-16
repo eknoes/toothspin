@@ -5,9 +5,12 @@
 profile toothspin flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
-  # No Linux capabilities: ToothSpin runs fine without any (--cap-drop ALL
-  # outside Home Assistant). PipeWire's request for realtime scheduling is
-  # refused and it carries on.
+  # ToothSpin starts as root only to hand its files to its own user and
+  # switch to it; after that it has no capabilities at all. PipeWire's
+  # request for realtime scheduling is refused and it carries on.
+  capability chown,
+  capability setuid,
+  capability setgid,
 
   # Network: Music Assistant, Sendspin, mDNS, the web UI (TCP/UDP), D-Bus and
   # PipeWire (unix sockets), the kernel's netlink for interface lookups.
@@ -47,14 +50,17 @@ profile toothspin flags=(attach_disconnected,mediate_deleted) {
   /etc/** r,
 
   # The App's data (phones' identities, settings) and runtime files.
-  /data/ r,
+  /data/ rw,
   /data/** rwk,
   /tmp/ rw,
   /tmp/** rwkl,
   /dev/shm/ r,
   /dev/shm/** rwk,
   /run/** rwk,
-  # pactl keeps a PulseAudio cookie in the home directory.
+  # pactl keeps a PulseAudio cookie in the home directory (root's, should
+  # switching users fail).
+  /home/toothspin/ rw,
+  /home/toothspin/** rwk,
   /root/.config/ rw,
   /root/.config/pulse/ rw,
   /root/.config/pulse/** rwk,

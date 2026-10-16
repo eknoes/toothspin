@@ -31,6 +31,9 @@ RUN apk mkpkg --output /tmp/no-camera.apk \
     && apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools \
         pulseaudio-utils \
     && ! apk info -e libcamera mesa
+# ToothSpin starts as root only to hand its files to this user and switch to
+# it (src/toothspin/privileges.py).
+RUN adduser -D -s /sbin/nologin -u 1000 toothspin
 COPY --from=build /opt/venv /opt/venv
 COPY deploy/pipewire/*.conf /etc/wireplumber/wireplumber.conf.d/
 COPY deploy/pipewire/pipewire.conf.d/*.conf /etc/pipewire/pipewire.conf.d/

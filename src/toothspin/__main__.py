@@ -19,7 +19,7 @@ from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 from dbus_fast.errors import DBusError
 
-from . import ha, ha_audio, ma_pairing, setup_check
+from . import ha, ha_audio, ma_pairing, privileges, setup_check
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant, check_version, probe_version
@@ -452,6 +452,8 @@ def main() -> None:
     )
     if as_app:
         logger.info("Running as a Home Assistant App")
+    runtime = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp/toothspin-runtime"))
+    privileges.drop_root(args.data_dir, runtime)
     try:
         asyncio.run(_run(args))
     except KeyboardInterrupt:
