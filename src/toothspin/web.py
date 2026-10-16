@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+import json
 import logging
 from dataclasses import asdict
 from collections.abc import Awaitable, Callable
@@ -88,8 +89,8 @@ def create_app(
         )
 
     async def post_bt_pairing(request: web.Request) -> web.Response:
-        body = await request.json()
-        if body.get("open"):
+        body = await _body(request, open=_bool)
+        if body["open"]:
             await bluetooth.open_pairing(pairing_seconds)
         else:
             await bluetooth.close_pairing()
@@ -117,9 +118,7 @@ def create_app(
         return web.json_response({"ok": True})
 
     async def post_sendspin_name(request: web.Request) -> web.Response:
-        name = str((await request.json()).get("name", "")).strip()
-        if not name or len(name) > 64:
-            return web.json_response({"ok": False, "error": "Name must be 1-64 characters"}, status=400)
+        name = (await _body(request, name=_name))["name"]
         try:
             await receivers.rename(request.match_info["address"], name)
         except KeyError:
@@ -136,9 +135,9 @@ def create_app(
         receiver = receivers.get(request.match_info["address"])
         if receiver is None or backend is None:
             raise web.HTTPNotFound
-        body = await request.json()
+        body = await _body(request, player_id=_id, on=_bool)
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
-        player_id = str(body["player_id"])
+        player_id = body["player_id"]
         # Only the latest click on a speaker matters: one still waiting
         # behind a slow request is skipped once a newer one arrives.
         key = (uri, player_id)
@@ -147,7 +146,7 @@ def create_app(
             async with routing:
                 if latest[key] != ticket:
                     return web.json_response({"ok": True, "superseded": True})
-                await speakers.toggle(backend, uri, player_id, bool(body["on"]), start_volume)
+                await speakers.toggle(backend, uri, player_id, body["on"], start_volume)
         except (BackendError, TimeoutError) as err:
             return _backend_error(err)
         return web.json_response({"ok": True})
@@ -156,21 +155,19 @@ def create_app(
         receiver = receivers.get(request.match_info["address"])
         if receiver is None or backend is None:
             raise web.HTTPNotFound
-        body = await request.json()
+        body = await _body(request, player_id=_id)
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
             async with routing:
-                await speakers.move(backend, uri, str(body["player_id"]), start_volume)
+                await speakers.move(backend, uri, body["player_id"], start_volume)
         except (BackendError, TimeoutError) as err:
             return _backend_error(err)
         return web.json_response({"ok": True})
 
     async def post_speaker_hidden(request: web.Request) -> web.Response:
-        body = await request.json()
+        body = await _body(request, player_id=_id, hidden=_bool)
         try:
-            receivers.set_speaker_hidden(
-                request.match_info["address"], str(body["player_id"]), bool(body["hidden"])
-            )
+            receivers.set_speaker_hidden(request.match_info["address"], body["player_id"], body["hidden"])
         except KeyError:
             raise web.HTTPNotFound from None
         return web.json_response({"ok": True})
@@ -178,12 +175,14 @@ def create_app(
     async def post_speaker_volume(request: web.Request) -> web.Response:
         if volumes is None:
             raise web.HTTPNotFound
-        body = await request.json()
+        raw = await _json(request)
+        # Either a volume or mute.
+        body = _check(raw, player_id=_id, **({"muted": _bool} if "muted" in raw else {"volume": _volume}))
         try:
             if "muted" in body:
-                await volumes.set_muted(str(body["player_id"]), bool(body["muted"]))
+                await volumes.set_muted(body["player_id"], body["muted"])
             else:
-                await volumes.set_volume(str(body["player_id"]), int(body["volume"]))
+                await volumes.set_volume(body["player_id"], body["volume"])
         except (BackendError, TimeoutError) as err:
             return _backend_error(err)
         return web.json_response({"ok": True})
@@ -296,6 +295,75 @@ def _base_app(ingress_port: int | None) -> web.Application:
     app.router.add_static("/static/", str(static))
     app.router.add_get("/sw.js", get_sw)
     return app
+
+
+class _Invalid(ValueError):
+    pass
+
+
+def _bool(value: Any) -> bool:
+    if not isinstance(value, bool):
+        raise _Invalid("must be true or false")
+    return value
+
+
+def _id(value: Any) -> str:
+    """A Music Assistant player id."""
+    if not isinstance(value, str) or not 0 < len(value) <= 200 or not value.isprintable():
+        raise _Invalid("must be a player id")
+    return value
+
+
+def _volume(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 100:
+        raise _Invalid("must be a whole number from 0 to 100")
+    return value
+
+
+def _name(value: Any) -> str:
+    if not isinstance(value, str):
+        raise _Invalid("must be text")
+    value = value.strip()
+    if not 0 < len(value) <= 64 or not value.isprintable():
+        raise _Invalid("must be 1-64 characters, no control characters")
+    return value
+
+
+def _bad(message: str) -> web.HTTPBadRequest:
+    """Refuses a request with a message the web UI shows."""
+    return web.HTTPBadRequest(
+        text=json.dumps({"ok": False, "error": message}), content_type="application/json"
+    )
+
+
+async def _json(request: web.Request) -> dict[str, Any]:
+    try:
+        body = await request.json()
+    except ValueError:
+        raise _bad("Invalid JSON") from None
+    if not isinstance(body, dict):
+        raise _bad("Expected a JSON object")
+    return body
+
+
+def _check(body: dict[str, Any], **fields: Callable[[Any], Any]) -> dict[str, Any]:
+    """Exactly these fields, each checked."""
+    if unknown := set(body) - set(fields):
+        raise _bad(f"Unexpected field: {', '.join(sorted(unknown))}")
+    checked = {}
+    for name, check in fields.items():
+        if name not in body:
+            raise _bad(f"Missing field: {name}")
+        try:
+            checked[name] = check(body[name])
+        except _Invalid as err:
+            raise _bad(f"{name} {err}") from None
+    return checked
+
+
+async def _body(request: web.Request, **fields: Callable[[Any], Any]) -> dict[str, Any]:
+    """The JSON object a request sent, with exactly these fields, each checked."""
+    return _check(await _json(request), **fields)
 
 
 def _backend_error(err: Exception) -> web.Response:
