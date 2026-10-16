@@ -16,9 +16,15 @@ profile toothspin flags=(attach_disconnected,mediate_deleted) {
   network unix,
   network netlink raw,
 
-  # BlueZ (host D-Bus) and Home Assistant's audio service (PulseAudio socket).
-  dbus,
+  # The host's D-Bus: only BlueZ, and the bus itself (connecting, signal
+  # subscriptions). Nothing else there, e.g. not systemd, which would hand
+  # out root on the host. Only enforced where the bus mediates AppArmor;
+  # Home Assistant OS's dbus-broker (2026-10) doesn't.
+  dbus (send, receive) bus=system peer=(name=org.bluez),
+  dbus (send, receive) bus=system peer=(name=org.freedesktop.DBus),
   /run/dbus/system_bus_socket rw,
+
+  # Home Assistant's audio service (PulseAudio socket).
   /run/audio/ r,
   /run/audio/** rw,
   /etc/pulse/client.conf r,
