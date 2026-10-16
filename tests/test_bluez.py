@@ -310,3 +310,22 @@ def test_agent_refuses_call_profiles_but_not_music() -> None:
     authorize(agent, phone, "0000110a-0000-1000-8000-00805f9b34fb")  # A2DP: music
     # Another adapter's devices are none of ToothSpin's business.
     authorize(agent, "/org/bluez/hci1/dev_AA_BB_CC_DD_EE_FF", "0000111f-0000-1000-8000-00805f9b34fb")
+
+
+def test_pairing_on_other_adapters_can_be_refused() -> None:
+    import pytest
+    from dbus_fast.errors import DBusError
+
+    from toothspin.bluez import _Agent
+
+    others = "/org/bluez/hci1/dev_AA_BB_CC_DD_EE_FF"
+    manager = BluetoothManager(bus=None, other_adapters_pairing=False)  # type: ignore[arg-type]
+    agent = _Agent(manager)
+    for call in (lambda: agent.RequestPinCode.__wrapped__(agent, others),
+                 lambda: agent.RequestPasskey.__wrapped__(agent, others),
+                 lambda: agent.RequestConfirmation.__wrapped__(agent, others, 123456),
+                 lambda: agent.RequestAuthorization.__wrapped__(agent, others)):
+        with pytest.raises(DBusError):
+            call()
+    # Devices already paired there still connect.
+    agent.AuthorizeService.__wrapped__(agent, others, "0000110a-0000-1000-8000-00805f9b34fb")

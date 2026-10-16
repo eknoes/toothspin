@@ -132,6 +132,7 @@ are optional:
 | `SENDSPIN_CODEC` | `pcm` | `pcm`, `flac` or `opus` towards Music Assistant |
 | `START_VOLUME` | `100` | maximum start volume (0-100): a speaker set louder is turned down to it when a phone starts on it, e.g. `20`; `100` never changes the volume |
 | `ALLOW_PHONE_CONNECT` | `true` | `false`: phones only connect via the web UI's **Connect** |
+| `OTHER_ADAPTERS_PAIRING` | `accept` | `refuse`: no device can pair with the host's other Bluetooth adapters ([why](https://eknoes.github.io/toothspin/faq.html#other-adapters)) |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add phone** keeps pairing open |
 | `WEB_PORT` | `8080` | |
 | `LOG_LEVEL` | `INFO` | |

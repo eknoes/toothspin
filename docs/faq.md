@@ -155,6 +155,26 @@ Remove the old entry in Music Assistant (**Settings → Players**) and add the
 speaker again if needed. If that doesn't help,
 [open an issue](https://github.com/eknoes/toothspin/issues).
 
+### Why does ToothSpin decide about pairing on my other adapters? {#other-adapters}
+
+Bluetooth on Linux (BlueZ) asks one program per machine whether a device
+may pair, the *default agent*, and it asks about every adapter, not just
+one. ToothSpin has to be that agent to keep strangers off its own adapter.
+So it also gets asked about the others, e.g. the one Home Assistant uses for
+its Bluetooth devices, and has to answer: no answer counts as a refusal.
+
+The option **Pairing on other Bluetooth adapters** (`OTHER_ADAPTERS_PAIRING`)
+sets the answer:
+
+- `accept` (default): pairings on the other adapters go through, e.g. ones
+  Home Assistant starts. Whether an adapter can be paired with at all stays
+  up to whoever uses it.
+- `refuse`: no device can pair with them, Home Assistant included. Choose
+  it if nothing else on the machine pairs Bluetooth devices.
+
+Devices already paired with another adapter connect either way, and
+ToothSpin's own adapter only ever accepts pairing while you've opened it.
+
 ### Something else {#other}
 
 Check the log (**Settings → Apps → ToothSpin → Log**) and

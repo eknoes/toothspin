@@ -75,6 +75,11 @@ def _parse_args() -> argparse.Namespace:
         help="Accept connections phones start themselves (default); without, only the web UI's Connect",
     )
     parser.add_argument(
+        "--other-adapters-pairing", default=env("OTHER_ADAPTERS_PAIRING", "accept"),
+        choices=["accept", "refuse"],
+        help="Pairings on the host's other Bluetooth adapters, which BlueZ asks ToothSpin about",
+    )
+    parser.add_argument(
         "--bt-pin", default=env("BT_PIN"),
         help="Let phones pair any time with this PIN (6-16 digits; needs SSP off on the host)",
     )
@@ -354,6 +359,7 @@ async def _run(args: argparse.Namespace) -> None:
     bluetooth = BluetoothManager(
         bus, adapter.name, alias=args.bt_name, on_change=on_bluetooth_change,
         allow_phone_connect=args.allow_phone_connect, pin=args.bt_pin or None,
+        other_adapters_pairing=args.other_adapters_pairing == "accept",
     )
     # Without MA_URL the API is found via mDNS, so in HA only the token is needed.
     ma = MusicAssistant(args.ma_url, args.ma_token) if args.ma_token else None

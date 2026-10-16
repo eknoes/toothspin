@@ -46,6 +46,14 @@ configuration:
       Home Assistant's own audio service also grabs the phones' audio. On:
       ToothSpin turns that off, so Home Assistant can't use Bluetooth
       speakers or headsets itself. ToothSpin asks before turning it on.
+  other_adapters_pairing:
+    name: Pairing on other Bluetooth adapters
+    description: >-
+      Bluetooth asks ToothSpin about pairings on all of this machine's
+      adapters, not only its own. accept (default): pairings there go
+      through, e.g. ones Home Assistant starts. refuse: no device can pair
+      with them, Home Assistant included. ToothSpin's own adapter isn't
+      affected.
   log_level:
     name: Log level
     description: How much the app logs.

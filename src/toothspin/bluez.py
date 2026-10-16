@@ -88,12 +88,15 @@ class BluetoothManager:
         on_change: Callable[[], None] | None = None,
         allow_phone_connect: bool = True,
         pin: str | None = None,
+        other_adapters_pairing: bool = True,
     ) -> None:
         self._bus = bus
         self._adapter_path = f"/org/bluez/{adapter}"
         self._alias = alias
         self._on_change = on_change or (lambda: None)
         self._allow_phone_connect = allow_phone_connect
+        # Whether the agent lets pairings on other adapters through (see _Agent).
+        self.other_adapters_pairing = other_adapters_pairing
         # A fixed PIN is the secret for pairing, any time; see pin_pairing.
         self.pin = pin
         self._adapter: dict[str, Any] = {}
@@ -505,10 +508,13 @@ def _unwrap_player(props: dict[str, Variant]) -> dict[str, Any]:
 class _Agent(ServiceInterface):
     """Accepts pairing only while the window is open, and connections we started.
 
-    BlueZ's default agent serves every adapter on the host. Devices on other
-    adapters (e.g. the one Home Assistant uses for its own Bluetooth devices)
-    are left alone: they're accepted, as BlueZ does when no agent is
-    registered, so pairings the host starts there keep working.
+    BlueZ has one default agent for the whole host, not one per adapter, and
+    ToothSpin has to be it to decide who pairs with its own adapter. So BlueZ
+    asks it about pairings on every adapter. Not answering is no way out: it
+    times out, which refuses the pairing. On other adapters (e.g. the one Home
+    Assistant uses for its own Bluetooth devices) pairings are accepted, so
+    those Home Assistant starts keep working, or refused if the user chose so.
+    Connections of devices already paired there are always accepted.
     """
 
     def __init__(self, manager: BluetoothManager) -> None:
@@ -517,6 +523,9 @@ class _Agent(ServiceInterface):
 
     def _require_window(self, device: str) -> None:
         if not self._manager.owns(device):
+            if not self._manager.other_adapters_pairing:
+                logger.info("Rejected pairing from %s: not ToothSpin's adapter", device)
+                raise DBusError("org.bluez.Error.Rejected", "Pairing on other adapters is off")
             return
         if self._manager.pairing_remaining is None:
             logger.warning("Rejected pairing from %s: pairing window closed", device)

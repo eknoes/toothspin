@@ -35,6 +35,7 @@ options:
   start_volume: 100
   allow_phone_connect: true
   take_bluetooth_audio: false
+  other_adapters_pairing: accept
   log_level: info
 schema:
   bluetooth_name: str
@@ -43,6 +44,7 @@ schema:
   start_volume: int(0,100)
   allow_phone_connect: bool
   take_bluetooth_audio: bool
+  other_adapters_pairing: list(accept|refuse)
   ma_token: password?
   ma_url: url?
   sendspin_url: match(^wss?://.+)?
