@@ -3,9 +3,10 @@
 ToothSpin uses the host's system D-Bus. Services there (systemd, for one)
 decide by the caller's user ID, not its capabilities: as root, ToothSpin
 could ask them for anything, as any other user nothing they guard. BlueZ
-talks to any user. Started as root (a Home Assistant App, plain Docker),
-ToothSpin hands its files to the image's own user and switches to it;
-started as a user already (rootless Podman), there's nothing to do.
+talks to any user. Started as root (a Home Assistant App, Docker without
+``--user``), ToothSpin hands its files to the image's own user and switches
+to it; started as a user already (Docker with ``--user 1000:1000``, rootless
+Podman), there's nothing to do.
 """
 
 from __future__ import annotations

@@ -98,10 +98,14 @@ the echo of its own last write for a few seconds.
 - ToothSpin doesn't run as root. On the host's system bus, services like
   systemd trust a caller's uid, not its capabilities, so root there could
   ask for anything. Rootless with `--userns keep-id`, it runs as the user,
-  and D-Bus sees the user's own uid; it needs no capabilities. Started as
-  root (Home Assistant, plain Docker), it hands `/data` to the image's
-  `toothspin` user and switches to it, which needs `CHOWN`, `SETUID` and
-  `SETGID` for that moment; then it has none, and `no-new-privileges`.
+  and D-Bus sees the user's own uid. With Docker, `--user 1000:1000` runs
+  it as the image's `toothspin` user, which owns the image's `/data`, so a
+  new volume belongs to it too. Neither needs any capabilities.
+- Home Assistant starts Apps as root and gives them a root-owned `/data`;
+  an App can't choose its user or the owner of its folders. So there
+  ToothSpin reads its options from the Supervisor's API, hands `/data` to
+  `toothspin` and switches to it, which needs `CHOWN`, `SETUID` and
+  `SETGID` for that moment. Then it has none, and `no-new-privileges`.
 - On SELinux hosts, the standard `container_t` may not connect to the
   host's system bus. Rather than disabling SELinux for the container,
   `deploy/selinux/toothspin.cil` defines `toothspin.process` from the udica

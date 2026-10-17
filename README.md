@@ -85,15 +85,19 @@ docker run -d --name toothspin --restart unless-stopped \
   --network host \
   -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
   -v toothspin-data:/data \
-  --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID \
-  --security-opt no-new-privileges \
+  --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
   -e MA_TOKEN=<token> \
   toothspin
 ```
 
 `--network host` is for finding Music Assistant via mDNS and the web UI on
-:8080. Rootless Podman also needs `--userns keep-id`, so D-Bus sees your own
-uid.
+:8080. `--user 1000:1000` runs ToothSpin as the image's `toothspin` user,
+with no capabilities at all. A new volume belongs to that user; for an
+existing one or a host folder, hand it over once (`chown -R 1000:1000`).
+Without `--user`, ToothSpin starts as root, hands `/data` over itself and
+switches; that needs `--cap-add CHOWN --cap-add SETUID --cap-add SETGID`
+instead, which it gives up right after. Rootless Podman needs
+`--userns keep-id` instead of `--user`, so D-Bus sees your own uid.
 
 On SELinux hosts (Fedora, RHEL, CoreOS), containers may not use the host's
 D-Bus. [deploy/selinux/toothspin.cil](deploy/selinux/toothspin.cil) adds a

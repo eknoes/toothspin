@@ -52,15 +52,15 @@ docker run -d --name toothspin --restart unless-stopped \
   --network host \
   -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket \
   -v toothspin-data:/data \
-  --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID \
-  --security-opt no-new-privileges \
+  --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges \
   -e MA_TOKEN=<token> \
   ghcr.io/eknoes/toothspin
 ```
 
 The web UI is at `http://<host>:8080/`, without a login, so keep it on your
-home network. Rootless Podman also needs `--userns keep-id`, SELinux hosts a
-small policy module. Details and all options: the
+home network. An existing volume or a host folder must belong to uid 1000
+first (`chown -R 1000:1000`). Rootless Podman uses `--userns keep-id`
+instead of `--user`, SELinux hosts need a small policy module. Details and all options: the
 [README](https://github.com/eknoes/toothspin#with-docker-or-podman).
 
 ## Fedora CoreOS machine {#coreos}

@@ -31,9 +31,11 @@ RUN apk mkpkg --output /tmp/no-camera.apk \
     && apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools \
         pulseaudio-utils \
     && ! apk info -e libcamera mesa
-# ToothSpin starts as root only to hand its files to this user and switch to
-# it (src/toothspin/privileges.py).
-RUN adduser -D -s /sbin/nologin -u 1000 toothspin
+# ToothSpin runs as this user. Started as root (Home Assistant), it hands its
+# files to it and switches (src/toothspin/privileges.py). /data belongs to it,
+# so a new Docker volume does too and `--user 1000:1000` needs no root.
+RUN adduser -D -s /sbin/nologin -u 1000 toothspin \
+    && install -d -o toothspin -g toothspin /data
 COPY --from=build /opt/venv /opt/venv
 COPY deploy/pipewire/*.conf /etc/wireplumber/wireplumber.conf.d/
 COPY deploy/pipewire/pipewire.conf.d/*.conf /etc/pipewire/pipewire.conf.d/
