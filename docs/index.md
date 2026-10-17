@@ -1,6 +1,7 @@
 ---
 layout: default
 hero: A Bluetooth speaker input for Music Assistant.
+install_button: true
 alpha: >-
   This runs in one home on one dongle so far. Expect rough edges, breaking
   changes and setups that don't work yet. Bug reports (any volume) are welcome!

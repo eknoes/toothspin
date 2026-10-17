@@ -75,6 +75,25 @@ a { color: var(--blue); }
 .hero { text-align: center; padding-block: 1.5rem 0.5rem; }
 .hero img { width: 7rem; height: 7rem; }
 .hero h1 { margin-top: 0.75rem; }
+.hero .actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+}
+.button {
+  display: inline-block;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+}
+.button:hover { filter: brightness(1.1); }
+@media (prefers-color-scheme: dark) { .button { color: var(--bg); } }
 
 .alpha {
   border-left: 4px solid var(--red);

@@ -25,6 +25,12 @@
     <img src="{{ '/assets/logo.svg' | relative_url }}" alt="{{ site.title }} logo">
     <h1>{{ site.title }}</h1>
     <p class="lede">{{ page.hero }}</p>
+    {%- if page.install_button %}
+    <p class="actions">
+      <a class="button" href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2F{{ site.repository | replace: '/', '%2F' }}">Install on Home Assistant</a>
+      <a href="{{ '/install.html' | relative_url }}">Step by step, or with Docker</a>
+    </p>
+    {%- endif %}
   </div>
   {%- else %}
   <h1>{{ page.title }}</h1>
