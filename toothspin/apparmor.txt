@@ -11,6 +11,9 @@ profile toothspin flags=(attach_disconnected,mediate_deleted) {
   capability chown,
   capability setuid,
   capability setgid,
+  # Home Assistant's init (tini, root) passes the stop signal on to
+  # ToothSpin, which no longer runs as root.
+  capability kill,
 
   # Network: Music Assistant, Sendspin, mDNS, the web UI (TCP/UDP), D-Bus and
   # PipeWire (unix sockets), the kernel's netlink for interface lookups.
