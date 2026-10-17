@@ -1,0 +1,48 @@
+# https://developers.home-assistant.io/docs/apps/configuration
+name: ToothSpin Standalone
+version: "0.2.1"
+slug: toothspin_standalone
+description: >-
+  Stream any phone over Bluetooth to Sendspin speakers, without Music
+  Assistant
+url: https://github.com/eknoes/toothspin
+image: ghcr.io/eknoes/toothspin-standalone
+arch:
+  - aarch64
+  - amd64
+# Its own Sendspin server finds the speakers via mDNS and connects to them,
+# and they to it (port 8927): both need the host's network.
+host_network: true
+# Uses the host's BlueZ (bluetoothd) over D-Bus; no raw Bluetooth access.
+host_dbus: true
+# Only to read the App's ingress port and to show the app in the sidebar on
+# its first start.
+hassio_api: true
+# Home Assistant's audio service also receives Bluetooth audio and takes the
+# phones' streams; with the user's consent, ToothSpin turns that off there.
+audio: true
+# Only to check whether Home Assistant's Bluetooth integration uses the
+# adapter too, and to raise a notification when setup needs the user.
+homeassistant_api: true
+ingress: true
+# On the host network: a free port the Supervisor picks, which only answers
+# its ingress proxy.
+ingress_port: 0
+panel_icon: mdi:home-sound-in
+panel_title: ToothSpin
+options:
+  bluetooth_name: ToothSpin
+  adapter: hci0
+  start_volume: 100
+  allow_phone_connect: true
+  take_bluetooth_audio: false
+  other_adapters_pairing: accept
+  log_level: info
+schema:
+  bluetooth_name: str
+  adapter: match(^(auto|hci[0-9]+)$)
+  start_volume: int(0,100)
+  allow_phone_connect: bool
+  take_bluetooth_audio: bool
+  other_adapters_pairing: list(accept|refuse)
+  log_level: list(debug|info|warning|error)

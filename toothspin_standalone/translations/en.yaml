@@ -1,0 +1,38 @@
+configuration:
+  bluetooth_name:
+    name: Bluetooth name
+    description: The name phones see when searching for Bluetooth devices.
+  adapter:
+    name: Bluetooth adapter
+    description: >-
+      hci0 (default) is the first adapter. For a dongle just for ToothSpin,
+      enter it here (e.g. hci1), or auto to pick one Home Assistant doesn't
+      use.
+  start_volume:
+    name: Maximum start volume
+    description: >-
+      When a phone starts on a speaker set louder than this (0-100), the
+      speaker is turned down to it first. You can turn up afterwards. 100
+      (default) never changes the volume.
+  allow_phone_connect:
+    name: Phones may connect by themselves
+    description: >-
+      On (default): paired phones connect like to any Bluetooth speaker.
+      Off: only the app's Connect button connects them.
+  take_bluetooth_audio:
+    name: Take Bluetooth audio from Home Assistant
+    description: >-
+      Home Assistant's own audio service also grabs the phones' audio. On:
+      ToothSpin turns that off, so Home Assistant can't use Bluetooth
+      speakers or headsets itself. ToothSpin asks before turning it on.
+  other_adapters_pairing:
+    name: Pairing on other Bluetooth adapters
+    description: >-
+      Bluetooth asks ToothSpin about pairings on all of this machine's
+      adapters, not only its own. accept (default): pairings there go
+      through, e.g. ones Home Assistant starts. refuse: no device can pair
+      with them, Home Assistant included. ToothSpin's own adapter isn't
+      affected.
+  log_level:
+    name: Log level
+    description: How much the app logs.

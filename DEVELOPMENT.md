@@ -14,7 +14,8 @@ How ToothSpin is built: [technical overview](https://eknoes.github.io/toothspin/
   offering the same slice of Music Assistant's player API.
 - [deploy/](deploy/): PipeWire/WirePlumber config baked into the image, the
   BlueZ config, the SELinux policy, the Quadlet unit and the CoreOS config.
-- [toothspin/](toothspin/): the Home Assistant App, with
+- [toothspin/](toothspin/) and [toothspin_standalone/](toothspin_standalone/):
+  the Home Assistant Apps (Music Assistant mode and standalone mode), with
   [repository.yaml](repository.yaml) at the root.
 
 ## Tests
@@ -90,12 +91,14 @@ lints the App and builds the amd64/arm64 image on every push and pull
 request. Pushes to `main` publish `ghcr.io/eknoes/toothspin:edge`. To
 release:
 
-1. Bump `version` in `pyproject.toml` and in
-   [toothspin/config.yaml](toothspin/config.yaml) (the image tag the App
-   installs; CI checks both match).
-2. Update the App's changelog, which Home Assistant shows before an update:
-   `git cliff --tag v0.2.0 -o toothspin/CHANGELOG.md` (CI checks it has the
-   release). Commit all three.
+1. Bump `version` in `pyproject.toml` and in both Apps' `config.yaml`
+   ([toothspin/](toothspin/config.yaml),
+   [toothspin_standalone/](toothspin_standalone/config.yaml): the image tag
+   the App installs; CI checks they match).
+2. Update the Apps' changelogs, which Home Assistant shows before an update:
+   `git cliff --tag v0.2.0 -o toothspin/CHANGELOG.md && cp
+   toothspin/CHANGELOG.md toothspin_standalone/` (CI checks they have the
+   release). Commit it all.
 3. Tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
 
 CI then publishes `ghcr.io/eknoes/toothspin:0.2.0` (plus `:0.2` and

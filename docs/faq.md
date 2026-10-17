@@ -31,8 +31,10 @@ one Home Assistant doesn't use.
 
 Not necessarily. With only Sendspin speakers (e.g. ESPHome's), ToothSpin can
 run its own Sendspin server and play the phones on them directly:
-[standalone mode]({{ '/install.html#standalone' | relative_url }}). It isn't
-available as a Home Assistant App yet, and it only plays the phones.
+[standalone mode]({{ '/install.html#standalone' | relative_url }}), as the
+Home Assistant App **ToothSpin Standalone** or a container. It only plays
+the phones, and doesn't work together with Music Assistant's Sendspin
+integration.
 
 ### Do I need the Music Assistant token? {#token}
 

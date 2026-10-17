@@ -148,14 +148,18 @@ plays the phones on them, grouped and in sync, with the same web UI. It only
 plays the phones and only on Sendspin speakers: no other music sources, no
 AirPlay, Chromecast or Squeezebox.
 
-- Use the image `ghcr.io/eknoes/toothspin-standalone` (or build with
-  `--build-arg EXTRAS=server --build-arg MODE=standalone`). It starts in
-  standalone mode, and its Sendspin server needs PyAV, numpy and Pillow,
-  about 200 MB the default image doesn't carry.
+- As a Home Assistant App: install **ToothSpin Standalone** from the same
+  repository. It uses the host's network, so its server finds the speakers
+  and they reach it.
+- In a container: use the image `ghcr.io/eknoes/toothspin-standalone` (or
+  build with `--build-arg EXTRAS=server --build-arg MODE=standalone`). It
+  starts in standalone mode, and its Sendspin server needs PyAV, numpy and
+  Pillow, about 200 MB the default image doesn't carry.
 - Speakers that still speak Sendspin unencrypted (e.g. ESPHome's) or allow
-  servers they aren't paired with work out of the box. A speaker already
-  playing for Music Assistant switches to ToothSpin when you turn it on in
-  ToothSpin, and back when Music Assistant plays on it again.
+  servers they aren't paired with work out of the box.
+- It doesn't work together with Music Assistant's Sendspin integration: both
+  are Sendspin servers and want the same speakers. With Music Assistant, use
+  the normal mode.
 - Speakers that insist on being paired aren't supported yet.
 
 ### Configuration

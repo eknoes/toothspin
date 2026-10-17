@@ -70,10 +70,17 @@ instead of `--user`, SELinux hosts need a small policy module. Details and all o
 ## Without Music Assistant {#standalone}
 
 ToothSpin can also run its own Sendspin server and play the phones directly
-on Sendspin speakers (e.g. ESPHome's), grouped and in sync. Use the image
-`ghcr.io/eknoes/toothspin-standalone` in the Docker or Podman setup above;
-it starts in standalone mode. It only plays the phones, and only on
-Sendspin speakers. Details:
+on Sendspin speakers (e.g. ESPHome's), grouped and in sync. It only plays
+the phones, and only on Sendspin speakers.
+
+- **Home Assistant:** add the repository as above and install **ToothSpin
+  Standalone** instead of ToothSpin.
+- **Docker or Podman:** use the image `ghcr.io/eknoes/toothspin-standalone`
+  in the setup above; it starts in standalone mode.
+
+It doesn't work together with Music Assistant's Sendspin integration: both
+are Sendspin servers and want the same speakers (as an App, also the same
+port). With Music Assistant, use ToothSpin as above. Details:
 [standalone mode](https://github.com/eknoes/toothspin#standalone-mode-without-music-assistant).
 
 ## Fedora CoreOS machine {#coreos}

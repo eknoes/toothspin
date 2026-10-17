@@ -1,0 +1,83 @@
+#include <tunables/global>
+
+# ToothSpin Standalone as a Home Assistant App. The Supervisor names the
+# profile after the App's slug when it loads it.
+profile toothspin_standalone flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # ToothSpin starts as root only to hand its files to its own user and
+  # switch to it; after that it has no capabilities at all. PipeWire's
+  # request for realtime scheduling is refused and it carries on.
+  capability chown,
+  capability setuid,
+  capability setgid,
+  # Home Assistant's init (tini, root) passes the stop signal on to
+  # ToothSpin, which no longer runs as root.
+  capability kill,
+
+  # Network: its Sendspin server and the speakers, mDNS, the web UI
+  # (TCP/UDP), D-Bus and PipeWire (unix sockets), the kernel's netlink for
+  # interface lookups.
+  network inet,
+  network inet6,
+  network unix,
+  network netlink raw,
+
+  # The host's D-Bus: only BlueZ, and the bus itself (connecting, signal
+  # subscriptions). Nothing else there, e.g. not systemd, which would hand
+  # out root on the host. Only enforced where the bus mediates AppArmor;
+  # Home Assistant OS's dbus-broker (2026-10) doesn't.
+  dbus (send, receive) bus=system peer=(name=org.bluez),
+  dbus (send, receive) bus=system peer=(name=org.freedesktop.DBus),
+  /run/dbus/system_bus_socket rw,
+
+  # Home Assistant's audio service (PulseAudio socket).
+  /run/audio/ r,
+  /run/audio/** rw,
+  /etc/pulse/client.conf r,
+  /etc/asound.conf r,
+
+  # The image's programs: the service (Python in /opt/venv), PipeWire,
+  # WirePlumber, pw-record/pw-dump and pactl.
+  /init ix,
+  /bin/** ix,
+  /sbin/** ix,
+  /usr/bin/** ix,
+  /usr/sbin/** ix,
+  /opt/venv/bin/** ix,
+  / r,
+  /{,usr/,usr/local/}lib/ r,
+  /lib/** mr,
+  /usr/lib/** mr,
+  /opt/venv/** mr,
+  /usr/share/** r,
+  /etc/** r,
+
+  # The App's data (phones' identities, settings) and runtime files.
+  /data/ rw,
+  /data/** rwk,
+  /tmp/ rw,
+  /tmp/** rwkl,
+  /dev/shm/ r,
+  /dev/shm/** rwk,
+  /run/** rwk,
+  # pactl keeps a PulseAudio cookie in the home directory (root's, should
+  # switching users fail).
+  /home/toothspin/ rw,
+  /home/toothspin/** rwk,
+  /root/.config/ rw,
+  /root/.config/pulse/ rw,
+  /root/.config/pulse/** rwk,
+
+  # Process and system information PipeWire and Python read; PipeWire's
+  # tools name their threads.
+  @{PROC}/** r,
+  @{PROC}/@{pid}/comm w,
+  @{PROC}/@{pid}/task/@{tid}/comm w,
+  /sys/** r,
+
+  # Its own processes, and Docker stopping the container.
+  signal (send, receive) peer=@{profile_name},
+  signal (receive) set=(kill, term, int, hup) peer=unconfined,
+  signal (receive) set=(kill, term) peer=/usr/bin/docker,
+}

@@ -150,6 +150,12 @@ Assistant uses too:
 - aiosendspin's server needs PyAV (its push stream always resamples), numpy
   and Pillow, about 200 MB, so it ships as a separate image,
   `toothspin-standalone`, which starts in standalone mode.
+- As a Home Assistant App (`toothspin_standalone/`) it runs on the host's
+  network: mDNS has to reach the speakers, and they connect back to port
+  8927. Its ingress port is one the Supervisor picks (`ingress_port: 0`),
+  and like the other App's it only answers the Supervisor's proxy. It can't
+  run next to Music Assistant's Sendspin integration, which wants the same
+  port and speakers.
 
 ## Pairing with Music Assistant automatically
 
