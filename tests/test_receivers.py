@@ -93,7 +93,7 @@ def test_hidden_speakers_are_kept_per_phone(tmp_path: Path, monkeypatch) -> None
         assert receivers.hidden_speakers("AA:AA:AA:AA:AA:AA") == ["kitchen", "office"]
         assert receivers.hidden_speakers("BB:BB:BB:BB:BB:BB") == []  # per phone
 
-        # Renaming used to overwrite the settings file.
+        # Renaming keeps the other settings.
         await receivers.rename("AA:AA:AA:AA:AA:AA", "Work phone")
         assert receivers.hidden_speakers("AA:AA:AA:AA:AA:AA") == ["kitchen", "office"]
 

@@ -1,7 +1,6 @@
 # Self-contained image: the service plus its own PipeWire/WirePlumber. Needs
-# only the host's bluetoothd (system D-Bus socket) and host networking.
-# Alpine: smallest base whose PipeWire ships the AAC codec iPhones stream
-# (Debian's lacks it, fdk-aac being non-free there). The release is written
+# only the host's bluetoothd (over the system D-Bus socket). Alpine: small,
+# and its PipeWire ships the AAC codec iPhones stream. The release is written
 # out in both FROM lines so Dependabot can propose new ones.
 
 FROM docker.io/library/alpine:3.24 AS build

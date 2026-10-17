@@ -4,13 +4,22 @@
 
 **Stream any phone over Bluetooth into Music Assistant.**
 
-I fell for multi-room audio built from open-source [software](https://www.music-assistant.io/) and [hardware](https://github.com/sonocotta/esparagus-media-center):
-every room in sync, nothing in the cloud. My household was less impressed.
-Their review: *"Nice. Where's the Bluetooth?"* Then they paired their phones
-with whichever speaker was closest and left my carefully synchronised setup
-to play to an empty house. ToothSpin is my peace offering: to a phone it's
-just another Bluetooth speaker, and whatever it plays can fill one room or
-all of them.
+ToothSpin turns a USB Bluetooth dongle into a Bluetooth speaker for
+[Music Assistant](https://music-assistant.io). Your phone pairs with it like
+with any other speaker, and whatever it plays shows up in Music Assistant as
+a live input. From there it plays on one speaker, a group, or the whole house.
+
+## Why?
+
+I fell for multi-room audio built from open-source [software](https://www.music-assistant.io/)
+and [hardware](https://github.com/sonocotta/esparagus-media-center): every
+room in sync, nothing in the cloud. My household was less impressed.
+Their review: *"Nice. Where's the Bluetooth?"*
+Then they paired their phones with whichever speaker was closest, and my
+carefully synchronised setup was never used.
+
+ToothSpin is my peace offering. For the phones it's just another Bluetooth
+speaker, and the music can still fill one room or all of them.
 
 <p align="center">
   <img src="assets/how-it-works.svg" width="760"
@@ -19,49 +28,58 @@ all of them.
 
 ## How it works
 
-A USB Bluetooth dongle becomes a speaker your phones can pair with. Each
-phone shows up in [Music Assistant](https://music-assistant.io) as its own
-live input, and ToothSpin's web UI plays it on any speaker or group.
-
-After pairing your phone with ToothSpin over Bluetooth, it needs one pairing
-with Music Assistant to set it up, which ToothSpin does by itself when it has
-a token for Music Assistant's API. From then on: connect the phone like to
-any Bluetooth speaker (or press **Connect** in ToothSpin), play something
-and switch on the speakers you want. The phone's volume buttons control
-those speakers.
+You pair your phone once with ToothSpin over Bluetooth. After that, connect
+the phone like to any Bluetooth speaker (or press **Connect** in ToothSpin),
+play something and switch on the speakers you want in ToothSpin's web UI.
+The phone's volume buttons then control those speakers.
 
 <p align="center">
   <img src="docs/assets/screenshots/demo.gif" width="480"
     alt="ToothSpin's web UI: a speaker joins the phone's group, its volume goes up, then the phone plays only there">
 </p>
 
-> [!NOTE]
-> ToothSpin is in an early state. It was put together over a couple of
-> evenings with [Claude](https://claude.ai), with a human firmly at the
-> wheel: the AI got steered a lot, and every line of code was reviewed by
-> me. It runs in exactly one home so far, but that home is a demanding test
-> lab: several phones, a household that switches rooms mid-song, and
-> users who report bugs without any technical details directly at the maintainer, without filing an issue.
-> Expect rough edges; bug reports (any volume) are welcome.
+It currently supports:
+* Several phones on one dongle, each with its own input in Music Assistant
+* Picking speakers and groups per phone, with the phone's volume buttons
+* Pairing only while you open the pairing window (or with a PIN)
+* Running as a Home Assistant App, in Docker/Podman or on Fedora CoreOS
 
-**You need:** Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
-ideally a USB dongle just for ToothSpin. How it's built:
-[technical overview](https://eknoes.github.io/toothspin/overview.html).
+Not working yet:
+* Song title and cover in Music Assistant. Sendspin can't send them for an
+  input yet ([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)),
+  ToothSpin's own web UI shows them though.
+* After a pause of more than 10 minutes, you have to switch the speakers on
+  again.
+* Phone calls. ToothSpin only does music.
+
+> [!NOTE]
+> ToothSpin is in an early state. I built it over a couple of evenings
+> together with [Claude](https://claude.ai). I steered a lot, and reviewed
+> the code. By now it runs in exactly one home (mine). But
+> that's a demanding test lab: several phones, a household that switches
+> rooms mid-song, and users who report bugs directly to the maintainer,
+> without any technical details and without filing an issue.
+> I'd say I tested it a lot, but you still have to expect rough edges.
+> Bug reports and feature requests are welcome!
+
+You need Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
+ideally a USB dongle just for ToothSpin. If you want to know how it's built,
+see the [technical overview](https://eknoes.github.io/toothspin/overview.html).
 
 ## Install
 
 Pick whatever fits your setup:
 
-- **A dedicated Fedora CoreOS machine** is how I run it: a small VM with its
-  own USB Bluetooth dongle passed through. One config file sets up
-  everything on first boot. A Raspberry Pi 4 works too, since Fedora
-  CoreOS [supports it](https://docs.fedoraproject.org/en-US/fedora-coreos/provisioning-raspberry-pi4/)
-  (the Pi 5 isn't supported yet).
 - **A Home Assistant App**. It can share Home Assistant's Bluetooth adapter,
-  but a second dongle just for ToothSpin is more reliable.
+  but a second dongle just for ToothSpin is more reliable. (This is how I currently use it)
 - **A container on your own Linux machine** (Docker or Podman) also works,
   but you install and configure the host side yourself: BlueZ, and no other
   Bluetooth audio stack.
+- **A dedicated Fedora CoreOS machine**. A small VM with its
+  own USB Bluetooth dongle passed through. One config file sets up
+  everything on first boot. A Raspberry Pi 4 works too, since Fedora
+  CoreOS [supports it](https://docs.fedoraproject.org/en-US/fedora-coreos/provisioning-raspberry-pi4/)
+  (the Pi 5 isn't supported yet). (This is how I used to run it)
 
 ### As a Home Assistant App
 
@@ -173,21 +191,18 @@ with `MA_TOKEN` removes its input there too.
 
 ## Design decisions
 
-**Can connections be limited to ToothSpin?** Phones reconnect to known
-Bluetooth devices on their own, e.g. right after being switched on or when
-you come home, which is what people expect from a Bluetooth speaker. If you
-worry that this could start whatever a phone plays on every speaker in the
-house by accident, set `ALLOW_PHONE_CONNECT=false`: then a phone only
-connects when someone presses **Connect** in ToothSpin. Either way, a phone
-only plays on speakers switched on for it, unless Music Assistant is set to
-start its input automatically.
+**Can I stop phones from connecting by themselves?** By default, phones
+reconnect to ToothSpin on their own, e.g. when they're switched on or when
+you come home. That's what people expect from a Bluetooth speaker. If the
+phones always pick up ToothSpin (which can be annoying), set
+`ALLOW_PHONE_CONNECT=false`. Then a phone only connects when someone presses
+**Connect** in ToothSpin.
 
-**Why pair manually, instead of a "free for all"?** To stay in control of
-who plays on your speakers. Someone walking past your home shouldn't be able
-to connect to your living room speaker. Phones can only pair while you've
-opened the pairing window in the web UI, or with a PIN only you know
-(`BT_PIN`), and each one needs a one-time pairing with Music Assistant
-before it can play anywhere.
+**Why do I have to pair every phone, instead of a "free for all"?** Because
+you should stay in control of who plays on your speakers. Someone walking
+past your home shouldn't be able to connect to your living room. So phones
+can only pair while you've opened the pairing window in the web UI, or with
+a PIN only you know (`BT_PIN`).
 
 ## More
 

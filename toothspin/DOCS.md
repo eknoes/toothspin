@@ -75,7 +75,7 @@ open **Browse**, pick the phone's input and press **Play**.
 | Music Assistant token | Recommended. Lets you pick speakers in the app and pairs phones automatically. |
 | Music Assistant URL | Only if Music Assistant doesn't run as an App on this Home Assistant, e.g. `http://192.168.1.10:8095`. |
 | Sendspin server URL | Same, e.g. `ws://192.168.1.10:8927/sendspin`. |
-| Maximum start volume | A speaker set louder than this (0-100) is turned down to it when a phone starts on it, e.g. `20`. `100` (default) never changes the volume. |
+| Maximum start volume | A speaker set louder than this is turned down to the maximum start volume when a phone starts on it, e.g. `20`. `100` (default) never changes the volume. |
 | Take Bluetooth audio from Home Assistant | Turns off Bluetooth in Home Assistant's own audio service, which otherwise grabs the phones' audio. ToothSpin asks first. To undo, turn it off and restart Home Assistant. |
 | Phones may connect by themselves | On (default): like any Bluetooth speaker. Off: only **Connect** in the app connects a phone. |
 | Pairing on other Bluetooth adapters | `accept` (default) or `refuse`: whether devices may pair with this machine's other adapters. ToothSpin's own isn't affected. [Why ToothSpin decides that](https://eknoes.github.io/toothspin/faq.html#other-adapters). |

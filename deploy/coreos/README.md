@@ -71,5 +71,3 @@ journalctl --user -fu toothspin
 - To run a local build instead of the released image, run
   [deploy/service/install.sh](../service/install.sh) from a checkout on the
   machine.
-- Until the image on GHCR is public, the machine can't pull it: log in
-  first with `podman login ghcr.io` as `core`, or use `install.sh`.

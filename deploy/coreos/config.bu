@@ -36,7 +36,7 @@ storage:
       mode: 0644
       contents:
         inline: toothspin
-    # Phones see a speaker; connections only start from ToothSpin.
+    # Phones see a speaker.
     - path: /etc/bluetooth/main.conf
       mode: 0644
       contents:

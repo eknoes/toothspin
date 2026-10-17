@@ -5,9 +5,14 @@
 
 Stream any phone over Bluetooth into Music Assistant.
 
-Your phones pair with ToothSpin like with a Bluetooth speaker. What they
-play shows up in Music Assistant as a live input, and you pick the speakers
-right in the app.
+ToothSpin turns a Bluetooth adapter into a Bluetooth speaker for Music
+Assistant. Your phone pairs with it like with any other speaker, whatever it
+plays shows up in Music Assistant as a live input, and you pick the speakers
+right in the app. For when your household asks *"Nice. Where's the
+Bluetooth?"*.
+
+It's young and runs in one home so far, so expect rough edges. Bug reports
+(any volume) are welcome!
 
 ## Before you install
 

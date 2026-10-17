@@ -16,44 +16,34 @@ Phone (A2DP source)
   ─Sendspin source@v1 over WebSocket─> Music Assistant sendspin_source
 ```
 
-Music Assistant had no way to receive audio over Bluetooth, but most of the
-pieces already existed upstream. Sendspin added a
-[source role](https://github.com/Sendspin/spec/issues/105) for clients that
-capture audio locally, Music Assistant's `sendspin_source` provider turns
-every paired source into a Live Input, and
+Sendspin's [source role](https://github.com/Sendspin/spec/issues/105) lets
+clients capture audio locally and stream it to a server. Music Assistant's
+`sendspin_source` provider turns every paired source into a Live Input, and
 [aiosendspin](https://github.com/Sendspin/aiosendspin) does the encoding and
-streaming. ToothSpin adds the missing capture backend: an A2DP sink instead
-of a sound card.
+streaming. ToothSpin is the capture side: an A2DP sink.
 
 ## Host vs. container
 
-Only `bluetoothd` runs on the host, because it needs the real HCI socket.
+Only `bluetoothd` runs on the host: it needs the real HCI socket, which a
+rootless container can't open.
 Everything else runs in one rootless container: the service plus its own
-PipeWire and WirePlumber, on Alpine (Debian's PipeWire lacks AAC). The
+PipeWire and WirePlumber, on Alpine. The
 container talks to `bluetoothd` over the bind-mounted system D-Bus socket.
 PipeWire registers the A2DP sink endpoints there and gets each phone's
 transport as a file descriptor, so the container never opens a raw Bluetooth
 socket.
 
-That split matters. Bluetooth/HCI sockets resolve against the kernel's
-initial user namespace, so BlueZ itself can't run in a rootless container,
-no matter which capabilities or flags you give it. A full VM with USB
-passthrough works fine, because it has its own kernel.
-
 ## Bluetooth side
 
-- A2DP sink only, no HFP/HSP, to avoid profile-switching trouble.
+- A2DP sink only, no HFP/HSP: no calls.
 - Each phone shows up as a PipeWire capture node
   (`bluez5.media-source-role = input`), which only exists while the phone is
   playing. The service finds it via `pw-dump`.
-- Several phones can stream on one adapter at once. The early assumption
-  that BlueZ only allows one was wrong (`bluez/bluez#1037` is about a PC
-  *sending* to two speakers). What actually blocked a second stream was
-  PipeWire, which only acquires a phone's stream once its node runs, so
-  `node.always-process = true` is set on `bluez_input.*`.
-- Only AAC and SBC are offered (`bluez5.codecs`). Phones otherwise pick
-  aptX HD or LDAC, whose bitrate drops out much sooner on a USB dongle, for
-  no gain: the audio goes on as 48 kHz PCM.
+- Several phones stream on one adapter at once: `node.always-process = true`
+  on `bluez_input.*` makes PipeWire take each phone's stream as soon as it
+  starts.
+- Only AAC and SBC are offered (`bluez5.codecs`), see the
+  [FAQ]({{ '/faq.html#codecs' | relative_url }}).
 - On Home Assistant OS, the Supervisor's audio plugin (PulseAudio) loads
   `module-bluetooth-discover` and registers its own A2DP sink, which can win
   the phone's stream. The App (`audio: true`) sees that through the plugin's
@@ -106,15 +96,14 @@ the echo of its own last write for a few seconds.
   ToothSpin reads its options from the Supervisor's API, hands `/data` to
   `toothspin` and switches to it, which needs `CHOWN`, `SETUID` and
   `SETGID` for that moment. Then it has none, and `no-new-privileges`.
-- On SELinux hosts, the standard `container_t` may not connect to the
-  host's system bus. Rather than disabling SELinux for the container,
-  `deploy/selinux/toothspin.cil` defines `toothspin.process` from the udica
-  templates container-selinux ships, plus the bus socket, `send_msg` to the
-  bus and `bluetoothd` only, and mapping PipeWire's memfd buffers.
+- On SELinux hosts, `deploy/selinux/toothspin.cil` defines
+  `toothspin.process` from the udica templates container-selinux ships,
+  plus the bus socket, `send_msg` to the bus and `bluetoothd` only, and
+  mapping PipeWire's memfd buffers.
 - As a Home Assistant App it runs under its own AppArmor profile
-  (`toothspin/apparmor.txt`): no Linux capabilities, files limited to its
-  programs, its data, `/tmp`, the D-Bus socket and Home Assistant's audio
-  socket.
+  (`toothspin/apparmor.txt`): only the capabilities to switch users at
+  start, files limited to its programs, its data, `/tmp`, the D-Bus socket
+  and Home Assistant's audio socket.
 - The web UI has no login. As a Home Assistant App it's served through
   ingress, and the ingress port only answers the Supervisor's proxy
   (172.30.32.2). Outside Home Assistant it relies on the home network.
@@ -174,15 +163,7 @@ version the stable Music Assistant ships: 9.1.1, in every 2.10 release.
   9.1.1 server, so ToothSpin can't move ahead of the stable Music Assistant.
   The other way round works: a 10.x server accepts 9.1.1 clients as legacy
   clients (logged as non-compliant), and Music Assistant 2.11 allows them by
-  default. Tested against real 2.10.0, 2.10.5, 2.10.6 and 2.11.0b5
-  containers: pairing via the API and streaming work. The one break was
-  2.11's new steps in the "Pair the device" flow, which ToothSpin answers.
+  default. Tested with 2.10.0, 2.10.5, 2.10.6 and 2.11.0b5: pairing via the
+  API and streaming work.
 - Once Music Assistant drops legacy clients, or 2.10 is gone, ToothSpin
   moves to aiosendspin 10 and its minimum version follows.
-
-## Things that were tried and dropped
-
-- **bluez-alsa**: v5.0.0 lost its D-Bus connection on every PCM open on the
-  test host and took `bluetoothd` down with it.
-- **BlueZ in a rootless container**: blocked by the user-namespace limitation
-  above.
