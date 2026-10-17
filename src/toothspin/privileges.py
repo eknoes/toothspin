@@ -67,6 +67,9 @@ def _require_owned(data_dir: Path) -> None:
 
 
 def _chown_tree(root: Path, uid: int, gid: int) -> None:
+    if root.is_symlink():
+        # Root would hand over whatever the link points to.
+        raise PermissionError(f"{root} is a symbolic link")
     if not root.exists():
         return
     for path in [root, *root.rglob("*")]:

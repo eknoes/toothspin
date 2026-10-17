@@ -12,20 +12,34 @@ import asyncio
 import contextlib
 import logging
 import os
+import stat
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Where PipeWire keeps its socket unless XDG_RUNTIME_DIR says otherwise (the
+# image sets it). Checked to be ToothSpin's own before use.
+DEFAULT_RUNTIME = "/tmp/toothspin-runtime"  # noqa: S108
+
 
 class AudioStack:
     def __init__(self) -> None:
-        runtime = os.environ.setdefault("XDG_RUNTIME_DIR", "/tmp/toothspin-runtime")
+        runtime = os.environ.setdefault("XDG_RUNTIME_DIR", DEFAULT_RUNTIME)
         self._runtime = Path(runtime)
         self._procs: list[asyncio.subprocess.Process] = []
         self.exited = asyncio.Event()
 
     async def start(self) -> None:
         self._runtime.mkdir(mode=0o700, parents=True, exist_ok=True)
+        # A folder someone else made (or a link to one) could hand them
+        # PipeWire's socket, or point it elsewhere.
+        info = self._runtime.lstat()
+        if (
+            not stat.S_ISDIR(info.st_mode)
+            or info.st_uid != os.getuid()
+            or info.st_mode & 0o077
+        ):
+            raise RuntimeError(f"{self._runtime} isn't a private folder of ToothSpin's user")
         await self._spawn("pipewire")
         socket = self._runtime / "pipewire-0"
         for _ in range(100):

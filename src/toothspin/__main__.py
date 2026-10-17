@@ -19,7 +19,7 @@ from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 from dbus_fast.errors import DBusError
 
-from . import ha, ha_audio, ma_pairing, privileges, setup_check
+from . import audio_stack, ha, ha_audio, ma_pairing, privileges, setup_check
 from .audio_stack import AudioStack
 from .bluez import BluetoothManager
 from .ma import MusicAssistant, check_version, probe_version
@@ -58,7 +58,9 @@ def _parse_args() -> argparse.Namespace:
         help="Codec for the stream to Music Assistant",
     )
     parser.add_argument("--data-dir", type=Path, default=Path(env("DATA_DIR", "data")))
-    parser.add_argument("--web-host", default=env("WEB_HOST", "0.0.0.0"))
+    # All interfaces: the web UI is for the home network. Behind Home
+    # Assistant's ingress, its port only answers the Supervisor's proxy.
+    parser.add_argument("--web-host", default=env("WEB_HOST", "0.0.0.0"))  # noqa: S104
     parser.add_argument("--web-port", type=int, default=int(env("WEB_PORT", "8080")))
     parser.add_argument(
         "--start-volume", type=int, default=int(env("START_VOLUME", str(DEFAULT_START_VOLUME))),
@@ -452,7 +454,7 @@ def main() -> None:
     )
     if as_app:
         logger.info("Running as a Home Assistant App")
-    runtime = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp/toothspin-runtime"))
+    runtime = Path(os.environ.get("XDG_RUNTIME_DIR", audio_stack.DEFAULT_RUNTIME))
     privileges.drop_root(args.data_dir, runtime)
     try:
         asyncio.run(_run(args))

@@ -50,3 +50,15 @@ def test_a_user_start_refuses_data_it_doesnt_own(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(os, "getuid", lambda: 4242)
     with pytest.raises(SystemExit, match="chown -R 4242"):
         privileges.drop_root(tmp_path)
+
+
+def test_a_linked_folder_is_not_handed_over(tmp_path, monkeypatch, caplog) -> None:  # noqa: ANN001
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    link = tmp_path / "runtime"
+    link.symlink_to(target)
+    monkeypatch.setattr(os, "getuid", lambda: 0)
+    monkeypatch.setattr(privileges.pwd, "getpwnam", lambda name: type("P", (), {"pw_uid": 4242, "pw_gid": 4242, "pw_dir": "/x"}))
+    monkeypatch.setattr(os, "lchown", lambda *a: (_ for _ in ()).throw(AssertionError("chowned")))
+    privileges.drop_root(link)
+    assert "couldn't switch" in caplog.text
