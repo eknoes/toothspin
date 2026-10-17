@@ -74,12 +74,15 @@ release:
 
 1. Bump `version` in `pyproject.toml` and in
    [toothspin/config.yaml](toothspin/config.yaml) (the image tag the App
-   installs; CI checks both match), and commit.
-2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+   installs; CI checks both match).
+2. Update the App's changelog, which Home Assistant shows before an update:
+   `git cliff --tag v0.2.0 -o toothspin/CHANGELOG.md` (CI checks it has the
+   release). Commit all three.
+3. Tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
 
 CI then publishes `ghcr.io/eknoes/toothspin:0.2.0` (plus `:0.2` and
-`:latest`) and creates a GitHub release. Its notes are generated from the
-commits since the previous release ([cliff.toml](cliff.toml)): `feat`,
+`:latest`) and creates a GitHub release. Its notes, like the changelog, are
+generated from the commits ([cliff.toml](cliff.toml)): `feat`,
 `fix`, `perf`, `build` and `docs` commits, grouped by type, so write their
 subjects for users. Preview them with `git cliff --unreleased`.
 
