@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 (2026-10-17)
+
+### Fixes
+
+- **app:** Let Home Assistant's init stop ToothSpin cleanly
+
+### Documentation
+
+- **app:** A changelog for Home Assistant's update dialog
+
 ## 0.2.0 (2026-10-17)
 
 ### Features
