@@ -14,21 +14,32 @@ def test_app_options_become_environment_defaults(tmp_path, monkeypatch) -> None:
     for env in ha.OPTION_ENV.values():
         monkeypatch.delenv(env, raising=False)
     monkeypatch.setenv("BT_NAME", "set explicitly")
-    options = tmp_path / "options.json"
-    options.write_text(json.dumps({
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "token")
+    monkeypatch.setattr(ha, "_options_from_api", lambda: {
         "bluetooth_name": "from options",
         "adapter": "hci1",
         "ma_token": "secret",
         "ma_url": "",
         "log_level": "debug",
-    }))
-    assert ha.apply_options(options)
+    })
+    assert ha.apply_options(tmp_path / "unreadable.json")
     assert os.environ["BT_NAME"] == "set explicitly"  # explicit env wins
     assert os.environ["BT_ADAPTER"] == "hci1"
     assert os.environ["MA_TOKEN"] == "secret"
     assert "MA_URL" not in os.environ  # empty options are left unset
     assert os.environ["LOG_LEVEL"] == "DEBUG"
+    monkeypatch.delenv("SUPERVISOR_TOKEN")
     assert not ha.apply_options(tmp_path / "missing.json")
+
+
+def test_app_options_fall_back_to_the_options_file(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("BT_ADAPTER", raising=False)
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "token")
+    monkeypatch.setattr(ha, "_options_from_api", lambda: None)
+    options = tmp_path / "options.json"
+    options.write_text(json.dumps({"adapter": "hci2"}))
+    assert ha.apply_options(options)
+    assert os.environ["BT_ADAPTER"] == "hci2"
 
 
 def test_ingress_port_only_answers_the_ingress_proxy() -> None:

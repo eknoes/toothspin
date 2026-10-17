@@ -1,8 +1,8 @@
 """Running as a Home Assistant App (formerly add-on).
 
-The Supervisor passes the user's settings as /data/options.json; they're
-mapped onto the same environment variables the plain container uses, so
-everything else stays identical. Ingress traffic must only be accepted from
+The user's settings come from the Supervisor's API (or /data/options.json,
+which only root may read); they're mapped onto the same environment
+variables the plain container uses, so everything else stays identical. Ingress traffic must only be accepted from
 the Supervisor's ingress proxy.
 """
 
@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -52,16 +53,39 @@ def running_as_app() -> bool:
 
 
 def apply_options(path: Path = OPTIONS_PATH) -> bool:
-    """Export the App's options as environment defaults; False outside HA."""
-    if not path.exists():
+    """Export the App's options as environment defaults; False outside HA.
+
+    Asks the Supervisor, which answers any user; /data/options.json, which
+    the Supervisor writes for root only, is the fallback.
+    """
+    if not running_as_app():
         return False
-    options = json.loads(path.read_text())
+    options = _options_from_api()
+    if options is None:
+        try:
+            options = json.loads(path.read_text())
+        except (OSError, ValueError) as err:
+            raise SystemExit(f"Couldn't read the App's options: {err}") from err
     for key, env in OPTION_ENV.items():
         value = options.get(key)
         if value is None or value == "":
             continue
         os.environ.setdefault(env, str(value).upper() if key == "log_level" else str(value))
     return True
+
+
+def _options_from_api() -> dict[str, Any] | None:
+    """The App's options from the Supervisor (before the event loop runs)."""
+    request = urllib.request.Request(
+        f"{_api()}/addons/self/info",
+        headers={"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
+            return json.load(response)["data"]["options"]
+    except (OSError, ValueError, KeyError) as err:
+        logger.warning("Couldn't get the App's options from the Supervisor: %s", err)
+        return None
 
 
 async def app_info() -> tuple[int, str, bool]:
