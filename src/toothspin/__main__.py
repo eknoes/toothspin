@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import errno
 import json
 import logging
 import os
@@ -338,7 +339,16 @@ async def _start_server(args: argparse.Namespace) -> ToothSpinServer:
             f"Standalone mode needs the toothspin-standalone image: {err}"
         ) from err
     server = ToothSpinServer(args.data_dir, "ToothSpin", args.server_port)
-    await server.start()
+    try:
+        await server.start()
+    except OSError as err:
+        if err.errno != errno.EADDRINUSE:
+            raise
+        raise SystemExit(
+            f"Port {args.server_port} is already in use, most likely by Music Assistant's "
+            "Sendspin server. Standalone mode can't run next to it: use ToothSpin with "
+            "Music Assistant instead (MODE=music-assistant, or the ToothSpin App)."
+        ) from err
     return server
 
 
