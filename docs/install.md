@@ -5,6 +5,10 @@ description: Install ToothSpin as a Home Assistant App, with Docker or Podman, o
 lede: Three ways to run it. If you use Home Assistant, take the App.
 ---
 
+- [Home Assistant App](#home-assistant)
+- [Docker or Podman](#container)
+- [Fedora CoreOS machine](#coreos)
+
 **You need** Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
 ideally a USB dongle just for ToothSpin: phones stay connected more
 reliably than on a shared adapter.
