@@ -96,6 +96,22 @@ shows title and artist on the phone's card, as far as the phone reports
 them. Support in Sendspin is being discussed
 ([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)).
 
+### Why no aptX, LDAC or other higher-quality codecs? {#codecs}
+
+ToothSpin offers phones only AAC and SBC, on purpose:
+
+- **Fewer dropouts.** Phones pick the highest-bitrate codec offered. aptX HD
+  and LDAC send 500-990 kbit/s, AAC and SBC 200-350. On a USB dongle,
+  especially with several phones at once, the high bitrates drop out much
+  sooner.
+- **Little to gain.** AAC at the bitrates phones use is hard to tell from the
+  original. ToothSpin passes the audio on as 48 kHz, 16-bit, so the
+  high-resolution extras of LDAC or aptX HD wouldn't reach the speakers.
+- **LDAC can't be received at all.** Sony's open-source LDAC library can only
+  send, not receive.
+
+iPhones only send AAC and SBC anyway.
+
 ### Why are the speakers off after a long pause? {#long-pause}
 
 ToothSpin keeps a paused phone's speakers for 10 minutes. After that, Music
