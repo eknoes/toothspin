@@ -76,7 +76,7 @@ def apply_options(path: Path = OPTIONS_PATH) -> bool:
 
 def _options_from_api() -> dict[str, Any] | None:
     """The App's options from the Supervisor (before the event loop runs)."""
-    request = urllib.request.Request(
+    request = urllib.request.Request(  # noqa: S310 - the Supervisor's http:// API
         f"{_api()}/addons/self/info",
         headers={"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"},
     )

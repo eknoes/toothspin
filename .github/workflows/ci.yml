@@ -7,14 +7,16 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: read  # check out the code
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           # The Python the image ships (Alpine's python3), not the newest.
           python-version: "3.14"
@@ -22,6 +24,8 @@ jobs:
         run: pip install -e '.[test]'
       - name: Tests
         run: pytest -q
+      - name: Security lint (ruff's bandit rules, see pyproject.toml)
+        run: ruff check src tests
       - name: Check the web UI's script
         run: |
           python3 - <<'PY'
@@ -35,9 +39,11 @@ jobs:
     # and keep its version (the image tag HA pulls) in step with the package.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Lint the Home Assistant App
-        uses: frenck/action-app-linter@v2.21.1
+        uses: frenck/action-app-linter@b9cfd1bc62ba60d2c4fc96317b5f7ada5923f4a7 # v2.21.1
         with:
           path: ./toothspin
       - name: App version matches the package version
@@ -46,6 +52,24 @@ jobs:
           app=$(python3 -c "import yaml; print(yaml.safe_load(open('toothspin/config.yaml'))['version'])")
           test "$package" = "$app" || { echo "pyproject.toml has $package, toothspin/config.yaml has $app"; exit 1; }
 
+  security-lint:
+    # The Containerfile (hadolint, see .hadolint.yaml) and these workflows
+    # (zizmor: unpinned actions, leaked tokens, injection).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Lint the Containerfile
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Containerfile
+      - name: Audit the workflows
+        env:
+          # Lets zizmor look up the actions, e.g. for known vulnerabilities.
+          GH_TOKEN: ${{ github.token }}
+        run: pipx run zizmor==1.30.1 .github/workflows
+
   sbom:
     # SBOM of the image, checked for known vulnerabilities. Fails on high or
     # critical ones that have a fix (an upgrade would remove them); all
@@ -53,10 +77,12 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build the image (amd64) for scanning
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: Containerfile
@@ -69,21 +95,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: SBOM (SPDX)
-        uses: anchore/sbom-action@v0.24.3
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           image: toothspin:scan
           format: spdx-json
           output-file: toothspin.spdx.json
           upload-artifact: false
       - name: SBOM (CycloneDX)
-        uses: anchore/sbom-action@v0.24.3
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           image: toothspin:scan
           format: cyclonedx-json
           output-file: toothspin.cdx.json
           upload-artifact: false
       - name: All known vulnerabilities (report)
-        uses: anchore/scan-action@v7.4.2
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           sbom: toothspin.spdx.json
           fail-build: false
@@ -94,7 +120,7 @@ jobs:
         run: |
           { echo '## Known vulnerabilities in the image'; echo '```'; cat vulnerabilities.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Fail on fixable high/critical vulnerabilities
-        uses: anchore/scan-action@v7.4.2
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           sbom: toothspin.spdx.json
           only-fixed: true
@@ -102,7 +128,7 @@ jobs:
           fail-build: true
           output-format: table
           cache-db: true
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom
           path: |
@@ -114,15 +140,17 @@ jobs:
     needs: [test, app, sbom]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
+      contents: read  # check out the code
+      packages: write  # push the image to GHCR
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Image metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/toothspin
           tags: |
@@ -132,13 +160,13 @@ jobs:
             type=ref,event=pr
       - name: Log in to GHCR
         if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build (and push on main/tags)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: Containerfile
@@ -158,22 +186,23 @@ jobs:
     needs: image
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # create the GitHub release
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The commits since the previous release make up the notes.
           fetch-depth: 0
+          persist-credentials: false
       - name: Check the tag matches the package version
         run: |
           version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
           test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != v$version in pyproject.toml"; exit 1; }
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: sbom
           path: sbom
       - name: Release notes from the commits (cliff.toml)
-        uses: orhun/git-cliff-action@v4.9.1
+        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           config: cliff.toml
           args: --latest --strip all
@@ -189,7 +218,7 @@ jobs:
           {
             cat notes.md
             echo
-            echo "Image: \`ghcr.io/${{ github.repository_owner }}/toothspin:$version\`. SBOMs (SPDX, CycloneDX) are attached; the image in the registry also carries SBOM and provenance attestations."
+            echo "Image: \`ghcr.io/$GITHUB_REPOSITORY_OWNER/toothspin:$version\`. SBOMs (SPDX, CycloneDX) are attached; the image in the registry also carries SBOM and provenance attestations."
           } > release.md
           gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file release.md \
             "toothspin-$version.spdx.json" "toothspin-$version.cdx.json"

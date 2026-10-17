@@ -25,7 +25,9 @@ Changelog = "https://github.com/eknoes/toothspin/releases"
 
 [project.optional-dependencies]
 codecs = ["aiosendspin[source]==9.1.1"]
-test = ["pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==9.1.1", "numpy>=1.26"]
+test = [
+  "pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==9.1.1", "numpy>=1.26", "ruff==0.16.10",
+]
 
 [project.scripts]
 toothspin = "toothspin.__main__:main"
@@ -35,3 +37,15 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 toothspin = ["*.html", "static/*"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+# Security checks (bandit's rules); CI fails on new findings.
+select = ["S"]
+# assert only narrows types here, it never guards anything.
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]

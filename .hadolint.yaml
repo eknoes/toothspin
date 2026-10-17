@@ -1,0 +1,6 @@
+# hadolint (CI's security-lint job) checks the Containerfile.
+ignored:
+  # Unpinned apk packages, on purpose: every build should pick up Alpine's
+  # security fixes, and Alpine drops old package versions, so pins would
+  # break rebuilds. The image is scanned for vulnerabilities instead.
+  - DL3018

@@ -83,6 +83,25 @@ commits since the previous release ([cliff.toml](cliff.toml)): `feat`,
 `fix`, `perf`, `build` and `docs` commits, grouped by type, so write their
 subjects for users. Preview them with `git cliff --unreleased`.
 
+## Security checks
+
+CI fails on new findings of:
+
+- **ruff's bandit rules** (`S`, configured in `pyproject.toml`) on the
+  Python: e.g. `exec()`, shell commands, insecure temporary files, binding
+  to all interfaces. Run locally with `ruff check src tests` (ruff comes with
+  `.[test]`). An intended exception gets a `# noqa: S…` with the reason.
+- **hadolint** on the `Containerfile` ([.hadolint.yaml](.hadolint.yaml)
+  lists what's deliberately ignored, and why).
+- **zizmor** on the workflows: actions not pinned to a commit, tokens left
+  in checkouts, untrusted values expanded into scripts, permissions. Actions
+  are pinned by commit hash with their version as a comment; Dependabot
+  updates both.
+
+[CodeQL](.github/workflows/codeql.yml) scans the Python, the web UI's
+JavaScript and the workflows on every push and weekly; findings show up
+under **Security → Code scanning**.
+
 ## Vulnerabilities and SBOM
 
 Every CI run generates SBOMs of the image (SPDX and CycloneDX, with syft)
