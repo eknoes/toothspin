@@ -4,6 +4,7 @@ from toothspin import privileges
 
 
 def test_nothing_to_do_when_not_root(tmp_path, monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setattr(privileges, "_require_owned", lambda path: None)
     monkeypatch.setattr(os, "getuid", lambda: 1000)
     monkeypatch.setattr(os, "setuid", lambda uid: (_ for _ in ()).throw(AssertionError))
     privileges.drop_root(tmp_path)
@@ -40,3 +41,12 @@ def test_stays_root_with_a_warning_without_the_capabilities(tmp_path, monkeypatc
     monkeypatch.setattr(os, "lchown", denied)
     privileges.drop_root(tmp_path)
     assert "couldn't switch" in caplog.text
+
+
+def test_a_user_start_refuses_data_it_doesnt_own(tmp_path, monkeypatch) -> None:  # noqa: ANN001
+    import pytest
+
+    (tmp_path / "identity.json").write_text("{}")
+    monkeypatch.setattr(os, "getuid", lambda: 4242)
+    with pytest.raises(SystemExit, match="chown -R 4242"):
+        privileges.drop_root(tmp_path)

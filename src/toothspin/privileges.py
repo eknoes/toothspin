@@ -26,6 +26,7 @@ PR_SET_NO_NEW_PRIVS = 38
 def drop_root(*paths: Path, user: str = USER) -> None:
     """Switch to ``user``, after handing it ``paths`` (its data and runtime files)."""
     if os.getuid() != 0:
+        _require_owned(paths[0])
         return
     try:
         account = pwd.getpwnam(user)
@@ -49,6 +50,20 @@ def drop_root(*paths: Path, user: str = USER) -> None:
     ctypes.CDLL(None, use_errno=True).prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)
     os.environ["HOME"] = account.pw_dir
     logger.info("Running as user %s", user)
+
+
+def _require_owned(data_dir: Path) -> None:
+    """Started as a user: its data must be its own, e.g. not left from a root start."""
+    if not data_dir.exists():
+        return
+    uid = os.getuid()
+    for path in [data_dir, *data_dir.rglob("*")]:
+        if path.lstat().st_uid != uid:
+            raise SystemExit(
+                f"{path} belongs to uid {path.lstat().st_uid}, but ToothSpin runs as uid "
+                f"{uid}. Hand the data over once: chown -R {uid}:{os.getgid()} on the "
+                "volume or folder mounted as /data."
+            )
 
 
 def _chown_tree(root: Path, uid: int, gid: int) -> None:
