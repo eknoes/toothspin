@@ -13,6 +13,7 @@ it speaks the same slice of Music Assistant's player API as ``ma.py`` (see
 from __future__ import annotations
 
 import asyncio
+import errno
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -45,6 +46,11 @@ SOURCE_PREFIX = "sendspin_source://audio_source/"
 # Speakers connected to another server (e.g. Music Assistant) only switch over
 # when asked to play; wait this long for them.
 CLAIM_TIMEOUT_S = 10.0
+# Right after boot, mDNS can fail until the network is up, and aiosendspin
+# 9.1.1 then shuts the whole server down: start again after this long,
+# doubling up to the maximum.
+START_RETRY_S = 2.0
+START_RETRY_MAX_S = 60.0
 # Keep the delay from phone to speakers within this of where it started:
 # phone and speakers run on slightly different clocks.
 DRIFT_TOLERANCE_US = 20_000
@@ -107,7 +113,17 @@ class ToothSpinServer:
             allow_unencrypted=True,
         )
         self._server.add_event_listener(self._on_server_event)
-        await self._server.start_server(port=self._port)
+        delay = START_RETRY_S
+        while True:
+            try:
+                await self._server.start_server(port=self._port)
+                break
+            except OSError as err:
+                if err.errno == errno.EADDRINUSE:
+                    raise
+                logger.warning("Sendspin server couldn't start (%s); retrying in %.0fs", err, delay)
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, START_RETRY_MAX_S)
         self._started.set()
         logger.info("Sendspin server %s listening on port %d", self._name, self._port)
 

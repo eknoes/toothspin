@@ -125,3 +125,46 @@ def test_drift_correction_drops_or_repeats_one_frame() -> None:
     assert correct_drift(pcm, 4, 100_000, 100_000) == pcm
     assert correct_drift(pcm, 4, 100_000, 130_000) == pcm[:-4]  # delay grew: drop
     assert correct_drift(pcm, 4, 100_000, 70_000) == pcm + pcm[-4:]  # shrank: repeat
+
+
+def test_start_retries_while_the_network_is_down(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    import errno
+
+    from aiosendspin.server import SendspinServer
+
+    from toothspin import server as server_module
+    from toothspin.server import ToothSpinServer
+
+    attempts: list[int] = []
+
+    async def start_server(self, **kwargs) -> None:  # noqa: ANN001, ANN003
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise OSError(errno.ENODEV, "No such device")
+
+    monkeypatch.setattr(SendspinServer, "start_server", start_server)
+    monkeypatch.setattr(server_module, "START_RETRY_S", 0.01)
+
+    async def scenario() -> None:
+        server = ToothSpinServer(tmp_path, "ToothSpin", port=0)
+        await server.start()
+        assert server.connected
+        assert len(attempts) == 3
+
+    asyncio.run(scenario())
+
+
+def test_start_gives_up_when_the_port_is_taken(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    import errno
+
+    import pytest
+    from aiosendspin.server import SendspinServer
+
+    from toothspin.server import ToothSpinServer
+
+    async def start_server(self, **kwargs) -> None:  # noqa: ANN001, ANN003
+        raise OSError(errno.EADDRINUSE, "Address in use")
+
+    monkeypatch.setattr(SendspinServer, "start_server", start_server)
+    with pytest.raises(OSError):
+        asyncio.run(ToothSpinServer(tmp_path, "ToothSpin", port=0).start())
