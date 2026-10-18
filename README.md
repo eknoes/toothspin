@@ -62,13 +62,9 @@ Not working yet:
 > I'd say I tested it a lot, but you still have to expect rough edges.
 > Bug reports and feature requests are welcome!
 
-You need Music Assistant **2.10.6 or newer** (or Sendspin speakers, in
-standalone mode) and a Bluetooth adapter, ideally a USB dongle just for
-ToothSpin. If you want to know how it's built,
+You need Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
+ideally a USB dongle just for ToothSpin. If you want to know how it's built,
 see the [technical overview](https://eknoes.github.io/toothspin/overview.html).
-
-**No Music Assistant?** ToothSpin can also be its own Sendspin server and
-play phones on Sendspin speakers directly ([standalone mode](#standalone-mode-without-music-assistant)).
 
 ## Install
 
@@ -84,6 +80,9 @@ Pick whatever fits your setup:
   everything on first boot. A Raspberry Pi 4 works too, since Fedora
   CoreOS [supports it](https://docs.fedoraproject.org/en-US/fedora-coreos/provisioning-raspberry-pi4/)
   (the Pi 5 isn't supported yet). (This is how I used to run it)
+
+No Music Assistant? There's a [standalone mode](#standalone-mode) for
+Sendspin speakers only.
 
 ### As a Home Assistant App
 
@@ -140,30 +139,6 @@ Its README walks through adding your SSH key and installing.
 The web UI is on `http://<host>:8080/`. It has no login, so keep it on your
 home network.
 
-### Standalone mode, without Music Assistant
-
-With `MODE=standalone`, ToothSpin runs its own Sendspin server instead of
-feeding Music Assistant. It finds Sendspin speakers on your network and
-plays the phones on them, grouped and in sync, with the same web UI. It only
-plays the phones and only on Sendspin speakers: no other music sources, no
-AirPlay, Chromecast or Squeezebox.
-
-- As a Home Assistant App: install **ToothSpin Standalone** from the same
-  repository. It uses the host's network, so its server finds the speakers
-  and they reach it.
-- In a container: use the image `ghcr.io/eknoes/toothspin-standalone` (or
-  build with `--build-arg EXTRAS=server --build-arg MODE=standalone`). It
-  starts in standalone mode, and its Sendspin server needs PyAV, numpy and
-  Pillow, about 200 MB the default image doesn't carry.
-- Speakers that still speak Sendspin unencrypted (e.g. ESPHome's) or allow
-  servers they aren't paired with work out of the box.
-- It doesn't work together with Music Assistant's Sendspin integration: both
-  are Sendspin servers and want the same speakers. With Music Assistant, use
-  the normal mode.
-- Speakers with a display show the title, artist, album and position the
-  phone reports (no covers).
-- Speakers that insist on being paired aren't supported yet.
-
 ### Configuration
 
 Outside Home Assistant, set these as environment variables (on CoreOS: in
@@ -175,9 +150,6 @@ are optional:
 | `MA_TOKEN` | – | Music Assistant token (your profile → **Tokens**); lets you pick speakers in the web UI and pairs phones automatically |
 | `MA_URL` | discovered via mDNS | e.g. `http://192.168.178.91:8095` |
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
-| `MODE` | `music-assistant` (`standalone` in toothspin-standalone) | `standalone` runs ToothSpin's own Sendspin server (toothspin-standalone only) |
-| `SERVER_PORT` | `8927` | standalone: port of ToothSpin's Sendspin server |
-| `SPEAKER_BUFFER_MS` | – | standalone: buffer for speakers that don't report their own (older Sendspin versions; otherwise 1000 ms). Less, e.g. `500`, starts playback sooner; too little drops out |
 | `BT_NAME` | `ToothSpin` | Bluetooth name phones see |
 | `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN, not only in the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
 | `BT_ADAPTER` | `hci0` | the dongle, e.g. `hci1`; `auto` takes the first one |
@@ -200,8 +172,7 @@ is refused, unless you set a `BT_PIN`: then phones can pair any time with it.
 **Pair it with Music Assistant:** the phone appears there as a new device,
 e.g. "Pixel 10 (Bluetooth)". With `MA_TOKEN`, ToothSpin pairs it by itself.
 Without, open it in Music Assistant's settings, choose **Pair the device**,
-press **Allow pairing** on the phone's card in ToothSpin and enter the code. In standalone mode
-there's nothing to pair.
+press **Allow pairing** on the phone's card in ToothSpin and enter the code.
 
 **Play:** connect the phone, play something and switch on speakers on its
 card. Several speakers form a group (only speakers that can play in sync
@@ -235,6 +206,34 @@ you should stay in control of who plays on your speakers. Someone walking
 past your home shouldn't be able to connect to your living room. So phones
 can only pair while you've opened the pairing window in the web UI, or with
 a PIN only you know (`BT_PIN`).
+
+## Standalone mode
+
+ToothSpin is made for Music Assistant. If you only have Sendspin speakers
+(e.g. ESPHome's), standalone mode can play the phones on them
+without it: ToothSpin then runs its own Sendspin server, with the same web
+UI, grouping and volume buttons, and there's nothing to pair besides
+Bluetooth.
+
+Compared to Music Assistant, it lacks:
+
+- Other speakers: only Sendspin, no AirPlay, Chromecast, Squeezebox or Home
+  Assistant media players.
+- Other music: it only plays the phones.
+- Speakers that only play for a server they're paired with. Speakers that
+  speak Sendspin unencrypted or allow unpaired servers work.
+- Music Assistant's player settings, e.g. **Maximum volume**.
+- Running next to Music Assistant's Sendspin integration: both want the same
+  speakers.
+
+To use it, install the Home Assistant App **ToothSpin Standalone** from the
+same repository, or use the image `ghcr.io/eknoes/toothspin-standalone`
+(about 200 MB larger; it starts in standalone mode). Its extra variables:
+
+| Variable | Default | |
+|---|---|---|
+| `SERVER_PORT` | `8927` | port of ToothSpin's Sendspin server |
+| `SPEAKER_BUFFER_MS` | – | buffer for speakers that don't report their own (older Sendspin versions; otherwise 1000 ms). Less, e.g. `500`, starts playback sooner; too little drops out |
 
 ## More
 

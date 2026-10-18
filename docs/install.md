@@ -11,7 +11,8 @@ lede: Three ways to run it. If you use Home Assistant, take the App.
 
 **You need** Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
 ideally a USB dongle just for ToothSpin: phones stay connected more
-reliably than on a shared adapter.
+reliably than on a shared adapter. No Music Assistant? There's a
+[standalone mode](#standalone) for Sendspin speakers.
 
 ## Home Assistant App {#home-assistant}
 
@@ -67,24 +68,22 @@ first (`chown -R 1000:1000`). Rootless Podman uses `--userns keep-id`
 instead of `--user`, SELinux hosts need a small policy module. Details and all options: the
 [README](https://github.com/eknoes/toothspin#with-docker-or-podman).
 
-## Without Music Assistant {#standalone}
-
-ToothSpin can also run its own Sendspin server and play the phones directly
-on Sendspin speakers (e.g. ESPHome's), grouped and in sync. It only plays
-the phones, and only on Sendspin speakers.
-
-- **Home Assistant:** add the repository as above and install **ToothSpin
-  Standalone** instead of ToothSpin.
-- **Docker or Podman:** use the image `ghcr.io/eknoes/toothspin-standalone`
-  in the setup above; it starts in standalone mode.
-
-It doesn't work together with Music Assistant's Sendspin integration: both
-are Sendspin servers and want the same speakers (as an App, also the same
-port). With Music Assistant, use ToothSpin as above. Details:
-[standalone mode](https://github.com/eknoes/toothspin#standalone-mode-without-music-assistant).
-
 ## Fedora CoreOS machine {#coreos}
 
 A small VM with the dongle passed through, or a Raspberry Pi 4, set up
 on first boot from one config file:
 [deploy/coreos](https://github.com/eknoes/toothspin/tree/main/deploy/coreos).
+
+## Without Music Assistant {#standalone}
+
+ToothSpin is made for Music Assistant. With only Sendspin speakers (e.g.
+ESPHome's), standalone mode plays the phones on them directly. It
+only plays the phones, only on Sendspin speakers that don't insist on being
+paired, and doesn't work next to Music Assistant's Sendspin integration.
+
+- **Home Assistant:** add the repository as above and install **ToothSpin
+  Standalone** instead of ToothSpin.
+- **Docker or Podman:** use the image `ghcr.io/eknoes/toothspin-standalone`
+  in the setup above.
+
+Details: [standalone mode](https://github.com/eknoes/toothspin#standalone-mode).

@@ -3,16 +3,15 @@
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
 
-Stream any phone over Bluetooth to Sendspin speakers, without Music Assistant.
+ToothSpin for homes without Music Assistant: it plays phones on Sendspin
+speakers only. **With Music Assistant, install ToothSpin (without
+Standalone) instead:** it plays on all of Music Assistant's speakers, with
+Music Assistant's features.
 
-ToothSpin turns a Bluetooth adapter into a Bluetooth speaker. Your phone
-pairs with it like with any other speaker, and ToothSpin plays it on your
-Sendspin speakers, one or several in sync. You pick them right in the app.
-
-**Not together with Music Assistant:** this App runs its own Sendspin
-server. If you use Music Assistant with its Sendspin integration, both would
-fight over the same speakers. Install **ToothSpin** (without Standalone)
-instead, which plays the phones through Music Assistant.
+Your phone pairs with ToothSpin like with any Bluetooth speaker, and
+ToothSpin plays it on your Sendspin speakers, one or several in sync. It
+runs its own Sendspin server, so it can't run next to Music Assistant's
+Sendspin integration: both would fight over the same speakers.
 
 It's young and runs in one home so far, so expect rough edges. Bug reports
 (any volume) are welcome!

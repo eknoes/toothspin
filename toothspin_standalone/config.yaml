@@ -3,8 +3,7 @@ name: ToothSpin Standalone
 version: "0.2.1"
 slug: toothspin_standalone
 description: >-
-  Stream any phone over Bluetooth to Sendspin speakers, without Music
-  Assistant
+  ToothSpin without Music Assistant: phones on Sendspin speakers only
 url: https://github.com/eknoes/toothspin
 image: ghcr.io/eknoes/toothspin-standalone
 arch:

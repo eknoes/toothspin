@@ -129,11 +129,30 @@ are shown in the web UI and the log; blocking ones also as a persistent
 notification, re-checked until solved. On its first start the App puts
 itself in the sidebar (`ingress_panel`, once, so turning it off sticks).
 
+## Pairing with Music Assistant automatically
+
+Pairing a phone over Bluetooth already is the user's consent. With a token
+for Music Assistant's API, ToothSpin answers MA's "Pair the device" setup
+flow itself (`config/players/setup`, `config/flows/submit`): the phone's
+source accepts a fresh pre-shared key, and MA receives it as a pairing token.
+MA offers token pairing only to devices without a PIN method, so with a
+token the sources offer just that. Removing a phone says goodbye for good
+(MA keeps devices that only restart) and then removes it from MA.
+
+## Pairing with a PIN
+
+`BT_PIN` lets phones pair at any time with a fixed PIN instead of only in
+the pairing window. That's legacy PIN pairing: phones only use it when the
+adapter has Secure Simple Pairing off, which only the host can switch
+(`btmgmt ssp off` after bluetoothd starts). Phones paired before keep
+working. Legacy pairing is weaker than SSP and has no retry limit, so the
+PIN must have at least 6 digits.
+
 ## Standalone mode
 
-Without Music Assistant, ToothSpin can run its own Sendspin server
-(`MODE=standalone`), built on aiosendspin's server side, the library Music
-Assistant uses too:
+As an alternative to Music Assistant, ToothSpin can run its own
+Sendspin server (`MODE=standalone`), built on aiosendspin's server side, the
+library Music Assistant uses too:
 
 - It discovers Sendspin speakers via mDNS and connects to them. Unencrypted
   (pre-1.0, e.g. ESPHome) speakers and speakers allowing unpaired playback
@@ -156,25 +175,6 @@ Assistant uses too:
   and like the other App's it only answers the Supervisor's proxy. It can't
   run next to Music Assistant's Sendspin integration, which wants the same
   port and speakers.
-
-## Pairing with Music Assistant automatically
-
-Pairing a phone over Bluetooth already is the user's consent. With a token
-for Music Assistant's API, ToothSpin answers MA's "Pair the device" setup
-flow itself (`config/players/setup`, `config/flows/submit`): the phone's
-source accepts a fresh pre-shared key, and MA receives it as a pairing token.
-MA offers token pairing only to devices without a PIN method, so with a
-token the sources offer just that. Removing a phone says goodbye for good
-(MA keeps devices that only restart) and then removes it from MA.
-
-## Pairing with a PIN
-
-`BT_PIN` lets phones pair at any time with a fixed PIN instead of only in
-the pairing window. That's legacy PIN pairing: phones only use it when the
-adapter has Secure Simple Pairing off, which only the host can switch
-(`btmgmt ssp off` after bluetoothd starts). Phones paired before keep
-working. Legacy pairing is weaker than SSP and has no retry limit, so the
-PIN must have at least 6 digits.
 
 ## Versions
 
