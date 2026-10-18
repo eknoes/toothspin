@@ -20,9 +20,9 @@ from .backend import BackendError
 logger = logging.getLogger(__name__)
 
 POLL_S = 2.0
-# Sendspin inputs arrived in 2.10.0, but PCM input (our default) and token
-# pairing only work since 2.10.2. 2.10.6 is what ToothSpin is tested with.
-MIN_VERSION = (2, 10, 2)
+# 2.10.7 moved to aiosendspin 10, which ToothSpin uses; a 10.x client can't
+# talk to the 9.1.1 server of older releases.
+MIN_VERSION = (2, 10, 7)
 
 
 class MusicAssistantError(BackendError):
@@ -155,8 +155,8 @@ def too_old(version: str | None) -> bool:
 def check_version(version: str | None) -> None:
     if too_old(version):
         logger.error(
-            "Music Assistant %s is too old: ToothSpin needs %s or newer (2.10.6 or newer "
-            "recommended). Update Music Assistant.", version, ".".join(map(str, MIN_VERSION)),
+            "Music Assistant %s is too old: ToothSpin needs %s or newer. "
+            "Update Music Assistant.", version, ".".join(map(str, MIN_VERSION)),
         )
 
 

@@ -2,7 +2,7 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
-from aiosendspin.noise.pairing_token import decode_token
+from aiosendspin.noise.pairing_token import decode_psk_token
 
 from toothspin.backend import BackendError
 from toothspin.ma_pairing import pair
@@ -40,7 +40,7 @@ def test_answers_the_token_form_with_the_key_the_phone_accepted() -> None:
     assert ma.calls[0] == ("config/players/setup", {"player_id": source.client.identity.peer_id})
     command, args = ma.calls[1]
     assert command == "config/flows/submit" and args["flow_id"] == "f1"
-    token = decode_token(args["values"]["pairing_token"])
+    token = decode_psk_token(args["values"]["pairing_token"])
     assert token.client_id == source.client.identity.peer_id
     assert token.pairing_psk == source.accepted.psk
 

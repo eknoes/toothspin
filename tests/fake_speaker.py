@@ -80,7 +80,7 @@ class FakeSpeaker:
     def _on_stream_end(self, _roles: object) -> None:
         self.streams_ended += 1
 
-    def _on_audio(self, _timestamp_us: int, data: bytes, _fmt: object) -> None:
+    def _on_audio(self, _timestamp_us: int, data: bytes, _fmt: object, _send_ahead: object) -> None:
         self.audio_bytes += len(data)
 
     def _on_command(self, payload) -> None:  # noqa: ANN001

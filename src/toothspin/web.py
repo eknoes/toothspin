@@ -411,7 +411,7 @@ def _setup_state(
             "kind": "todo",
             "title": "Update Music Assistant",
             "text": f"You have Music Assistant {version}. ToothSpin needs "
-            f"{'.'.join(map(str, ma.MIN_VERSION))} or newer (2.10.6 recommended).",
+            f"{'.'.join(map(str, ma.MIN_VERSION))} or newer.",
             "steps": [
                 "In Home Assistant: **Settings → Apps → Music Assistant → Update**.",
             ],
@@ -462,7 +462,7 @@ def _setup_state(
             "not_found": (
                 "Music Assistant not found",
                 "ToothSpin couldn't find Music Assistant on the network.",
-                ["Make sure Music Assistant (2.10.6 or newer) is installed and running.",
+                ["Make sure Music Assistant (2.10.7 or newer) is installed and running.",
                  "If it runs elsewhere, set **Music Assistant URL** in [ToothSpin's "
                  "configuration](ha:app-config), e.g. `http://192.168.1.10:8095`."],
             ),

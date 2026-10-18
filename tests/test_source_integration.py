@@ -130,8 +130,12 @@ async def _scenario(tmp_path: Path) -> None:
         audio = bytes(received).lstrip(b"\0")
         assert audio == sent[len(sent) - len(audio):]
 
-        # A codec renegotiation on the phone (new rate) restarts the stream.
+        # A codec renegotiation on the phone (new rate) ends the stream; only
+        # the server may open the next one, in the new format.
         new_fmt = PcmFormat(sample_rate=44100, channels=2)
+        await _push(source, new_fmt, 5, 500)
+        await _until(lambda: not source.status().streaming)
+        source_role().request_start()
         await _push(source, new_fmt, 5, 500)
         await _until(
             lambda: len([e for e in events if isinstance(e, SourceStreamStartedEvent)]) >= 2

@@ -13,7 +13,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from aiosendspin.noise.keys import generate_psk, psk_id_for
-from aiosendspin.noise.pairing_token import PSKPairingToken, encode_token
+from aiosendspin.noise.pairing_token import PSKPairingToken, encode_psk_token
 from aiosendspin.noise.trust_store import PairingPsk
 
 from .backend import BackendError
@@ -77,7 +77,7 @@ async def pair(ma: MusicAssistant, source: SendspinSource) -> None:
     client_id = source.client.identity.peer_id
     psk = generate_psk()
     await source.accept_pairing(PairingPsk(psk_id=psk_id_for(psk), psk=psk))
-    token = encode_token(PSKPairingToken(client_id=client_id, pairing_psk=psk))
+    token = encode_psk_token(PSKPairingToken(client_id=client_id, pairing_psk=psk))
     step: dict[str, Any] = await ma.call("config/players/setup", player_id=client_id)
     try:
         for _ in range(MAX_STEPS):

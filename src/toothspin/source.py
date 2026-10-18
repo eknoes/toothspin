@@ -115,9 +115,9 @@ class SendspinSource:
             pairing_store=self._store,
             device_info=self._device_info,
             pairing_support=PairingSupport(
-                pin_display=self._on_pin,
+                pairing_code_display=self._on_pairing_code,
                 gesture_prompt=self._on_gesture_prompt,
-                offer_static_pin=False,
+                offer_static_pairing_code=False,
             )
             if self._pin_pairing
             else None,
@@ -253,7 +253,10 @@ class SendspinSource:
             if fmt != self._format:
                 self._format = fmt
                 if self._capture is not None:
-                    logger.info("Capture format changed; restarting stream")
+                    # Only the server may (re)open a stream, so it ends here
+                    # until the server asks again.
+                    logger.warning("Capture format changed; ending the stream")
+                    self._start_requested = False
                     await self._stop_capture()
             if not self._start_requested:
                 return
@@ -350,9 +353,10 @@ class SendspinSource:
         assert self._store is not None
         await self._store.set_pairing_psk(pairing)
 
-    async def _on_pin(self, pin: str | None) -> None:
-        self._pin = pin
-        if pin is None:
+    async def _on_pairing_code(self, code: str | None, *, grouped: str | None) -> None:
+        # Shown as Music Assistant asks for it, e.g. 123-456.
+        self._pin = grouped
+        if code is None:
             await self._refresh_paired()
 
     async def _on_gesture_prompt(self, waiting: bool) -> None:
