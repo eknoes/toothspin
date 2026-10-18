@@ -344,11 +344,13 @@ async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None
 
 async def _start_server(args: argparse.Namespace) -> ToothSpinServer:
     try:
+        from . import server as server_module
         from .server import ToothSpinServer
     except ImportError as err:
         raise SystemExit(
             f"Standalone mode needs the toothspin-standalone image: {err}"
         ) from err
+    server_module.quiet_legacy_warnings()
     server = ToothSpinServer(
         args.data_dir, "ToothSpin", args.server_port, speaker_buffer_ms=args.speaker_buffer_ms
     )

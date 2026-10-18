@@ -260,6 +260,21 @@ class ToothSpinServer:
         self._apply_speaker_buffer(client)
         return client
 
+    def _legacy_note(self, client: SendspinClient) -> str:
+        """A speaker on an older Sendspin version: what that means here, in one line.
+
+        aiosendspin's own warnings about it only show at log level debug (see
+        ``quiet_legacy_warnings``).
+        """
+        connection = client.connection
+        if not _is_player(client) or connection is None or connection.is_encrypted:
+            return ""
+        buffer = (
+            "assuming a 1000 ms buffer" if self._speaker_buffer_ms is None
+            else f"using a {self._speaker_buffer_ms} ms buffer"
+        ) if _NO_TIMING_REPORTED in client._noncompliance_logged else "its own buffer"  # noqa: SLF001
+        return f" (older Sendspin version: unencrypted, {buffer})"
+
     def _apply_speaker_buffer(self, client: SendspinClient) -> None:
         """Use the configured buffer on a speaker that doesn't report its own.
 
@@ -320,7 +335,7 @@ class ToothSpinServer:
             client = server.get_client(event.client_id)
             if client is not None:
                 client.add_event_listener(self._on_client_event)
-                logger.info("Found Sendspin client %s", client.name)
+                logger.info("Found Sendspin client %s%s", client.name, self._legacy_note(client))
         if isinstance(event, ClientAddedEvent | ClientConnectedEvent):
             client = server.get_client(event.client_id)
             if client is not None:
@@ -418,3 +433,25 @@ def _role(client: SendspinClient, family: str) -> object | None:
     roles = client.roles_by_family(family)
     return roles[0] if roles else None
 
+
+# aiosendspin warns about every speaker on an older Sendspin version, several
+# lines each, on every start; ToothSpin says it in one line instead.
+_LEGACY_WARNINGS = ("non-compliant client:", "Accepting unencrypted legacy connection")
+
+
+class _QuietLegacyWarnings(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if (
+            record.levelno == logging.WARNING
+            and record.name.startswith("aiosendspin.server.")
+            and str(record.msg).startswith(_LEGACY_WARNINGS)
+        ):
+            record.levelno, record.levelname = logging.DEBUG, "DEBUG"
+            return logging.getLogger().isEnabledFor(logging.DEBUG)
+        return True
+
+
+def quiet_legacy_warnings() -> None:
+    """Show aiosendspin's warnings about older speakers only at log level debug."""
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(_QuietLegacyWarnings())

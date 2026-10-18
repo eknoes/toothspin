@@ -194,3 +194,26 @@ def test_speaker_buffer_only_for_speakers_that_dont_report_one(tmp_path: Path) -
     untouched = speaker(reported=False)
     ToothSpinServer(tmp_path, "ToothSpin")._apply_speaker_buffer(untouched)  # type: ignore[arg-type]  # noqa: SLF001
     assert untouched.role.min_buffer_ms == 1000
+
+
+def test_legacy_warnings_only_show_at_debug(caplog) -> None:  # noqa: ANN001
+    import logging
+
+    from toothspin.server import _QuietLegacyWarnings
+
+    quiet = _QuietLegacyWarnings()
+    library = logging.getLogger("aiosendspin.server.client.b8:27:eb:8e:b8:29")
+
+    def passes(msg: str, root_level: int) -> bool:
+        logging.getLogger().setLevel(root_level)
+        record = library.makeRecord(library.name, logging.WARNING, "f", 1, msg, (), None)
+        return quiet.filter(record)
+
+    old = logging.getLogger().level
+    try:
+        assert not passes("non-compliant client: client/state used the legacy top-level 'state' field", logging.INFO)
+        assert not passes("Accepting unencrypted legacy connection (transition mode)", logging.INFO)
+        assert passes("non-compliant client: whatever", logging.DEBUG)
+        assert passes("WebSocket closed, close_code=None", logging.INFO)  # anything else stays
+    finally:
+        logging.getLogger().setLevel(old)
