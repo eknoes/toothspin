@@ -374,7 +374,7 @@ async def _run(args: argparse.Namespace) -> None:
         ports = [args.web_port]
     site = _Web(args.web_host, ports, ingress_port)
     # Up first, so problems before Bluetooth starts can be shown there.
-    await site.serve(create_setup_app(status, ingress_port))
+    await site.serve(create_setup_app(status, ingress_port, args.mode))
     site.log_addresses()
     if status.app:
         try:

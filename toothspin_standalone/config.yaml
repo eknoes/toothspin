@@ -29,7 +29,7 @@ ingress: true
 # its ingress proxy.
 ingress_port: 0
 panel_icon: mdi:home-sound-in
-panel_title: ToothSpin
+panel_title: ToothSpin Standalone
 options:
   bluetooth_name: ToothSpin
   adapter: hci0

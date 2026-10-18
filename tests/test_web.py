@@ -73,3 +73,15 @@ def test_requests_are_checked_before_anything_happens() -> None:
             assert res.status == 400
 
     asyncio.run(scenario())
+
+
+def test_setup_page_says_which_toothspin_it_is() -> None:
+    from toothspin import setup_check
+    from toothspin.web import create_setup_app
+
+    async def scenario() -> None:
+        status = setup_check.Status(app=False, ma_token=True)
+        async with TestClient(TestServer(create_setup_app(status, None, "standalone"))) as client:
+            assert (await (await client.get("/api/state")).json())["mode"] == "standalone"
+
+    asyncio.run(scenario())

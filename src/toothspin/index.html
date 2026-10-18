@@ -163,8 +163,8 @@
   <header class="brand">
     <img src="static/icon.svg" alt="" width="44" height="44">
     <div>
-      <h1>ToothSpin</h1>
-      <div class="muted tagline" id="tagline">Bluetooth audio input for Music Assistant</div>
+      <h1 id="title">ToothSpin</h1>
+      <div class="muted tagline" id="tagline">Bluetooth audio input</div>
     </div>
   </header>
 
@@ -543,14 +543,23 @@ function renderAbout() {
   setHtml($("about"), `<a href="https://github.com/eknoes/toothspin" target="_blank" rel="noopener">ToothSpin</a> ${build}`);
 }
 
+// Which ToothSpin this is: they look alike, but play to different places.
+function renderHeading() {
+  if (!state.mode) return;
+  const title = standalone() ? "ToothSpin Standalone" : "ToothSpin for Music Assistant";
+  $("title").textContent = title;
+  document.title = title;
+}
+
 function render() {
+  renderHeading();
   renderAbout();
   renderSetup();
   if (!state.bluetooth || (state.setup && state.setup.problem)) return;
   const bt = state.bluetooth;
   $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
   $("tagline").textContent = standalone()
-    ? "Bluetooth audio for Sendspin speakers" : "Bluetooth audio input for Music Assistant";
+    ? "Bluetooth audio for Sendspin speakers" : "Bluetooth audio as a live input";
 
   const pairing = bt.pairing_remaining !== null;
   $("bt-pairing-text").innerHTML = pairing

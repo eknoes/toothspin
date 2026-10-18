@@ -248,11 +248,15 @@ def create_app(
     return app
 
 
-def create_setup_app(status: setup_check.Status, ingress_port: int | None) -> web.Application:
+def create_setup_app(
+    status: setup_check.Status, ingress_port: int | None, mode: str = "music-assistant"
+) -> web.Application:
     """Before Bluetooth starts: only explains what blocks ToothSpin."""
 
     async def get_state(_: web.Request) -> web.Response:
-        return web.json_response({"about": build_info(), "setup": _setup_state(status, None, None)})
+        return web.json_response({
+            "about": build_info(), "mode": mode, "setup": _setup_state(status, None, None, mode),
+        })
 
     app = _base_app(ingress_port)
     app.router.add_get("/api/state", get_state)
