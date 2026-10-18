@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 from aiohttp import web
+from aiohttp.web_log import AccessLogger
 from aiosendspin.models.types import AudioCodec
 from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
@@ -152,6 +153,15 @@ RECONNECT_FILE = "reconnect.json"
 RECONNECT_DELAY_S = 3.0
 
 
+class _QuietAccessLogger(AccessLogger):
+    """Logs successful requests only at log level debug; errors always."""
+
+    def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        if response.status < 400 and not self.logger.isEnabledFor(logging.DEBUG):
+            return
+        super().log(request, response, time)
+
+
 class _Web:
     """The web UI on its ports: first the setup page, then the real thing."""
 
@@ -164,7 +174,7 @@ class _Web:
     async def serve(self, app: web.Application) -> None:
         if self._runner is not None:
             await self._runner.cleanup()
-        self._runner = web.AppRunner(app)
+        self._runner = web.AppRunner(app, access_log_class=_QuietAccessLogger)
         await self._runner.setup()
         for port in self._ports:
             await web.TCPSite(self._runner, self._host, port).start()
