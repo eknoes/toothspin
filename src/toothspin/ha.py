@@ -40,6 +40,7 @@ OPTION_ENV = {
     "start_volume": "START_VOLUME",
     "allow_phone_connect": "ALLOW_PHONE_CONNECT",
     "other_adapters_pairing": "OTHER_ADAPTERS_PAIRING",
+    "speaker_buffer_ms": "SPEAKER_BUFFER_MS",
     "sendspin_url": "SENDSPIN_URL",
     "ma_url": "MA_URL",
     "ma_token": "MA_TOKEN",

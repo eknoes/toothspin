@@ -78,6 +78,11 @@ def _parse_args() -> argparse.Namespace:
         help="Standalone mode: port of ToothSpin's Sendspin server",
     )
     parser.add_argument(
+        "--speaker-buffer-ms", type=int, default=_optional_int(env("SPEAKER_BUFFER_MS")),
+        help="Standalone mode: buffer (ms) for speakers that don't report their own "
+        "(default: 1000). Less starts playback sooner, too little drops out",
+    )
+    parser.add_argument(
         "--start-volume", type=int, default=int(env("START_VOLUME", str(DEFAULT_START_VOLUME))),
         help="The loudest a speaker starts at when a phone starts playing on it (0-100)",
     )
@@ -118,10 +123,16 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--log-level", default=env("LOG_LEVEL", "INFO"))
     args = parser.parse_args()
     args.start_volume = max(0, min(100, args.start_volume))
+    if args.speaker_buffer_ms is not None and not 100 <= args.speaker_buffer_ms <= 5000:
+        raise SystemExit("SPEAKER_BUFFER_MS must be 100 to 5000")
     if args.bt_pin is not None and not re.fullmatch(r"\d{6,16}", args.bt_pin):
         # Legacy PIN pairing has no retry limit: short PINs can be guessed.
         raise SystemExit("BT_PIN must be 6 to 16 digits")
     return args
+
+
+def _optional_int(value: str | None) -> int | None:
+    return int(value) if value else None
 
 
 def _flag(value: str) -> bool:
@@ -338,7 +349,9 @@ async def _start_server(args: argparse.Namespace) -> ToothSpinServer:
         raise SystemExit(
             f"Standalone mode needs the toothspin-standalone image: {err}"
         ) from err
-    server = ToothSpinServer(args.data_dir, "ToothSpin", args.server_port)
+    server = ToothSpinServer(
+        args.data_dir, "ToothSpin", args.server_port, speaker_buffer_ms=args.speaker_buffer_ms
+    )
     try:
         await server.start()
     except OSError as err:

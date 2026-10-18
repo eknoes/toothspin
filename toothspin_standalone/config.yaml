@@ -45,4 +45,5 @@ schema:
   allow_phone_connect: bool
   take_bluetooth_audio: bool
   other_adapters_pairing: list(accept|refuse)
+  speaker_buffer_ms: int(100,5000)?
   log_level: list(debug|info|warning|error)

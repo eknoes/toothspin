@@ -168,3 +168,29 @@ def test_start_gives_up_when_the_port_is_taken(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(SendspinServer, "start_server", start_server)
     with pytest.raises(OSError):
         asyncio.run(ToothSpinServer(tmp_path, "ToothSpin", port=0).start())
+
+
+def test_speaker_buffer_only_for_speakers_that_dont_report_one(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    from toothspin import server as server_module
+
+    def speaker(reported: bool) -> SimpleNamespace:
+        role = SimpleNamespace(min_buffer_ms=1000 if not reported else 250)
+        return SimpleNamespace(
+            name="Speaker",
+            roles_by_family=lambda family: [role] if family == "player" else [],
+            _noncompliance_logged=set() if reported else {server_module._NO_TIMING_REPORTED},  # noqa: SLF001
+            role=role,
+        )
+
+    server = ToothSpinServer(tmp_path, "ToothSpin", speaker_buffer_ms=400)
+    old, new = speaker(reported=False), speaker(reported=True)
+    server._apply_speaker_buffer(old)  # type: ignore[arg-type]  # noqa: SLF001
+    server._apply_speaker_buffer(new)  # type: ignore[arg-type]  # noqa: SLF001
+    assert old.role.min_buffer_ms == 400
+    assert new.role.min_buffer_ms == 250  # it knows what it needs
+
+    untouched = speaker(reported=False)
+    ToothSpinServer(tmp_path, "ToothSpin")._apply_speaker_buffer(untouched)  # type: ignore[arg-type]  # noqa: SLF001
+    assert untouched.role.min_buffer_ms == 1000

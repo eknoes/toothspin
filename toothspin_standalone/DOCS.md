@@ -74,6 +74,7 @@ speaker from starting loud, use **Maximum start volume**.
 | Take Bluetooth audio from Home Assistant | Turns off Bluetooth in Home Assistant's own audio service, which otherwise grabs the phones' audio. ToothSpin asks first. To undo, turn it off and restart Home Assistant. |
 | Phones may connect by themselves | On (default): like any Bluetooth speaker. Off: only **Connect** in the app connects a phone. |
 | Pairing on other Bluetooth adapters | `accept` (default) or `refuse`: whether devices may pair with this machine's other adapters. ToothSpin's own isn't affected. [Why ToothSpin decides that](https://eknoes.github.io/toothspin/faq.html#other-adapters). |
+| Speaker buffer (ms) | How far ahead speakers get the audio, for speakers that don't say what they need (older Sendspin versions). Empty: 1000 ms. Less, e.g. `500`, starts playback sooner; too little makes the sound drop out. The log shows the delay when playback starts. |
 | Log level | `debug`, `info`, `warning` or `error`. |
 
 ## Notes

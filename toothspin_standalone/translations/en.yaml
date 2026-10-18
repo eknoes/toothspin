@@ -33,6 +33,12 @@ configuration:
       through, e.g. ones Home Assistant starts. refuse: no device can pair
       with them, Home Assistant included. ToothSpin's own adapter isn't
       affected.
+  speaker_buffer_ms:
+    name: Speaker buffer (ms)
+    description: >-
+      How far ahead speakers get the audio, for speakers that don't say
+      what they need (older Sendspin versions). Empty: 1000 ms. Less, e.g.
+      500, starts playback sooner; too little makes the sound drop out.
   log_level:
     name: Log level
     description: How much the app logs.

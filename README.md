@@ -175,6 +175,7 @@ are optional:
 | `SENDSPIN_URL` | discovered via mDNS | e.g. `ws://192.168.178.91:8927/sendspin` |
 | `MODE` | `music-assistant` (`standalone` in toothspin-standalone) | `standalone` runs ToothSpin's own Sendspin server (toothspin-standalone only) |
 | `SERVER_PORT` | `8927` | standalone: port of ToothSpin's Sendspin server |
+| `SPEAKER_BUFFER_MS` | – | standalone: buffer for speakers that don't report their own (older Sendspin versions; otherwise 1000 ms). Less, e.g. `500`, starts playback sooner; too little drops out |
 | `BT_NAME` | `ToothSpin` | Bluetooth name phones see |
 | `BT_PIN` | – | 6-16 digits: phones can pair any time with this PIN, not only in the pairing window; needs Secure Simple Pairing off on the host (`deploy/bluetooth/install.sh --pin`) |
 | `BT_ADAPTER` | `hci0` | the dongle, e.g. `hci1`; `auto` takes the first one |

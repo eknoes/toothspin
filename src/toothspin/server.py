@@ -51,6 +51,9 @@ CLAIM_TIMEOUT_S = 10.0
 # doubling up to the maximum.
 START_RETRY_S = 2.0
 START_RETRY_MAX_S = 60.0
+# How aiosendspin 9.1.1 notes a speaker that doesn't report its timing
+# (min_buffer_ms and others): it then assumes a buffer of 1000 ms.
+_NO_TIMING_REPORTED = "initial client/state omitted required player timing fields"
 # Keep the delay from phone to speakers within this of where it started:
 # phone and speakers run on slightly different clocks.
 DRIFT_TOLERANCE_US = 20_000
@@ -77,10 +80,15 @@ class _Feed:
 
 
 class ToothSpinServer:
-    def __init__(self, data_dir: Path, name: str, port: int = 8927) -> None:
+    def __init__(
+        self, data_dir: Path, name: str, port: int = 8927, speaker_buffer_ms: int | None = None
+    ) -> None:
         self._data_dir = data_dir / "server"
         self._name = name
         self._port = port
+        # The buffer for speakers that don't report their own; None keeps
+        # aiosendspin's 1000 ms. Less starts playback sooner, too little drops out.
+        self._speaker_buffer_ms = speaker_buffer_ms
         self._server: SendspinServer | None = None
         self._store: FileServerPairingStore | None = None
         self._feeds: dict[str, _Feed] = {}
@@ -237,6 +245,7 @@ class ToothSpinServer:
         """
         client = self._known(player_id)
         if client.is_connected:
+            self._apply_speaker_buffer(client)
             return client
         assert self._server is not None
         if not self._server.request_client_playback_connection(player_id):
@@ -248,8 +257,23 @@ class ToothSpinServer:
                     await asyncio.sleep(0.1)
         except TimeoutError:
             raise BackendError(f"{client.name} didn't switch to ToothSpin") from None
+        self._apply_speaker_buffer(client)
         return client
 
+    def _apply_speaker_buffer(self, client: SendspinClient) -> None:
+        """Use the configured buffer on a speaker that doesn't report its own.
+
+        Before any command, so a stream starting on it already uses it. A
+        speaker that reports a buffer knows what it needs and keeps it.
+        """
+        if self._speaker_buffer_ms is None:
+            return
+        role = _role(client, "player")
+        if role is None or _NO_TIMING_REPORTED not in client._noncompliance_logged:  # noqa: SLF001
+            return
+        if role.min_buffer_ms != self._speaker_buffer_ms:  # type: ignore[attr-defined]
+            role.min_buffer_ms = self._speaker_buffer_ms  # type: ignore[attr-defined]
+            logger.info("Using a %d ms buffer for %s", self._speaker_buffer_ms, client.name)
     # --- routing inputs to groups ---
 
     def _route(self, group: SendspinGroup) -> _Route | None:
@@ -359,6 +383,11 @@ class ToothSpinServer:
         route.delay_us = play_us - timestamp_us
         if route.target_delay_us is None:
             route.target_delay_us = route.delay_us
+            names = ", ".join(c.name for c in route.group.clients if _is_player(c))
+            logger.info(
+                "Playing on %s %d ms after ToothSpin received the audio",
+                names, route.delay_us // 1000,
+            )
 
 
 def _log_failure(task: asyncio.Task[None]) -> None:
