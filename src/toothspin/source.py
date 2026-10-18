@@ -291,7 +291,7 @@ class SendspinSource:
         self._capture = capture
         logger.info(
             "Streaming to server (%s, %d Hz, %d ch)",
-            self._codec.value,
+            capture.codec.value,
             fmt.sample_rate,
             fmt.channels,
         )
