@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.3.0 (2026-10-18)
+
+### Features
+
+- Standalone mode with ToothSpin's own Sendspin server
+- **app:** ToothSpin Standalone, a Home Assistant App for standalone mode
+- **web:** Say which ToothSpin it is in the title
+- **server:** Optional speaker buffer for standalone mode
+- **server:** Show what the phone plays on speakers with a display
+- Sum up dropouts per speaker and per phone after each session
+
+### Fixes
+
+- **setup:** Standalone mode's setup hints are about its own server
+- **server:** Keep starting the Sendspin server until the network is up
+- **server:** Say why standalone mode can't start next to Music Assistant
+- **server:** One log line per older speaker instead of several warnings
+- **web:** Log successful requests only at log level debug
+
+### Image and dependencies
+
+- A server image flavour for standalone mode
+- Publish standalone mode as its own image, toothspin-standalone
+
+### Documentation
+
+- Drop the "Demo data" notes under the screenshots
+- An "Install on Home Assistant" button at the top of the website
+- **install:** Links to each way to install at the top
+- Describe standalone mode
+- **pages:** Standalone mode in the installation guide and FAQ
+- Standalone mode as a small alternative to Music Assistant
+
 ## 0.2.1 (2026-10-17)
 
 ### Fixes

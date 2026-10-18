@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/apps/configuration
 name: ToothSpin Standalone
-version: "0.2.1"
+version: "0.3.0"
 slug: toothspin_standalone
 description: >-
   ToothSpin without Music Assistant: phones on Sendspin speakers only
