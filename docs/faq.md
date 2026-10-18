@@ -105,6 +105,10 @@ shows title and artist on the phone's card, as far as the phone reports
 them. Support in Sendspin is being discussed
 ([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)).
 
+In [standalone mode]({{ '/install.html#standalone' | relative_url }}),
+ToothSpin is the Sendspin server itself and sends title, artist, album and
+the track's position to speakers with a display. Covers aren't sent.
+
 ### Why no aptX, LDAC or other higher-quality codecs? {#codecs}
 
 ToothSpin offers phones only AAC and SBC, on purpose:

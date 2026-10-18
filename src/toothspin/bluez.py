@@ -17,6 +17,7 @@ ends.
 import asyncio
 import contextlib
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -50,6 +51,8 @@ DEVICE = "org.bluez.Device1"
 PLAYER = "org.bluez.MediaPlayer1"
 TRANSPORT = "org.bluez.MediaTransport1"
 AGENT_PATH = "/org/toothspin/agent"
+# When a player's Position was last reported (time.monotonic()).
+_POSITION_AT = "_position_at"
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +80,10 @@ class NowPlaying:
     status: str
     title: str | None
     artist: str | None
+    album: str | None = None
+    duration_ms: int | None = None
+    position_ms: int | None = None
+    """Where the phone is in the track now, counted on while it plays."""
 
 
 class BluetoothManager:
@@ -233,6 +240,9 @@ class BluetoothManager:
                     status=props.get("Status", ""),
                     title=track.get("Title") or None,
                     artist=track.get("Artist") or None,
+                    album=track.get("Album") or None,
+                    duration_ms=track.get("Duration") or None,
+                    position_ms=_position_now(props),
                 )
         return None
 
@@ -449,7 +459,7 @@ class BluetoothManager:
                     asyncio.ensure_future(self.refuse(msg.path))
                 self._on_change()
             elif iface == PLAYER and msg.path in self._players:
-                self._players[msg.path].update(_unwrap_player(changed))
+                _update_player(self._players[msg.path], _unwrap_player(changed))
             elif iface == TRANSPORT and msg.path in self._transports:
                 # A phone starting its stream (capture picks it up at once) or
                 # changing its volume.
@@ -498,11 +508,36 @@ class BluetoothManager:
 
 
 def _unwrap_player(props: dict[str, Variant]) -> dict[str, Any]:
-    """Unwrap MediaPlayer1 properties, including the nested Track dict."""
+    """Unwrap MediaPlayer1 properties, including the nested Track dict.
+
+    Also notes when the position was read: BlueZ only updates it when the
+    phone reports it, not while the track plays (see ``_position_now``).
+    """
     unwrapped = dbus.unwrap(props)
     if isinstance(unwrapped.get("Track"), dict):
         unwrapped["Track"] = dbus.unwrap(unwrapped["Track"])
+    if "Position" in unwrapped:
+        unwrapped[_POSITION_AT] = time.monotonic()
     return unwrapped
+
+
+def _update_player(props: dict[str, Any], changed: dict[str, Any]) -> None:
+    if "Status" in changed and "Position" not in changed and _POSITION_AT in props:
+        # Paused or resumed without a new position: keep where it got to.
+        props["Position"] = _position_now(props)
+        props[_POSITION_AT] = time.monotonic()
+    props.update(changed)
+
+
+def _position_now(props: dict[str, Any]) -> int | None:
+    """The phone's position in the track now, counted on from its last report."""
+    position = props.get("Position")
+    if position is None:
+        return None
+    if props.get("Status") == "playing" and _POSITION_AT in props:
+        position += int((time.monotonic() - props[_POSITION_AT]) * 1000)
+    duration = (props.get("Track") or {}).get("Duration")
+    return min(position, duration) if duration else position
 
 
 class _Agent(ServiceInterface):

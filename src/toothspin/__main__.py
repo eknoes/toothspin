@@ -11,6 +11,7 @@ import os
 import re
 import signal
 import socket
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,7 +24,7 @@ from dbus_fast.errors import DBusError
 
 from . import audio_stack, ha, ha_audio, ma_pairing, privileges, setup_check
 from .audio_stack import AudioStack
-from .bluez import BluetoothManager
+from .bluez import BluetoothManager, NowPlaying
 from .backend import PlayerBackend
 from .ma import MusicAssistant, check_version, probe_version
 from .receivers import Receivers
@@ -342,7 +343,9 @@ async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None
         await asyncio.sleep(MA_VERSION_S)
 
 
-async def _start_server(args: argparse.Namespace) -> ToothSpinServer:
+async def _start_server(
+    args: argparse.Namespace, now_playing: Callable[[str], NowPlaying | None]
+) -> ToothSpinServer:
     try:
         from . import server as server_module
         from .server import ToothSpinServer
@@ -352,7 +355,8 @@ async def _start_server(args: argparse.Namespace) -> ToothSpinServer:
         ) from err
     server_module.quiet_legacy_warnings()
     server = ToothSpinServer(
-        args.data_dir, "ToothSpin", args.server_port, speaker_buffer_ms=args.speaker_buffer_ms
+        args.data_dir, "ToothSpin", args.server_port, speaker_buffer_ms=args.speaker_buffer_ms,
+        now_playing=now_playing,
     )
     try:
         await server.start()
@@ -420,7 +424,15 @@ async def _run(args: argparse.Namespace) -> None:
     if args.mode == "standalone":
         # Our own Sendspin server: the phones' sources connect to it, paired
         # automatically, and it plays them on Sendspin speakers.
-        server = await _start_server(args)
+        def now_playing(source_id: str) -> NowPlaying | None:
+            """What the phone behind this Sendspin source plays, for the speakers."""
+            for device in bluetooth.devices():
+                receiver = receivers.get(device.address)
+                if receiver is not None and receiver.source.client.identity.peer_id == source_id:
+                    return bluetooth.now_playing(device.address)
+            return None
+
+        server = await _start_server(args, now_playing)
         backend = server
         receivers = Receivers(
             bluetooth, args.data_dir, server.url, AudioCodec(args.codec), args.name,

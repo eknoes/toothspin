@@ -18,6 +18,7 @@ from aiosendspin.client import SendspinClient
 from aiosendspin.client.listener import ClientListener
 from aiosendspin.models.player import ClientHelloPlayerSupport, SupportedAudioFormat
 from aiosendspin.models.types import AudioCodec, PlayerCommand, Roles
+from aiosendspin.models.types import UndefinedField
 from aiosendspin.noise import Identity, InMemoryClientPairingStore
 
 
@@ -28,6 +29,9 @@ class FakeSpeaker:
     muted: bool = False
     audio_bytes: int = 0
     volumes: list[int] = field(default_factory=list)
+    show_metadata: bool = False
+    """Like a speaker with a display: takes the metadata role."""
+    titles: list[str | None] = field(default_factory=list)
     client: SendspinClient | None = None
 
     async def build(self) -> SendspinClient:
@@ -38,7 +42,7 @@ class FakeSpeaker:
         self.client = SendspinClient(
             identity=Identity.generate(),
             client_name=self.name,
-            roles=[Roles.PLAYER],
+            roles=[Roles.PLAYER, Roles.METADATA] if self.show_metadata else [Roles.PLAYER],
             pairing_store=store,
             player_support=ClientHelloPlayerSupport(
                 supported_formats=[
@@ -53,12 +57,18 @@ class FakeSpeaker:
         )
         self.client.add_audio_chunk_listener(self._on_audio)
         self.client.add_server_command_listener(self._on_command)
+        self.client.add_metadata_listener(self._on_metadata)
         return self.client
 
     @property
     def client_id(self) -> str:
         assert self.client is not None
         return self.client.identity.peer_id
+
+    def _on_metadata(self, payload) -> None:  # noqa: ANN001
+        metadata = payload.metadata
+        if metadata is not None and not isinstance(metadata.title, UndefinedField):
+            self.titles.append(metadata.title)
 
     def _on_audio(self, _timestamp_us: int, data: bytes, _fmt: object) -> None:
         self.audio_bytes += len(data)

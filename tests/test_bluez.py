@@ -40,9 +40,12 @@ def test_now_playing_from_avrcp() -> None:
             ["org.bluez.MediaPlayer1", {"Status": Variant("s", "paused")}, []],
         )
     )
-    assert manager.now_playing("84:0f:4c:90:46:af") == NowPlaying(
-        status="paused", title="Crawling", artist="Linkin Park"
+    playing = manager.now_playing("84:0f:4c:90:46:af")
+    assert (playing.status, playing.title, playing.artist, playing.album) == (
+        "paused", "Crawling", "Linkin Park", "Hybrid Theory"
     )
+    assert playing.duration_ms == 209000
+    assert 1000 <= playing.position_ms < 1100  # paused: stays where it was
     assert manager.now_playing("00:11:22:33:44:55") is None
 
 
@@ -329,3 +332,40 @@ def test_pairing_on_other_adapters_can_be_refused() -> None:
             call()
     # Devices already paired there still connect.
     agent.AuthorizeService.__wrapped__(agent, others, "0000110a-0000-1000-8000-00805f9b34fb")
+
+
+
+def test_position_counts_on_while_playing_and_stops_on_pause(monkeypatch) -> None:  # noqa: ANN001
+    from toothspin import bluez
+
+    clock = [100.0]
+    monkeypatch.setattr(bluez.time, "monotonic", lambda: clock[0])
+    manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+    manager._on_message(  # noqa: SLF001
+        _signal(
+            "InterfacesAdded", "org.freedesktop.DBus.ObjectManager", "/", "oa{sa{sv}}",
+            [PLAYER_PATH, {"org.bluez.MediaPlayer1": {
+                "Status": Variant("s", "playing"),
+                "Track": Variant("a{sv}", {"Title": Variant("s", "T"), "Duration": Variant("u", 60000)}),
+                "Position": Variant("u", 10000),
+            }}],
+        )
+    )
+    clock[0] += 5
+    assert manager.now_playing("84:0f:4c:90:46:af").position_ms == 15000
+    manager._on_message(  # noqa: SLF001
+        _signal(
+            "PropertiesChanged", "org.freedesktop.DBus.Properties", PLAYER_PATH, "sa{sv}as",
+            ["org.bluez.MediaPlayer1", {"Status": Variant("s", "paused")}, []],
+        )
+    )
+    clock[0] += 30
+    assert manager.now_playing("84:0f:4c:90:46:af").position_ms == 15000
+    manager._on_message(  # noqa: SLF001
+        _signal(
+            "PropertiesChanged", "org.freedesktop.DBus.Properties", PLAYER_PATH, "sa{sv}as",
+            ["org.bluez.MediaPlayer1", {"Status": Variant("s", "playing")}, []],
+        )
+    )
+    clock[0] += 100  # past the end: never beyond the duration
+    assert manager.now_playing("84:0f:4c:90:46:af").position_ms == 60000

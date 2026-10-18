@@ -13,6 +13,7 @@ import pytest
 from fake_speaker import FakeSpeaker
 from toothspin import speakers
 from toothspin.backend import BackendError
+from toothspin.bluez import NowPlaying
 from toothspin.pipewire import CAPTURE_FORMAT
 from toothspin.server import ToothSpinServer, correct_drift
 from toothspin.source import SendspinSource
@@ -45,7 +46,10 @@ def test_plays_a_phone_on_grouped_speakers(tmp_path: Path, monkeypatch) -> None:
 
 
 async def _scenario(tmp_path: Path) -> None:
-    server = ToothSpinServer(tmp_path, "ToothSpin test", port=_free_port())
+    playing = NowPlaying("playing", "Crawling", "Linkin Park", "Hybrid Theory", 209000, 5000)
+    server = ToothSpinServer(
+        tmp_path, "ToothSpin test", port=_free_port(), now_playing=lambda source_id: playing
+    )
     await server.start()
     server_task = asyncio.create_task(server.run())
 
@@ -54,7 +58,8 @@ async def _scenario(tmp_path: Path) -> None:
     await server.pair_local(source)
     source_task = asyncio.create_task(source.run())
 
-    kitchen, living = FakeSpeaker("Kitchen", volume=80), FakeSpeaker("Living room", volume=30)
+    kitchen = FakeSpeaker("Kitchen", volume=80, show_metadata=True)
+    living = FakeSpeaker("Living room", volume=30)
     for speaker in (kitchen, living):
         await (await speaker.build()).connect(server.url)
 
@@ -80,6 +85,8 @@ async def _scenario(tmp_path: Path) -> None:
 
         tasks.append(asyncio.create_task(phone()))
         await _until(lambda: kitchen.audio_bytes > 0)
+        # A speaker with a display shows what the phone plays.
+        await _until(lambda: "Crawling" in kitchen.titles)
 
         # Adding the living room groups it with the kitchen; both get audio.
         await speakers.toggle(server, uri, living.client_id, True, start_volume=100)
@@ -95,8 +102,9 @@ async def _scenario(tmp_path: Path) -> None:
         await server.call("players/cmd/volume_mute", player_id=living.client_id, muted=True)
         await _until(lambda: living.muted)
 
-        # Moving to the living room alone stops the kitchen.
+        # Moving to the living room alone stops the kitchen, and clears its display.
         await speakers.move(server, uri, living.client_id)
+        await _until(lambda: kitchen.titles[-1] is None)
         listed = {s.name: s for s in speakers.speakers(server.players)}
         assert listed["Kitchen"].playing_uri is None
         assert listed["Living room"].playing_uri == uri and not listed["Living room"].members

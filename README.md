@@ -160,6 +160,8 @@ AirPlay, Chromecast or Squeezebox.
 - It doesn't work together with Music Assistant's Sendspin integration: both
   are Sendspin servers and want the same speakers. With Music Assistant, use
   the normal mode.
+- Speakers with a display show the title, artist, album and position the
+  phone reports (no covers).
 - Speakers that insist on being paired aren't supported yet.
 
 ### Configuration

@@ -15,7 +15,8 @@ from __future__ import annotations
 import asyncio
 import errno
 import logging
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -30,6 +31,7 @@ from aiosendspin.server import (
     SourceStreamStartedEvent,
 )
 from aiosendspin.server.push_stream import StreamStoppedError
+from aiosendspin.server.roles.metadata.state import Metadata
 
 from .backend import BackendError
 from .source import _load_identity
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
     from aiosendspin.server import AudioFormat, PushStream, SendspinClient, SendspinGroup
     from aiosendspin.server.roles.source.stream import SourceStream
 
+    from .bluez import NowPlaying
     from .source import SendspinSource
 
 logger = logging.getLogger(__name__)
@@ -51,6 +54,8 @@ CLAIM_TIMEOUT_S = 10.0
 # doubling up to the maximum.
 START_RETRY_S = 2.0
 START_RETRY_MAX_S = 60.0
+# How often to look for new track info from the phones.
+METADATA_S = 1.0
 # How aiosendspin 9.1.1 notes a speaker that doesn't report its timing
 # (min_buffer_ms and others): it then assumes a buffer of 1000 ms.
 _NO_TIMING_REPORTED = "initial client/state omitted required player timing fields"
@@ -81,7 +86,12 @@ class _Feed:
 
 class ToothSpinServer:
     def __init__(
-        self, data_dir: Path, name: str, port: int = 8927, speaker_buffer_ms: int | None = None
+        self,
+        data_dir: Path,
+        name: str,
+        port: int = 8927,
+        speaker_buffer_ms: int | None = None,
+        now_playing: Callable[[str], NowPlaying | None] | None = None,
     ) -> None:
         self._data_dir = data_dir / "server"
         self._name = name
@@ -89,6 +99,9 @@ class ToothSpinServer:
         # The buffer for speakers that don't report their own; None keeps
         # aiosendspin's 1000 ms. Less starts playback sooner, too little drops out.
         self._speaker_buffer_ms = speaker_buffer_ms
+        # What a phone plays (AVRCP), by its source's client id: shown on
+        # speakers with a display.
+        self._now_playing = now_playing
         self._server: SendspinServer | None = None
         self._store: FileServerPairingStore | None = None
         self._feeds: dict[str, _Feed] = {}
@@ -136,9 +149,11 @@ class ToothSpinServer:
         logger.info("Sendspin server %s listening on port %d", self._name, self._port)
 
     async def run(self) -> None:
-        """Serve until cancelled."""
+        """Serve until cancelled, keeping the speakers' track info current."""
         try:
-            await asyncio.Event().wait()
+            while True:
+                self._update_metadata()
+                await asyncio.sleep(METADATA_S)
         finally:
             for feed in self._feeds.values():
                 if feed.task:
@@ -289,6 +304,18 @@ class ToothSpinServer:
         if role.min_buffer_ms != self._speaker_buffer_ms:  # type: ignore[attr-defined]
             role.min_buffer_ms = self._speaker_buffer_ms  # type: ignore[attr-defined]
             logger.info("Using a %d ms buffer for %s", self._speaker_buffer_ms, client.name)
+    # --- track info ---
+
+    def _update_metadata(self) -> None:
+        """Send each group the track its phone plays; aiosendspin only sends changes."""
+        if self._now_playing is None:
+            return
+        for source_id, feed in self._feeds.items():
+            playing = self._now_playing(source_id)
+            for route in feed.routes:
+                delay_ms = (route.target_delay_us or 0) // 1000
+                _set_metadata(route.group, _metadata(playing, delay_ms))
+
     # --- routing inputs to groups ---
 
     def _route(self, group: SendspinGroup) -> _Route | None:
@@ -324,6 +351,7 @@ class ToothSpinServer:
             return
         feed = self._feeds[route.source_id]
         feed.routes.remove(route)
+        _set_metadata(group, None)
         await group.stop()
         if not feed.routes:
             source = self._server.get_client(route.source_id) if self._server else None
@@ -403,6 +431,32 @@ class ToothSpinServer:
                 "Playing on %s %d ms after ToothSpin received the audio",
                 names, route.delay_us // 1000,
             )
+
+
+def _metadata(playing: NowPlaying | None, delay_ms: int) -> Metadata | None:
+    """Sendspin track info from what the phone reports.
+
+    The speakers play ``delay_ms`` behind the phone, so the position they
+    show is moved back by that much.
+    """
+    if playing is None or not (playing.title or playing.artist):
+        return None
+    metadata = Metadata(title=playing.title, artist=playing.artist, album=playing.album)
+    if playing.position_ms is None:
+        return metadata
+    return replace(
+        metadata,
+        track_progress=max(0, playing.position_ms - delay_ms),
+        # 0: unknown length.
+        track_duration=playing.duration_ms or 0,
+        playback_speed=1000 if playing.status == "playing" else 0,
+    )
+
+
+def _set_metadata(group: SendspinGroup, metadata: Metadata | None) -> None:
+    role = group.group_role("metadata")
+    if role is not None:
+        role.set_metadata(metadata)  # type: ignore[attr-defined]
 
 
 def _log_failure(task: asyncio.Task[None]) -> None:
