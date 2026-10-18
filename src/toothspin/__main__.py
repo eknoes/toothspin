@@ -353,11 +353,11 @@ async def _start_server(
         raise SystemExit(
             f"Standalone mode needs the toothspin-standalone image: {err}"
         ) from err
-    server_module.quiet_legacy_warnings()
     server = ToothSpinServer(
         args.data_dir, "ToothSpin", args.server_port, speaker_buffer_ms=args.speaker_buffer_ms,
         now_playing=now_playing,
     )
+    server_module.watch_sendspin_logs(server.note_late)
     try:
         await server.start()
     except OSError as err:

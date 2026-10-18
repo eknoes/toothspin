@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import errno
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -77,6 +78,16 @@ class _Route:
 
 
 @dataclass(slots=True)
+class _Session:
+    """A speaker playing a phone: what went wrong on the way to it."""
+
+    name: str
+    started: float
+    late_chunks: int = 0
+    late_times: int = 0
+
+
+@dataclass(slots=True)
 class _Feed:
     """An input being streamed, fanned out to the groups playing it."""
 
@@ -102,6 +113,8 @@ class ToothSpinServer:
         # What a phone plays (AVRCP), by its source's client id: shown on
         # speakers with a display.
         self._now_playing = now_playing
+        # Speakers playing a phone now, by client id.
+        self._sessions: dict[str, _Session] = {}
         self._server: SendspinServer | None = None
         self._store: FileServerPairingStore | None = None
         self._feeds: dict[str, _Feed] = {}
@@ -153,6 +166,7 @@ class ToothSpinServer:
         try:
             while True:
                 self._update_metadata()
+                self._track_sessions()
                 await asyncio.sleep(METADATA_S)
         finally:
             for feed in self._feeds.values():
@@ -279,7 +293,7 @@ class ToothSpinServer:
         """A speaker on an older Sendspin version: what that means here, in one line.
 
         aiosendspin's own warnings about it only show at log level debug (see
-        ``quiet_legacy_warnings``).
+        ``watch_sendspin_logs``).
         """
         connection = client.connection
         if not _is_player(client) or connection is None or connection.is_encrypted:
@@ -304,6 +318,51 @@ class ToothSpinServer:
         if role.min_buffer_ms != self._speaker_buffer_ms:  # type: ignore[attr-defined]
             role.min_buffer_ms = self._speaker_buffer_ms  # type: ignore[attr-defined]
             logger.info("Using a %d ms buffer for %s", self._speaker_buffer_ms, client.name)
+    # --- dropouts per speaker ---
+
+    def note_late(self, client_id: str, chunks: int) -> None:
+        """aiosendspin dropped audio it couldn't send to this speaker in time."""
+        session = self._sessions.get(client_id)
+        if session is None:
+            return
+        session.late_chunks += chunks
+        session.late_times += 1
+        logger.warning(
+            "%s: %d piece(s) of audio arrived too late to play (slow network to it)",
+            session.name, chunks,
+        )
+
+    def _track_sessions(self) -> None:
+        """Start a session per speaker that starts playing, sum it up when it stops."""
+        playing = {
+            c.client_id: c
+            for feed in self._feeds.values()
+            for route in feed.routes
+            for c in route.group.clients
+            if _is_player(c)
+        }
+        now = time.monotonic()
+        for client_id, client in playing.items():
+            if client_id not in self._sessions:
+                self._sessions[client_id] = _Session(client.name, now)
+        for client_id in [c for c in self._sessions if c not in playing]:
+            session = self._sessions.pop(client_id)
+            client = self._server.get_client(client_id) if self._server else None
+            role = _role(client, "player") if client else None
+            # Dropped since aiosendspin's last warning, which comes every 30 s.
+            pending = getattr(role, "_late_skips_since_log", 0)
+            session.late_chunks += pending
+            session.late_times += 1 if pending else 0
+            minutes = (now - session.started) / 60
+            if session.late_chunks:
+                logger.warning(
+                    "%s played for %.0f min; %d time(s) audio arrived too late to play "
+                    "(%d piece(s)). Check its Wi-Fi.",
+                    session.name, minutes, session.late_times, session.late_chunks,
+                )
+            else:
+                logger.info("%s played for %.0f min without dropouts", session.name, minutes)
+
     # --- track info ---
 
     def _update_metadata(self) -> None:
@@ -491,21 +550,37 @@ def _role(client: SendspinClient, family: str) -> object | None:
 # aiosendspin warns about every speaker on an older Sendspin version, several
 # lines each, on every start; ToothSpin says it in one line instead.
 _LEGACY_WARNINGS = ("non-compliant client:", "Accepting unencrypted legacy connection")
+# aiosendspin's warning (at most every 30 s per speaker) that it dropped audio
+# it couldn't send to a speaker in time; its arguments are (type, role,
+# chunks, ...). ToothSpin counts them per speaker instead.
+_LATE_WARNING = "Late binary type="
 
 
-class _QuietLegacyWarnings(logging.Filter):
+class _SendspinLogs(logging.Filter):
+    """Turns aiosendspin's verbose warnings into ToothSpin's own short ones."""
+
+    def __init__(self, on_late: Callable[[str, int], None] | None = None) -> None:
+        super().__init__()
+        self._on_late = on_late
+
     def filter(self, record: logging.LogRecord) -> bool:
-        if (
-            record.levelno == logging.WARNING
-            and record.name.startswith("aiosendspin.server.")
-            and str(record.msg).startswith(_LEGACY_WARNINGS)
-        ):
-            record.levelno, record.levelname = logging.DEBUG, "DEBUG"
-            return logging.getLogger().isEnabledFor(logging.DEBUG)
-        return True
+        if record.levelno != logging.WARNING or not record.name.startswith("aiosendspin.server."):
+            return True
+        msg = str(record.msg)
+        if msg.startswith(_LATE_WARNING) and isinstance(record.args, tuple) and len(record.args) > 2:
+            if record.args[1] != "player":
+                return True
+            if self._on_late is not None:
+                # The connection's logger is named after the speaker's client id.
+                self._on_late(record.name.rsplit(".", 1)[-1], int(record.args[2]))
+        elif not msg.startswith(_LEGACY_WARNINGS):
+            return True
+        record.levelno, record.levelname = logging.DEBUG, "DEBUG"
+        return logging.getLogger().isEnabledFor(logging.DEBUG)
 
 
-def quiet_legacy_warnings() -> None:
-    """Show aiosendspin's warnings about older speakers only at log level debug."""
+def watch_sendspin_logs(on_late: Callable[[str, int], None] | None = None) -> None:
+    """Show aiosendspin's warnings about older speakers and late audio only at
+    log level debug, and hand the late audio to ``on_late`` (client id, chunks)."""
     for handler in logging.getLogger().handlers:
-        handler.addFilter(_QuietLegacyWarnings())
+        handler.addFilter(_SendspinLogs(on_late))

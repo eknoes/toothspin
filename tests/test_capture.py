@@ -138,3 +138,15 @@ def test_steady_audio_reports_nothing(caplog) -> None:
     caplog.set_level("INFO", logger="toothspin.capture")
     _run([1_000_000 + i * CHUNK_US for i in range(20)])
     assert "came late" not in caplog.text
+
+
+
+def test_summary_after_the_session(caplog) -> None:
+    caplog.set_level("INFO", logger="toothspin.capture")
+    arrivals = [1_000_000 + i * CHUNK_US for i in range(10)]
+    arrivals += [1_800_000 + i * CHUNK_US for i in range(10)]
+    _run(arrivals)
+    assert "Pixel played for 0 min; Bluetooth audio came late 1 times (longest 620 ms)" in caplog.text
+    caplog.clear()
+    _run([1_000_000 + i * CHUNK_US for i in range(20)])
+    assert "Pixel played for 0 min without Bluetooth gaps" in caplog.text

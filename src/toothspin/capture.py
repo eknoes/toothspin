@@ -128,7 +128,7 @@ class Capture:
             await asyncio.sleep(1.0)
         finally:
             self.active = None
-            late.report(self._now_us())
+            late.summary(self._now_us())
             logger.info("Capture from %s ended", found.description)
 
     async def _signal_loop(self) -> None:
@@ -146,11 +146,14 @@ class _LateAudio:
 
     def __init__(self, name: str, now_us: int) -> None:
         self._name = name
-        self._since_us = now_us
+        self._started_us = self._since_us = now_us
         self._last_us: int | None = None
         self.gaps = 0
         self.longest_us = 0
         self.resyncs = 0
+        # The whole session, for the summary when the phone stops.
+        self._total_gaps = 0
+        self._total_longest_us = 0
 
     def arrived(self, now_us: int) -> None:
         if self._last_us is not None:
@@ -158,6 +161,8 @@ class _LateAudio:
             if gap > FILL_GAP_S * 1_000_000:
                 self.gaps += 1
                 self.longest_us = max(self.longest_us, gap)
+                self._total_gaps += 1
+                self._total_longest_us = max(self._total_longest_us, gap)
         self._last_us = now_us
         if now_us - self._since_us >= LATE_REPORT_S * 1_000_000:
             self.report(now_us)
@@ -174,6 +179,18 @@ class _LateAudio:
             )
         self._since_us = now_us
         self.gaps = self.longest_us = self.resyncs = 0
+
+    def summary(self, now_us: int) -> None:
+        """How the Bluetooth link did over the whole session."""
+        self.report(now_us)
+        minutes = (now_us - self._started_us) / 60_000_000
+        if self._total_gaps:
+            logger.info(
+                "%s played for %.0f min; Bluetooth audio came late %d times (longest %d ms)",
+                self._name, minutes, self._total_gaps, self._total_longest_us // 1000,
+            )
+        else:
+            logger.info("%s played for %.0f min without Bluetooth gaps", self._name, minutes)
 
 
 def _dbfs(pcm: bytes) -> float:

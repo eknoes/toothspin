@@ -207,9 +207,9 @@ def test_speaker_buffer_only_for_speakers_that_dont_report_one(tmp_path: Path) -
 def test_legacy_warnings_only_show_at_debug(caplog) -> None:  # noqa: ANN001
     import logging
 
-    from toothspin.server import _QuietLegacyWarnings
+    from toothspin.server import _SendspinLogs
 
-    quiet = _QuietLegacyWarnings()
+    quiet = _SendspinLogs()
     library = logging.getLogger("aiosendspin.server.client.b8:27:eb:8e:b8:29")
 
     def passes(msg: str, root_level: int) -> bool:
@@ -225,3 +225,37 @@ def test_legacy_warnings_only_show_at_debug(caplog) -> None:  # noqa: ANN001
         assert passes("WebSocket closed, close_code=None", logging.INFO)  # anything else stays
     finally:
         logging.getLogger().setLevel(old)
+
+
+def test_late_audio_is_counted_per_speaker_and_summed_up(tmp_path: Path, caplog) -> None:  # noqa: ANN001
+    import logging
+    from types import SimpleNamespace
+
+    from toothspin.server import _Feed, _Route, _SendspinLogs
+
+    caplog.set_level(logging.INFO, logger="toothspin.server")
+    server = ToothSpinServer(tmp_path, "ToothSpin")
+    role = SimpleNamespace(_late_skips_since_log=2)
+    buero = SimpleNamespace(
+        client_id="b8:27:eb:8e:b8:29", name="Büro", negotiated_role_ids=["player@v1"],
+        roles_by_family=lambda family: [role] if family == "player" else [],
+    )
+    group = SimpleNamespace(clients=[buero])
+    server._feeds["phone"] = _Feed(routes=[_Route(group, "phone")])  # type: ignore[arg-type]  # noqa: SLF001
+    server._server = SimpleNamespace(get_client=lambda client_id: buero)  # type: ignore[assignment]  # noqa: SLF001
+    server._track_sessions()  # noqa: SLF001  # Büro starts playing
+
+    # aiosendspin's warning for it is counted, and only shows at debug.
+    logs = _SendspinLogs(server.note_late)
+    library = logging.getLogger("aiosendspin.server.connection.b8:27:eb:8e:b8:29")
+    record = library.makeRecord(
+        library.name, logging.WARNING, "f", 1,
+        "Late binary type=%s role=%s: skipping %s chunk(s); late_by_us=%s",
+        ("audio", "player", 5, 30000), None,
+    )
+    assert not logs.filter(record)
+    assert "Büro: 5 piece(s) of audio arrived too late" in caplog.text
+
+    server._feeds.clear()  # noqa: SLF001
+    server._track_sessions()  # noqa: SLF001  # Büro stops: 5 + 2 not yet warned about
+    assert "Büro played for 0 min; 2 time(s) audio arrived too late to play (7 piece(s))" in caplog.text
