@@ -62,7 +62,7 @@ Not working yet:
 > I'd say I tested it a lot, but you still have to expect rough edges.
 > Bug reports and feature requests are welcome!
 
-You need Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
+You need Music Assistant **2.10.7 or newer** and a Bluetooth adapter,
 ideally a USB dongle just for ToothSpin. If you want to know how it's built,
 see the [technical overview](https://eknoes.github.io/toothspin/overview.html).
 

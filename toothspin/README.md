@@ -16,7 +16,7 @@ It's young and runs in one home so far, so expect rough edges. Bug reports
 
 ## Before you install
 
-- **Music Assistant 2.10.6 or newer.**
+- **Music Assistant 2.10.7 or newer.**
 - **A Bluetooth adapter.** ToothSpin can share Home Assistant's, but **a
   USB dongle just for ToothSpin is recommended**: phones stay connected more
   reliably. For a virtual machine, pass the dongle through.

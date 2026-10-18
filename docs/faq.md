@@ -67,7 +67,7 @@ configuration.
 
 ### Which Music Assistant versions work? {#ma-versions}
 
-2.10.2 or newer; 2.10.6 or newer is recommended. The 2.11 beta works too.
+2.10.7 or newer, including the 2.11 betas from mid-October 2026 on.
 With an older version, ToothSpin says so in **Finish setup**.
 
 ### Does it work without Music Assistant? {#without-music-assistant}

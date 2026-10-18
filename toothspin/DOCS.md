@@ -6,7 +6,7 @@ speaker or group.
 
 ## Requirements
 
-- **Music Assistant 2.10.6 or newer** (its Sendspin provider is on by
+- **Music Assistant 2.10.7 or newer** (its Sendspin provider is on by
   default).
 - **A Bluetooth adapter.** ToothSpin can share Home Assistant's, but **a
   USB dongle just for ToothSpin is recommended**: phones stay connected more

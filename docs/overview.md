@@ -179,19 +179,12 @@ library Music Assistant uses too:
 ## Versions
 
 `source@v1` is young and still changing. ToothSpin pins `aiosendspin` to the
-version the stable Music Assistant ships: 9.1.1, in every 2.10 release.
+version the stable Music Assistant ships: 10.2.0, since 2.10.7.
 
-- **Older Music Assistant:** Sendspin inputs arrived in 2.10.0, but raw PCM
-  input (ToothSpin's default) and token pairing only work since 2.10.2.
-  ToothSpin reads Music Assistant's version (from its API, or without a
-  token from `/info` or its mDNS announcement) and asks for an update below
-  2.10.2.
-- **Music Assistant 2.11** (beta as of October 2026) moves to aiosendspin
-  10, which follows the Sendspin 1.0 spec. A 10.x *client* can't talk to a
-  9.1.1 server, so ToothSpin can't move ahead of the stable Music Assistant.
-  The other way round works: a 10.x server accepts 9.1.1 clients as legacy
-  clients (logged as non-compliant), and Music Assistant 2.11 allows them by
-  default. Tested with 2.10.0, 2.10.5, 2.10.6 and 2.11.0b5: pairing via the
-  API and streaming work.
-- Once Music Assistant drops legacy clients, or 2.10 is gone, ToothSpin
-  moves to aiosendspin 10 and its minimum version follows.
+- **Older Music Assistant:** up to 2.10.6 it ships aiosendspin 9.1.1, and
+  an aiosendspin 10 client can't talk to a 9.1.1 server. ToothSpin reads
+  Music Assistant's version (from its API, or without a token from `/info`
+  or its mDNS announcement) and asks for an update below 2.10.7. ToothSpin
+  0.4.0 is the last release for 2.10.2 to 2.10.6.
+- **Music Assistant 2.11** (beta as of October 2026) ships aiosendspin
+  10.2.0 too, so the same build covers it.

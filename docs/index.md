@@ -18,7 +18,7 @@ I built it because my household's review of our multi-room setup was
 Under the hood it's a Bluetooth A2DP sink that streams to Music Assistant as
 a [Sendspin](https://github.com/Sendspin/spec) source. You don't need a Music
 Assistant fork or a custom provider: it uses the `sendspin_source` provider
-that ships with Music Assistant 2.10.6.
+that ships with Music Assistant 2.10.7.
 
 ## What works
 
@@ -54,7 +54,7 @@ that ships with Music Assistant 2.10.6.
 
 ## What you need
 
-- Music Assistant 2.10.6 or newer.
+- Music Assistant 2.10.7 or newer.
 - A Bluetooth adapter, ideally a USB dongle just for ToothSpin.
 - Home Assistant (ToothSpin installs as an App), or a Linux host with
   `bluetoothd` and Docker or Podman.

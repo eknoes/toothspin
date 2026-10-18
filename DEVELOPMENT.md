@@ -73,8 +73,8 @@ replaces the test build.
 
 - **aiosendspin follows Music Assistant.** `source@v1` is young and still
   changing. Keep `aiosendspin` pinned to the version the supported Music
-  Assistant ships (`aiosendspin[server]==` in its `pyproject.toml`; 9.1.1
-  for 2.10.6): 10.x renamed the `client_stream/*` messages, so a newer
+  Assistant ships (`aiosendspin[server]==` in its `requirements_all.txt`;
+  10.2.0 for 2.10.7): a 10.x client can't talk to a 9.x server, so a newer
   client breaks against an older server. Bump both together.
 - **One self-contained image** for Docker, Podman and the Home Assistant
   App. Nothing on the host beyond `bluetoothd`.

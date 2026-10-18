@@ -9,7 +9,7 @@ lede: Three ways to run it. If you use Home Assistant, take the App.
 - [Docker or Podman](#container)
 - [Fedora CoreOS machine](#coreos)
 
-**You need** Music Assistant **2.10.6 or newer** and a Bluetooth adapter,
+**You need** Music Assistant **2.10.7 or newer** and a Bluetooth adapter,
 ideally a USB dongle just for ToothSpin: phones stay connected more
 reliably than on a shared adapter. No Music Assistant? There's a
 [standalone mode](#standalone) for Sendspin speakers.
