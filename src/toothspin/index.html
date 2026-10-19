@@ -137,6 +137,7 @@
   .setup-head .ttl { font-weight: 600; flex: 1; }
   .setup-head .count { font-size: 13px; color: var(--muted); }
   .setup-head .chev { transition: transform .15s; color: var(--muted); }
+  .setup-head .close { display: flex; background: none; border: 0; cursor: pointer; padding: 2px; margin: -2px; border-radius: 6px; color: var(--muted); }
   .setup.open .setup-head .chev { transform: rotate(180deg); }
   .todo { display: grid; grid-template-columns: 10px 1fr; gap: 4px 10px; margin-top: 10px; }
   .setup.open .todo { row-gap: 14px; }
@@ -432,10 +433,14 @@ function haLink(label, page) {
     target="_blank" rel="noopener">${label}</a>`;
 }
 
-// The little Markdown our setup texts use: **bold**, *italics*, `code` and
-// links into Home Assistant.
+const DOCS = "https://eknoes.github.io/toothspin";
+
+// The little Markdown our setup texts use: **bold**, *italics*, `code`,
+// links into Home Assistant and to FAQ entries, [label](faq:entry).
 const md = (s) => esc(s)
   .replace(/\[([^\]]+)\]\(ha:([a-z-]+)\)/g, (_, label, page) => haLink(label, page))
+  .replace(/\[([^\]]+)\]\(faq:([a-z-]+)\)/g,
+    (_, label, entry) => `<a href="${DOCS}/faq.html#${entry}" target="_blank" rel="noopener">${label}</a>`)
   .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>")
   .replace(/`([^`]+)`/g, "<code>$1</code>");
 const steps = (list) => list && list.length ? `<ol>${list.map((s) => `<li>${md(s)}</li>`).join("")}</ol>` : "";
@@ -462,7 +467,11 @@ const SETUP_ACTIONS = {
 let confirmAction = null;
 let setupOpen = false;
 try { setupOpen = localStorage.getItem("setupOpen") === "1"; } catch (e) {}
+// Optional steps closed on this device; they stay closed.
+let dismissed = [];
+try { dismissed = JSON.parse(localStorage.getItem("setupDismissed")) || []; } catch (e) {}
 
+const ICON_CLOSE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
 const ICON_CHEVRON = `<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
 // Replaces an element's content only if it changed; true if it did.
@@ -487,16 +496,19 @@ function renderSetup() {
     el.hidden = false;
     return;
   }
-  const todo = (su && su.todo) || [];
+  const todo = ((su && su.todo) || []).filter((t) => !dismissed.includes(t.id));
   el.hidden = !todo.length;
   if (!todo.length) { setHtml(el, ""); return; }
-  el.className = `setup ${setupOpen ? "open" : ""}`;
+  // Only optional steps left: shown open, and closing it is for good.
+  const closable = todo.every((t) => t.dismissible);
+  const open = setupOpen || closable;
+  el.className = `setup ${open ? "open" : ""}`;
   const left = todo.filter((t) => t.kind === "todo").length;
   const items = todo.map((t, i) => {
     const action = t.action && SETUP_ACTIONS[t.action];
     const asking = action && confirmAction === t.action;
     return `<span class="mark ${t.kind}"></span>
-      <div class="body"><b>${esc(t.title)}</b>${setupOpen ? `
+      <div class="body"><b>${esc(t.title)}</b>${open ? `
         ${t.text ? `<div class="text">${md(t.text)}</div>` : ""}${steps(t.steps)}
         ${action ? `<div class="act">
           ${asking ? `<span class="note">${esc(action.note)}</span>
@@ -506,12 +518,25 @@ function renderSetup() {
         </div>` : ""}` : ""}
       </div>`;
   }).join("");
-  const changed = setHtml(el, `<button class="setup-head" aria-expanded="${setupOpen}" id="setup-toggle">
+  const head = closable
+    ? `<div class="setup-head"><span class="ttl">Finish setup</span><span class="count">optional</span>
+        <button class="close" id="setup-close" title="Close" aria-label="Close">${ICON_CLOSE}</button></div>`
+    : `<button class="setup-head" aria-expanded="${setupOpen}" id="setup-toggle">
       <span class="ttl">Finish setup</span>
-      <span class="count">${left ? `${left} to do` : "almost done"}</span>${ICON_CHEVRON}</button>
+      <span class="count">${left ? `${left} to do` : "almost done"}</span>${ICON_CHEVRON}</button>`;
+  const changed = setHtml(el, `${head}
     <div class="todo">${items}</div>
-    ${setupOpen ? `<div class="setup-foot">This goes away once everything is done. ToothSpin works meanwhile.</div>` : ""}`);
+    ${open && !closable ? `<div class="setup-foot">This goes away once everything is done. ToothSpin works meanwhile.</div>` : ""}`);
   if (!changed) return;
+  if (closable) {
+    el.onclick = null;
+    $("setup-close").onclick = () => {
+      dismissed = [...dismissed, ...todo.map((t) => t.id)];
+      try { localStorage.setItem("setupDismissed", JSON.stringify(dismissed)); } catch (e) {}
+      renderSetup();
+    };
+    return;
+  }
   const toggle = () => {
     setupOpen = !setupOpen;
     try { localStorage.setItem("setupOpen", setupOpen ? "1" : "0"); } catch (e) {}

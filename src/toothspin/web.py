@@ -487,6 +487,16 @@ def _setup_state(
             "in the phone's Bluetooth settings.",
             "steps": [],
         })
+    elif bluetooth is not None:
+        # Optional: the web UI lets the user close it for good.
+        todo.append({
+            "kind": "hint",
+            "id": "home-screen",
+            "dismissible": True,
+            "title": "Put ToothSpin on your phone's home screen",
+            "text": "Open it with one tap, like an app: [here's how](faq:home-screen).",
+            "steps": [],
+        })
     return {
         "problem": _problem(status.problem),
         "todo": todo,

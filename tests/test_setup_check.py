@@ -230,3 +230,19 @@ def test_standalone_setup_talks_about_its_own_server() -> None:
     assert not any("Music Assistant" in t["title"] for t in todo)
     playing = SimpleNamespace(connected=True, players=[{"player_id": "kitchen"}])
     assert _setup_state(status, playing, None, "standalone")["todo"] == []
+
+
+def test_home_screen_tip_once_a_phone_is_paired() -> None:
+    from types import SimpleNamespace
+
+    from toothspin.web import _setup_state
+
+    status = setup_check.Status(app=True, ma_token=True)
+    playing = SimpleNamespace(connected=True, players=[{"player_id": "kitchen"}])
+    unpaired = SimpleNamespace(alias="ToothSpin", devices=lambda: [])
+    todo = _setup_state(status, playing, unpaired, "standalone")["todo"]
+    assert [t["title"] for t in todo] == ["Pair your first phone"]
+    paired = SimpleNamespace(alias="ToothSpin", devices=lambda: ["phone"])
+    [tip] = _setup_state(status, playing, paired, "standalone")["todo"]
+    assert tip["dismissible"] and tip["id"] == "home-screen"
+    assert "(faq:home-screen)" in tip["text"]
