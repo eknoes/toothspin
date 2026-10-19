@@ -434,6 +434,7 @@ function haLink(label, page) {
 }
 
 const DOCS = "https://eknoes.github.io/toothspin";
+const ISSUES = "https://github.com/eknoes/toothspin/issues/new";
 
 // The little Markdown our setup texts use: **bold**, *italics*, `code`,
 // links into Home Assistant and to FAQ entries, [label](faq:entry).
@@ -565,7 +566,9 @@ function renderAbout() {
   const about = state.about;
   if (!about) return;
   const build = `v${esc(about.version)}${about.commit ? ` (${esc(about.commit)})` : ""}`;
-  setHtml($("about"), `<a href="https://github.com/eknoes/toothspin" target="_blank" rel="noopener">ToothSpin</a> ${build}`);
+  setHtml($("about"), `<a href="https://github.com/eknoes/toothspin" target="_blank" rel="noopener">ToothSpin</a> ${build}
+    · <a href="${DOCS}/faq.html" target="_blank" rel="noopener">Help</a>
+    · <a href="${ISSUES}" target="_blank" rel="noopener">Report an issue or request a feature</a>`);
 }
 
 // Which ToothSpin this is: they look alike, but play to different places.
