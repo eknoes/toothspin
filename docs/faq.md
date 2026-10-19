@@ -5,6 +5,36 @@ description: Common questions about ToothSpin, Bluetooth adapters and Music Assi
 lede: Common questions and what to do when something doesn't work.
 ---
 
+**Setup**
+
+- [Do I need a second Bluetooth dongle?](#second-dongle)
+- [How do I keep Home Assistant off ToothSpin's dongle?](#ignore-dongle)
+- [Which adapter is hci0, which is hci1?](#which-adapter)
+- [Do I need the Music Assistant token?](#token)
+- [Which Music Assistant versions work?](#ma-versions)
+- [Does it work without Music Assistant?](#without-music-assistant)
+- [Where is ToothSpin in Home Assistant?](#sidebar)
+
+**Using it**
+
+- [How do I put ToothSpin on my phone's home screen?](#home-screen)
+- [My phone doesn't find ToothSpin](#not-found)
+- [The phone shows ToothSpin as a computer](#computer)
+- [It's connected, but nothing plays](#no-sound)
+- [Why doesn't Music Assistant show the song title?](#metadata)
+- [Why no aptX, LDAC or other higher-quality codecs?](#codecs)
+- [Why are the speakers off after a long pause?](#long-pause)
+- [Can several phones play at once?](#several-phones)
+- [How do I stop a speaker from getting too loud?](#max-volume)
+- [Can I take phone calls through it?](#calls)
+
+**Trouble**
+
+- [ToothSpin says something is wrong](#setup-problems)
+- [Some speakers won't group, or won't leave a group](#grouping)
+- [Why does ToothSpin decide about pairing on my other adapters?](#other-adapters)
+- [Something else](#other)
+
 ## Setup
 
 ### Do I need a second Bluetooth dongle? {#second-dongle}
@@ -64,6 +94,7 @@ With the Home Assistant Companion app (Android):
    e.g. labelled *ToothSpin*.
 2. Choose the type **Dashboard**, and enter `/app/8558c230_toothspin` as
    *Dashboard view or Dashboard* (it takes any page, not only dashboards).
+   For **ToothSpin Standalone**, enter `/app/8558c230_toothspin_standalone`.
 3. Save it, then long-press the shortcut to pin it to the home screen.
 
 That path is ToothSpin's page in Home Assistant; it's in the address bar
@@ -133,6 +164,11 @@ them on again in ToothSpin.
 
 That's a known limitation: taking the speakers back by itself could cut off
 what someone else started on them meanwhile. It's on our backlog.
+
+In [standalone mode]({{ '/install.html#standalone' | relative_url }}),
+nothing else plays on the speakers, so they stay switched on however long
+the pause: they go quiet while the phone pauses and play again when it
+resumes.
 
 ### Can several phones play at once? {#several-phones}
 
