@@ -28,6 +28,8 @@ class FakeSpeaker:
     volume: int = 50
     muted: bool = False
     audio_bytes: int = 0
+    streams_started: int = 0
+    streams_ended: int = 0
     volumes: list[int] = field(default_factory=list)
     show_metadata: bool = False
     """Like a speaker with a display: takes the metadata role."""
@@ -56,6 +58,8 @@ class FakeSpeaker:
             initial_volume=self.volume,
         )
         self.client.add_audio_chunk_listener(self._on_audio)
+        self.client.add_stream_start_listener(self._on_stream_start)
+        self.client.add_stream_end_listener(self._on_stream_end)
         self.client.add_server_command_listener(self._on_command)
         self.client.add_metadata_listener(self._on_metadata)
         return self.client
@@ -69,6 +73,12 @@ class FakeSpeaker:
         metadata = payload.metadata
         if metadata is not None and not isinstance(metadata.title, UndefinedField):
             self.titles.append(metadata.title)
+
+    def _on_stream_start(self, _message: object) -> None:
+        self.streams_started += 1
+
+    def _on_stream_end(self, _roles: object) -> None:
+        self.streams_ended += 1
 
     def _on_audio(self, _timestamp_us: int, data: bytes, _fmt: object) -> None:
         self.audio_bytes += len(data)

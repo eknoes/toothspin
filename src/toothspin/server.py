@@ -63,6 +63,11 @@ _NO_TIMING_REPORTED = "initial client/state omitted required player timing field
 # Keep the delay from phone to speakers within this of where it started:
 # phone and speakers run on slightly different clocks.
 DRIFT_TOLERANCE_US = 20_000
+# A phone's source sends silence through pauses up to 10 min; an input quiet
+# for longer than this has stopped. Its speakers' stream is then ended, as
+# speakers left on an empty stream for long don't play when audio comes back
+# on it; the phone's next audio starts a new one on the same speakers.
+IDLE_STREAM_S = 5.0
 
 
 @dataclass(eq=False, slots=True)
@@ -93,6 +98,8 @@ class _Feed:
 
     routes: list[_Route] = field(default_factory=list)
     task: asyncio.Task[None] | None = None
+    last_audio: float = 0.0
+    """When the input's audio last arrived (monotonic)."""
 
 
 class ToothSpinServer:
@@ -167,6 +174,7 @@ class ToothSpinServer:
             while True:
                 self._update_metadata()
                 self._track_sessions()
+                self._end_idle_streams()
                 await asyncio.sleep(METADATA_S)
         finally:
             for feed in self._feeds.values():
@@ -363,6 +371,22 @@ class ToothSpinServer:
             else:
                 logger.info("%s played for %.0f min without dropouts", session.name, minutes)
 
+    def _end_idle_streams(self) -> None:
+        now = time.monotonic()
+        for source_id, feed in self._feeds.items():
+            if now - feed.last_audio < IDLE_STREAM_S:
+                continue
+            for route in feed.routes:
+                if route.stream is not None:
+                    source = self._server.get_client(source_id) if self._server else None
+                    names = ", ".join(c.name for c in route.group.clients if _is_player(c))
+                    logger.info(
+                        "%s stopped playing; %s wait until it plays again",
+                        source.name if source else "The phone", names,
+                    )
+                    route.group.stop_stream()
+                    route.stream = None
+
     # --- track info ---
 
     def _update_metadata(self) -> None:
@@ -461,6 +485,7 @@ class ToothSpinServer:
         """Copy an input's audio into the streams of all groups playing it."""
         try:
             async for pcm, timestamp_us in handle:
+                feed.last_audio = time.monotonic()
                 for route in list(feed.routes):
                     await self._push(route, pcm, fmt, timestamp_us)
         finally:

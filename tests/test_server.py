@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 
 from fake_speaker import FakeSpeaker
+from toothspin import server as server_module
+from toothspin import source as source_module
 from toothspin import speakers
 from toothspin.backend import BackendError
 from toothspin.bluez import NowPlaying
@@ -126,6 +128,60 @@ async def _scenario(tmp_path: Path) -> None:
         for speaker in (kitchen, living):
             if speaker.client:
                 await speaker.client.disconnect()
+
+
+@pytest.mark.timeout(60)
+def test_speakers_play_again_after_a_long_pause(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    # Speakers left on an empty stream for long don't play when audio comes
+    # back on it: once the source's silence runs out, their stream ends, and
+    # the phone playing again starts a new one on the same speakers.
+    for name in ("_start_mdns_advertising", "_start_mdns_discovery"):
+        monkeypatch.setattr(
+            f"aiosendspin.server.server.SendspinServer.{name}", lambda *a, **k: asyncio.sleep(0)
+        )
+    monkeypatch.setattr(source_module, "PAUSE_FILL_S", 0.5)
+    monkeypatch.setattr(server_module, "IDLE_STREAM_S", 0.5)
+    asyncio.run(_long_pause(tmp_path))
+
+
+async def _long_pause(tmp_path: Path) -> None:
+    server = ToothSpinServer(tmp_path, "ToothSpin test", port=_free_port())
+    await server.start()
+    source = SendspinSource("Pixel (Bluetooth)", server.url, tmp_path / "phone")
+    await source.setup()
+    await server.pair_local(source)
+    kitchen = FakeSpeaker("Kitchen")
+    tasks = [asyncio.create_task(server.run()), asyncio.create_task(source.run())]
+
+    async def play(seconds: float) -> None:
+        chunk = b"\x10\x00" * CAPTURE_FORMAT.channels * 960  # 20 ms
+        for _ in range(int(seconds / 0.02)):
+            await source.push(chunk, CAPTURE_FORMAT, source.client.now_us())
+            await asyncio.sleep(0.02)
+
+    try:
+        await (await kitchen.build()).connect(server.url)
+        await _until(lambda: source.status().paired and len(server.players) == 1)
+        uri = speakers.source_uri(source.client.identity.peer_id)
+        await speakers.toggle(server, uri, kitchen.client_id, True, start_volume=20)
+        await _until(lambda: source.status().requested)
+        await play(1.0)
+        await _until(lambda: kitchen.audio_bytes > 0)
+        assert kitchen.streams_started == 1
+
+        await _until(lambda: kitchen.streams_ended == 1)
+        # Still chosen: the phone's next audio plays there without asking.
+        assert speakers.speakers(server.players)[0].playing_uri == uri
+        received = kitchen.audio_bytes
+        await play(1.0)
+        await _until(lambda: kitchen.audio_bytes > received)
+        assert kitchen.streams_started == 2
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        if kitchen.client:
+            await kitchen.client.disconnect()
 
 
 def test_drift_correction_drops_or_repeats_one_frame() -> None:
