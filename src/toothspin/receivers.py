@@ -50,6 +50,7 @@ class Receivers:
         prepare_source: Callable[[SendspinSource], Awaitable[None]] | None = None,
         alongside: Callable[[SendspinSource], Coroutine[Any, Any, None]] | None = None,
         pin_pairing: bool = True,
+        fill_silence: bool = True,
         on_forget: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self._bluetooth = bluetooth
@@ -62,6 +63,7 @@ class Receivers:
         # E.g. pairing it with Music Assistant through its API, while it runs.
         self._alongside = alongside
         self._pin_pairing = pin_pairing
+        self._fill_silence = fill_silence
         # Removing a phone's input from the server too, by its client id.
         self._on_forget = on_forget
         self._forgets: set[asyncio.Task[None]] = set()
@@ -170,6 +172,7 @@ class Receivers:
             self._codec,
             self._device_info,
             pin_pairing=self._pin_pairing,
+            fill_silence=self._fill_silence,
         )
         await source.setup()
         if self._prepare_source is not None:

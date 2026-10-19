@@ -12,7 +12,6 @@ import pytest
 
 from fake_speaker import FakeSpeaker
 from toothspin import server as server_module
-from toothspin import source as source_module
 from toothspin import speakers
 from toothspin.backend import BackendError
 from toothspin.bluez import NowPlaying
@@ -132,14 +131,13 @@ async def _scenario(tmp_path: Path) -> None:
 
 @pytest.mark.timeout(60)
 def test_speakers_play_again_after_a_long_pause(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
-    # Speakers left on an empty stream for long don't play when audio comes
-    # back on it: once the source's silence runs out, their stream ends, and
-    # the phone playing again starts a new one on the same speakers.
+    # Speakers left on an empty stream don't play when audio comes back on
+    # it: when the phone pauses their stream ends, and the phone playing
+    # again starts a new one on the same speakers.
     for name in ("_start_mdns_advertising", "_start_mdns_discovery"):
         monkeypatch.setattr(
             f"aiosendspin.server.server.SendspinServer.{name}", lambda *a, **k: asyncio.sleep(0)
         )
-    monkeypatch.setattr(source_module, "PAUSE_FILL_S", 0.5)
     monkeypatch.setattr(server_module, "IDLE_STREAM_S", 0.5)
     asyncio.run(_long_pause(tmp_path))
 
@@ -147,7 +145,9 @@ def test_speakers_play_again_after_a_long_pause(tmp_path: Path, monkeypatch) -> 
 async def _long_pause(tmp_path: Path) -> None:
     server = ToothSpinServer(tmp_path, "ToothSpin test", port=_free_port())
     await server.start()
-    source = SendspinSource("Pixel (Bluetooth)", server.url, tmp_path / "phone")
+    source = SendspinSource(
+        "Pixel (Bluetooth)", server.url, tmp_path / "phone", fill_silence=False
+    )
     await source.setup()
     await server.pair_local(source)
     kitchen = FakeSpeaker("Kitchen")

@@ -63,11 +63,11 @@ _NO_TIMING_REPORTED = "initial client/state omitted required player timing field
 # Keep the delay from phone to speakers within this of where it started:
 # phone and speakers run on slightly different clocks.
 DRIFT_TOLERANCE_US = 20_000
-# A phone's source sends silence through pauses up to 10 min; an input quiet
-# for longer than this has stopped. Its speakers' stream is then ended, as
-# speakers left on an empty stream for long don't play when audio comes back
-# on it; the phone's next audio starts a new one on the same speakers.
-IDLE_STREAM_S = 5.0
+# An input quiet for this long has stopped, e.g. the phone paused. Its
+# speakers' stream is then ended, as speakers left on an empty stream don't
+# play when audio comes back on it; the phone's next audio starts a new one
+# on the same speakers.
+IDLE_STREAM_S = 2.0
 
 
 @dataclass(eq=False, slots=True)

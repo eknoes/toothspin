@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # asked to start, and ends one that sends nothing for 30 s; the speakers turn
 # off. Right after Connect the phone isn't playing yet, and a paused phone
 # stops its Bluetooth stream: send silence meanwhile, for at most this long.
+# ToothSpin's own server waits for the phone instead and needs none.
 COLD_START_FILL_S = 120.0
 PAUSE_FILL_S = 600.0
 # The phone's audio counts as stopped after a gap this long.
@@ -69,8 +70,10 @@ class SendspinSource:
         codec: AudioCodec = AudioCodec.PCM,
         device_info: DeviceInfo | None = None,
         pin_pairing: bool = True,
+        fill_silence: bool = True,
     ) -> None:
         self._name = name
+        self._fill_silence = fill_silence
         self._device_info = device_info
         # Without, servers can only pair through a pre-shared key that ToothSpin
         # hands over itself (its own server, or Music Assistant via its API).
@@ -219,7 +222,7 @@ class SendspinSource:
 
     def _wants_fill(self) -> bool:
         """The server wants audio, but the phone isn't sending any (yet, or paused)."""
-        if not self._start_requested or not self.client.connected:
+        if not self._fill_silence or not self._start_requested or not self.client.connected:
             return False
         now = time.monotonic()
         if not self._audio_since_start:

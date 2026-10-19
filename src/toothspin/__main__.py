@@ -447,7 +447,7 @@ async def _run(args: argparse.Namespace) -> None:
         receivers = Receivers(
             bluetooth, args.data_dir, server.url, AudioCodec(args.codec), args.name,
             args.manufacturer, prepare_source=server.pair_local, pin_pairing=False,
-            on_forget=server.forget,
+            fill_silence=False, on_forget=server.forget,
         )
     else:
         # Without MA_URL the API is found via mDNS, so in HA only the token is needed.

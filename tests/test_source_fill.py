@@ -25,6 +25,12 @@ def test_fills_until_the_phone_plays_and_while_it_pauses(tmp_path, monkeypatch) 
     assert not src._wants_fill()  # noqa: SLF001 - paused too long: let them go
 
 
+def test_no_fill_for_toothspins_own_server(tmp_path) -> None:  # noqa: ANN001
+    src = _source(tmp_path)
+    src._fill_silence = False  # noqa: SLF001
+    assert not src._wants_fill()  # noqa: SLF001
+
+
 def test_no_fill_without_a_stream_request(tmp_path) -> None:
     src = _source(tmp_path)
     src._start_requested = False  # noqa: SLF001
