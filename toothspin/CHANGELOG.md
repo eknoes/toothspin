@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 (2026-10-20)
+
+### Features
+
+- **web:** Suggest putting ToothSpin on the home screen once a phone is paired
+- **web:** Link help and issue reports at the bottom
+
+### Fixes
+
+- **server:** Play on the chosen speakers again after a long pause
+- **server:** No silence for ToothSpin's own server
+
+### Documentation
+
+- **faq:** List all questions on top; home screen and long pause for standalone
+
 ## 0.3.0 (2026-10-18)
 
 ### Features
