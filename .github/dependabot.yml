@@ -10,6 +10,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      # init and analyze must run the same version: one PR for both.
+      codeql:
+        patterns: ["github/codeql-action/*"]
   - package-ecosystem: pip
     directory: /
     schedule:
