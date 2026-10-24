@@ -237,14 +237,14 @@ def test_start_gives_up_when_the_port_is_taken(tmp_path: Path, monkeypatch) -> N
 def test_speaker_buffer_only_for_speakers_that_dont_report_one(tmp_path: Path) -> None:
     from types import SimpleNamespace
 
-    from toothspin import server as server_module
-
     def speaker(reported: bool) -> SimpleNamespace:
         role = SimpleNamespace(min_buffer_ms=1000 if not reported else 250)
         return SimpleNamespace(
             name="Speaker",
             roles_by_family=lambda family: [role] if family == "player" else [],
-            _noncompliance_logged=set() if reported else {server_module._NO_TIMING_REPORTED},  # noqa: SLF001
+            # As aiosendspin 10.2 words it.
+            _noncompliance_logged=set() if reported
+            else {"client/state omitted required player timing fields"},
             role=role,
         )
 
@@ -268,16 +268,17 @@ def test_legacy_warnings_only_show_at_debug(caplog) -> None:  # noqa: ANN001
     quiet = _SendspinLogs()
     library = logging.getLogger("aiosendspin.server.client.b8:27:eb:8e:b8:29")
 
-    def passes(msg: str, root_level: int) -> bool:
+    def passes(msg: str, root_level: int, args: tuple = ()) -> bool:
         logging.getLogger().setLevel(root_level)
-        record = library.makeRecord(library.name, logging.WARNING, "f", 1, msg, (), None)
+        record = library.makeRecord(library.name, logging.WARNING, "f", 1, msg, args, None)
         return quiet.filter(record)
+
+    kitchen = ("non-compliant client Kitchen (ESPHome louder, software 2026.9.1)",)
 
     old = logging.getLogger().level
     try:
-        assert not passes("non-compliant client: client/state used the legacy top-level 'state' field", logging.INFO)
-        assert not passes("Accepting unencrypted legacy connection (transition mode)", logging.INFO)
-        assert passes("non-compliant client: whatever", logging.DEBUG)
+        assert not passes("%s: %s", logging.INFO, (*kitchen, "client/state omitted required supported_commands"))
+        assert passes("%s: %s", logging.DEBUG, (*kitchen, "whatever"))
         assert passes("WebSocket closed, close_code=None", logging.INFO)  # anything else stays
     finally:
         logging.getLogger().setLevel(old)

@@ -57,9 +57,10 @@ START_RETRY_S = 2.0
 START_RETRY_MAX_S = 60.0
 # How often to look for new track info from the phones.
 METADATA_S = 1.0
-# How aiosendspin 9.1.1 notes a speaker that doesn't report its timing
-# (min_buffer_ms and others): it then assumes a buffer of 1000 ms.
-_NO_TIMING_REPORTED = "initial client/state omitted required player timing fields"
+# How aiosendspin notes a speaker that doesn't report its timing
+# (min_buffer_ms and others), at the end of a reason like "client/state
+# omitted ...": it then assumes a buffer of 1000 ms.
+_NO_TIMING_REPORTED = "omitted required player timing fields"
 # Keep the delay from phone to speakers within this of where it started:
 # phone and speakers run on slightly different clocks.
 DRIFT_TOLERANCE_US = 20_000
@@ -309,7 +310,7 @@ class ToothSpinServer:
         buffer = (
             "assuming a 1000 ms buffer" if self._speaker_buffer_ms is None
             else f"using a {self._speaker_buffer_ms} ms buffer"
-        ) if _NO_TIMING_REPORTED in client._noncompliance_logged else "its own buffer"  # noqa: SLF001
+        ) if _reports_no_timing(client) else "its own buffer"
         return f" (older Sendspin version: unencrypted, {buffer})"
 
     def _apply_speaker_buffer(self, client: SendspinClient) -> None:
@@ -321,7 +322,7 @@ class ToothSpinServer:
         if self._speaker_buffer_ms is None:
             return
         role = _role(client, "player")
-        if role is None or _NO_TIMING_REPORTED not in client._noncompliance_logged:  # noqa: SLF001
+        if role is None or not _reports_no_timing(client):
             return
         if role.min_buffer_ms != self._speaker_buffer_ms:  # type: ignore[attr-defined]
             role.min_buffer_ms = self._speaker_buffer_ms  # type: ignore[attr-defined]
@@ -563,6 +564,13 @@ def correct_drift(pcm: bytes, frame: int, target_us: int, delay_us: int) -> byte
     return pcm
 
 
+def _reports_no_timing(client: SendspinClient) -> bool:
+    return any(
+        reason.endswith(_NO_TIMING_REPORTED)
+        for reason in client._noncompliance_logged  # noqa: SLF001
+    )
+
+
 def _is_player(client: SendspinClient) -> bool:
     return has_role_family("player", client.negotiated_role_ids)
 
@@ -573,8 +581,9 @@ def _role(client: SendspinClient, family: str) -> object | None:
 
 
 # aiosendspin warns about every speaker on an older Sendspin version, several
-# lines each, on every start; ToothSpin says it in one line instead.
-_LEGACY_WARNINGS = ("non-compliant client:", "Accepting unencrypted legacy connection")
+# lines each ("non-compliant client Kitchen (...): ..."), on every start;
+# ToothSpin says it in one line instead.
+_LEGACY_WARNING = "non-compliant client"
 # aiosendspin's warning (at most every 30 s per speaker) that it dropped audio
 # it couldn't send to a speaker in time; its arguments are (type, role,
 # chunks, ...). ToothSpin counts them per speaker instead.
@@ -598,7 +607,7 @@ class _SendspinLogs(logging.Filter):
             if self._on_late is not None:
                 # The connection's logger is named after the speaker's client id.
                 self._on_late(record.name.rsplit(".", 1)[-1], int(record.args[2]))
-        elif not msg.startswith(_LEGACY_WARNINGS):
+        elif not record.getMessage().startswith(_LEGACY_WARNING):
             return True
         record.levelno, record.levelname = logging.DEBUG, "DEBUG"
         return logging.getLogger().isEnabledFor(logging.DEBUG)
