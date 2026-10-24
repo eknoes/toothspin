@@ -10,10 +10,11 @@ license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
-    # Pinned to what Music Assistant 2.10.7 ships (aiosendspin[server]==10.2.0):
-    # a 10.x client can't talk to the 9.1.1 server of MA 2.10.6 and older.
+    # Pinned to what Music Assistant 2.10.8 ships (aiosendspin[server]==10.2.1;
+    # 2.10.7 has 10.2.0): a 10.x client can't talk to the 9.1.1 server of MA
+    # 2.10.6 and older.
     # The default PCM codec needs no extras; FLAC/Opus need the "codecs" extra.
-    "aiosendspin==10.2.0",
+    "aiosendspin==10.2.1",
     "dbus-fast==5.2.0",
 ]
 
@@ -24,11 +25,11 @@ Issues = "https://github.com/eknoes/toothspin/issues"
 Changelog = "https://github.com/eknoes/toothspin/releases"
 
 [project.optional-dependencies]
-codecs = ["aiosendspin[source]==10.2.0"]
+codecs = ["aiosendspin[source]==10.2.1"]
 # Standalone mode, ToothSpin's own Sendspin server (PyAV, numpy, Pillow: big).
-server = ["aiosendspin[server]==10.2.0"]
+server = ["aiosendspin[server]==10.2.1"]
 test = [
-  "pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==10.2.0", "numpy>=1.26", "ruff==0.17.1",
+  "pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==10.2.1", "numpy>=1.26", "ruff==0.17.1",
 ]
 
 [project.scripts]

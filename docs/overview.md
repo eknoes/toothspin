@@ -179,7 +179,8 @@ library Music Assistant uses too:
 ## Versions
 
 `source@v1` is young and still changing. ToothSpin pins `aiosendspin` to the
-version the stable Music Assistant ships: 10.2.0, since 2.10.7.
+version the stable Music Assistant ships: 10.2.1, as in 2.10.8 (2.10.7 has
+10.2.0, which works the same).
 
 - **Older Music Assistant:** up to 2.10.6 it ships aiosendspin 9.1.1, and
   an aiosendspin 10 client can't talk to a 9.1.1 server. ToothSpin reads
@@ -187,4 +188,4 @@ version the stable Music Assistant ships: 10.2.0, since 2.10.7.
   or its mDNS announcement) and asks for an update below 2.10.7. ToothSpin
   0.4.0 is the last release for 2.10.2 to 2.10.6.
 - **Music Assistant 2.11** (beta as of October 2026) ships aiosendspin
-  10.2.0 too, so the same build covers it.
+  10.2.1 too, so the same build covers it.
