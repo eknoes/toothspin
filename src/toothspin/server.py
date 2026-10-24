@@ -50,9 +50,9 @@ SOURCE_PREFIX = "sendspin_source://audio_source/"
 # Speakers connected to another server (e.g. Music Assistant) only switch over
 # when asked to play; wait this long for them.
 CLAIM_TIMEOUT_S = 10.0
-# Right after boot, mDNS can fail until the network is up, and aiosendspin
-# 9.1.1 then shuts the whole server down: start again after this long,
-# doubling up to the maximum.
+# Right after boot, mDNS can fail until the network is up; aiosendspin then
+# serves on without it, so speakers never find the server: start again after
+# this long, doubling up to the maximum.
 START_RETRY_S = 2.0
 START_RETRY_MAX_S = 60.0
 # How often to look for new track info from the phones.
@@ -159,6 +159,9 @@ class ToothSpinServer:
         while True:
             try:
                 await self._server.start_server(port=self._port)
+                if self._server._zc is None:  # noqa: SLF001
+                    await self._server.stop_server()
+                    raise OSError(errno.ENETDOWN, "mDNS unavailable")
                 break
             except OSError as err:
                 if err.errno == errno.EADDRINUSE:

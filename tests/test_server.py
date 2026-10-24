@@ -200,13 +200,20 @@ def test_start_retries_while_the_network_is_down(tmp_path: Path, monkeypatch) ->
     from toothspin.server import ToothSpinServer
 
     attempts: list[int] = []
+    stopped: list[int] = []
 
     async def start_server(self, **kwargs) -> None:  # noqa: ANN001, ANN003
         attempts.append(1)
-        if len(attempts) < 3:
+        if len(attempts) == 1:
             raise OSError(errno.ENODEV, "No such device")
+        # Then it serves, but without mDNS, until the third attempt.
+        self._zc = object() if len(attempts) == 3 else None
+
+    async def stop_server(self) -> None:  # noqa: ANN001
+        stopped.append(1)
 
     monkeypatch.setattr(SendspinServer, "start_server", start_server)
+    monkeypatch.setattr(SendspinServer, "stop_server", stop_server)
     monkeypatch.setattr(server_module, "START_RETRY_S", 0.01)
 
     async def scenario() -> None:
@@ -214,6 +221,7 @@ def test_start_retries_while_the_network_is_down(tmp_path: Path, monkeypatch) ->
         await server.start()
         assert server.connected
         assert len(attempts) == 3
+        assert len(stopped) == 1
 
     asyncio.run(scenario())
 
