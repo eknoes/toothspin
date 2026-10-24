@@ -185,7 +185,9 @@ version the stable Music Assistant ships: 10.2.1, as in 2.10.8 (2.10.7 has
 - **Older Music Assistant:** up to 2.10.6 it ships aiosendspin 9.1.1, and
   an aiosendspin 10 client can't talk to a 9.1.1 server. ToothSpin reads
   Music Assistant's version (from its API, or without a token from `/info`
-  or its mDNS announcement) and asks for an update below 2.10.7. ToothSpin
-  0.4.0 is the last release for 2.10.2 to 2.10.6.
+  or its mDNS announcement) and asks for an update below 2.10.7. If the
+  version is unknown or newer, but the two still speak different versions
+  of Sendspin, the web UI asks to update Music Assistant or ToothSpin.
+  ToothSpin 0.4.0 is the last release for 2.10.2 to 2.10.6.
 - **Music Assistant 2.11** (beta as of October 2026) ships aiosendspin
   10.2.1 too, so the same build covers it.

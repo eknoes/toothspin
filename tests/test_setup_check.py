@@ -246,3 +246,17 @@ def test_home_screen_tip_once_a_phone_is_paired() -> None:
     [tip] = _setup_state(status, playing, paired, "standalone")["todo"]
     assert tip["dismissible"] and tip["id"] == "home-screen"
     assert "(faq:home-screen)" in tip["text"]
+
+
+def test_another_sendspin_version_asks_for_an_update() -> None:
+    from toothspin.web import _setup_state
+
+    def titles(version: str | None, mode: str = "music-assistant") -> list[str]:
+        status = setup_check.Status(app=True, ma_token=False, ma_version=version)
+        return [t["title"] for t in _setup_state(status, None, None, mode, incompatible=True)["todo"]]
+
+    assert titles(None)[0] == "Update Music Assistant or ToothSpin"
+    assert titles("2.12.0")[0] == "Update ToothSpin"
+    # Too old says so already.
+    assert [t for t in titles("2.10.6") if t.startswith("Update")] == ["Update Music Assistant"]
+    assert not [t for t in titles(None, "standalone") if t.startswith("Update")]

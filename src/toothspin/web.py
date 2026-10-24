@@ -63,6 +63,13 @@ def create_app(
         )
         return state
 
+    def incompatible() -> bool:
+        return any(
+            (receiver := receivers.get(d.address)) is not None
+            and receiver.source.status().incompatible
+            for d in bluetooth.devices()
+        )
+
     async def get_state(_: web.Request) -> web.Response:
         remaining = bluetooth.pairing_remaining
         return web.json_response(
@@ -70,7 +77,8 @@ def create_app(
                 "about": build_info(),
                 "mode": mode,
                 "auto_pairing": auto_pairing,
-                "setup": _setup_state(status, backend, bluetooth, mode) if status else None,
+                "setup": _setup_state(status, backend, bluetooth, mode, incompatible())
+                if status else None,
                 "bluetooth": {
                     "name": bluetooth.alias,
                     "address": bluetooth.address,
@@ -395,6 +403,7 @@ def _setup_state(
     backend: PlayerBackend | None,
     bluetooth: BluetoothManager | None,
     mode: str = "music-assistant",
+    incompatible: bool = False,
 ) -> dict[str, Any]:
     """A blocking problem, or what's left to finish setup.
 
@@ -416,6 +425,32 @@ def _setup_state(
                 "In Home Assistant: **Settings → Apps → Music Assistant → Update**.",
             ],
         })
+    elif mode == "music-assistant" and incompatible:
+        # The handshake failed over the protocol version: whichever is older.
+        update_toothspin = (
+            "In Home Assistant: **Settings → Apps → ToothSpin → Update**."
+            if status.app else "Pull ToothSpin's latest image and restart ToothSpin."
+        )
+        if ma.parse_version(version) is not None:
+            todo.append({
+                "kind": "todo",
+                "title": "Update ToothSpin",
+                "text": f"Music Assistant {version} speaks a newer version of Sendspin "
+                "than this ToothSpin, so phones can't reach it.",
+                "steps": [update_toothspin],
+            })
+        else:
+            todo.append({
+                "kind": "todo",
+                "title": "Update Music Assistant or ToothSpin",
+                "text": "ToothSpin and Music Assistant speak different versions of "
+                "Sendspin, so phones can't reach Music Assistant. ToothSpin needs Music "
+                f"Assistant {'.'.join(map(str, ma.MIN_VERSION))} or newer.",
+                "steps": [
+                    "In Home Assistant: **Settings → Apps → Music Assistant → Update**.",
+                    f"If Music Assistant is up to date, update ToothSpin: {update_toothspin}",
+                ],
+            })
     if status.warning is not None:
         todo.append(_problem(status.warning) | {"kind": "todo"})
     if not status.ma_token:

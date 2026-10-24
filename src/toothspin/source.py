@@ -18,7 +18,14 @@ from aiosendspin.models.core import DeviceInfo
 from aiosendspin.models.player import SupportedAudioFormat
 from aiosendspin.models.source import ClientHelloSourceFeatures, ClientHelloSourceSupport
 from aiosendspin.models.types import AudioCodec, GoodbyeReason, Roles, SignalState
-from aiosendspin.noise import FileClientPairingStore, Identity, b64url_decode, b64url_encode
+from aiosendspin.noise import (
+    FileClientPairingStore,
+    HandshakeAbortedError,
+    Identity,
+    InitRejectedError,
+    b64url_decode,
+    b64url_encode,
+)
 from aiosendspin.noise.trust_store import PairingPsk
 
 from .pipewire import CAPTURE_FORMAT, PcmFormat
@@ -59,6 +66,8 @@ class SourceStatus:
     pairing_window_open: bool
     pairing_requested: bool
     pin: str | None
+    incompatible: bool = False
+    """The server speaks another version of Sendspin: one of the two needs an update."""
 
 
 class SendspinSource:
@@ -98,6 +107,7 @@ class SendspinSource:
         self._sent_signal: tuple[object, bool] | None = None
         self._pin: str | None = None
         self._pairing_requested = False
+        self._incompatible = False
 
     @property
     def client(self) -> SendspinClient:
@@ -146,6 +156,7 @@ class SendspinSource:
                 else:
                     try:
                         await self.client.connect(url)
+                        self._incompatible = False
                         self._url = self._url or url
                         connected_at = loop.time()
                         disconnected = asyncio.Event()
@@ -167,6 +178,16 @@ class SendspinSource:
                                     "running, e.g. a second copy of the App? Only one may "
                                     "run at a time.", url,
                                 )
+                    except HandshakeAbortedError as err:
+                        if not _incompatible(err):
+                            logger.warning("Connecting to %s failed: %s", url, err)
+                        elif not self._incompatible:
+                            logger.error(
+                                "The Sendspin server at %s speaks another version of "
+                                "Sendspin (%s): Music Assistant or ToothSpin needs an "
+                                "update.", url, err,
+                            )
+                        self._incompatible = _incompatible(err)
                     except (TimeoutError, OSError, ClientError, RuntimeError) as err:
                         logger.warning("Connecting to %s failed: %s", url, err)
                     await self._reset()
@@ -384,7 +405,14 @@ class SendspinSource:
             pairing_window_open=client.pairing_window_open,
             pairing_requested=self._pairing_requested,
             pin=self._pin,
+            incompatible=self._incompatible,
         )
+
+
+def _incompatible(err: HandshakeAbortedError) -> bool:
+    """Whether the handshake failed because the server speaks another version of
+    Sendspin, rather than e.g. over a wrong key or a timeout."""
+    return isinstance(err, InitRejectedError) or str(err).startswith(("malformed", "unsupported"))
 
 
 def _load_identity(path: Path) -> Identity:
