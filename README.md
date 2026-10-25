@@ -44,6 +44,9 @@ The phone's volume buttons then control those speakers.
 It currently supports:
 * Several phones on one dongle, each with its own input in Music Assistant
 * Picking speakers and groups per phone, with the phone's volume buttons
+* Title, artist and cover of what the phone plays, in the web UI
+* ToothSpin Standalone: the same without Music Assistant, on Sendspin
+  speakers, with title and cover on speakers with a display
 * Pairing only while you open the pairing window (or with a PIN)
 * Running as a Home Assistant App, in Docker/Podman or on Fedora CoreOS
 
@@ -237,7 +240,16 @@ variant fits: [ToothSpin or ToothSpin Standalone?](#toothspin-or-toothspin-stand
 
 To use it, install the Home Assistant App **ToothSpin Standalone** from the
 same repository, or use the image `ghcr.io/eknoes/toothspin-standalone`
-(about 200 MB larger; it starts in standalone mode). Its extra variables:
+(about 200 MB larger; it starts in standalone mode).
+
+**Speaker groups:** speakers that always play together, e.g. a left and a
+right one, can be one speaker: under **Speaker groups** (top right in the
+web UI), group and name them. The phones' cards then show just the group.
+
+**Track info:** speakers with a display show title, artist, album, cover and
+position, as far as the phone reports them.
+
+Its extra variables:
 
 | Variable | Default | |
 |---|---|---|
@@ -262,7 +274,7 @@ What ToothSpin runs on every day at my home:
 ## More
 
 - [Technical overview](https://eknoes.github.io/toothspin/overview.html):
-  how audio gets from the phone into Music Assistant.
+  how audio gets from the phone to the speakers.
 - [DEVELOPMENT.md](DEVELOPMENT.md): running the tests, releasing.
 - [SECURITY.md](SECURITY.md): reporting vulnerabilities.
 

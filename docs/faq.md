@@ -25,6 +25,7 @@ lede: Common questions and what to do when something doesn't work.
 - [Why no aptX, LDAC or other higher-quality codecs?](#codecs)
 - [Why are the speakers off after a long pause?](#long-pause)
 - [Can several phones play at once?](#several-phones)
+- [Can two speakers play as one, e.g. a stereo pair?](#stereo-pair)
 - [How do I stop a speaker from getting too loud?](#max-volume)
 - [Can I take phone calls through it?](#calls)
 
@@ -135,6 +136,8 @@ shows title, artist and cover on the phone's card, as far as the phone
 reports them. Support in Sendspin is being discussed
 ([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)).
 
+Covers only come from phones that offer them over Bluetooth (Android does).
+
 In [standalone mode]({{ '/install.html#standalone' | relative_url }}),
 ToothSpin is the Sendspin server itself and sends title, artist, album,
 cover and the track's position to speakers with a display.
@@ -173,12 +176,23 @@ resumes.
 
 Yes. Each phone is its own input and plays on its own speakers.
 
+### Can two speakers play as one, e.g. a stereo pair? {#stereo-pair}
+
+With Music Assistant: make them a sync group there; ToothSpin then offers
+the group like a speaker. In
+[standalone mode]({{ '/install.html#standalone' | relative_url }}): under
+**Speaker groups** (top right in ToothSpin), group and name them. The
+phones' cards then show just the group.
+
 ### How do I stop a speaker from getting too loud? {#max-volume}
 
 Set its **Maximum volume** in Music Assistant's player settings.
 ToothSpin's **Maximum start volume** also turns a loud speaker down when a
 phone starts on it. Speakers showing **Fixed volume** are set on the
 speaker or its amplifier.
+
+In standalone mode there's no Music Assistant to cap it: use **Maximum
+start volume**, or limit it on the speaker or its amplifier.
 
 ### Can I take phone calls through it? {#calls}
 

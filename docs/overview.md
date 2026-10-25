@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Technical overview
-description: How ToothSpin gets audio from a phone over Bluetooth into Music Assistant.
-lede: How audio gets from a phone into Music Assistant.
+description: How ToothSpin gets audio from a phone over Bluetooth to Music Assistant or straight to the speakers.
+lede: How audio gets from a phone to the speakers.
 alpha: Details below may change between releases.
 ---
 
@@ -14,6 +14,7 @@ Phone (A2DP source)
   ─D-Bus─>     PipeWire bluez5, A2DP sink (container)
   ─pw-record, 48 kHz s16─> capture ─> aiosendspin SourceCapture
   ─Sendspin source@v1 over WebSocket─> Music Assistant sendspin_source
+                                  (or ToothSpin's own server, Standalone)
 ```
 
 Sendspin's [source role](https://github.com/Sendspin/spec/issues/105) lets
@@ -177,6 +178,14 @@ library Music Assistant uses too:
 - It offers the same slice of Music Assistant's player API ToothSpin uses
   (play, stop, group members, volume, group volume, mute), so the web UI and
   the volume sync can't tell the difference.
+- Fixed speaker groups ("rooms", e.g. a stereo pair): ToothSpin keeps their
+  members together and offers each group as one speaker, so the phones'
+  cards only show the group.
+- Being the server, it also sends the phone's track info to speakers with a
+  display: title, artist, album and position from AVRCP, once a second, and
+  the cover through the artwork role. The position counts on while the
+  track plays (BlueZ only updates it when the phone reports it) and is
+  moved back by the delay to the speakers.
 - It forwards each input to every group playing it. Phone and speakers run
   on different clocks; when the delay drifts more than 20 ms from where it
   started, one sample per 20 ms chunk is dropped or repeated.

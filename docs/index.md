@@ -35,7 +35,10 @@ that ships with Music Assistant 2.10.7.
 - Several phones on one dongle, each with its own input in Music Assistant.
 - SBC and AAC from the phone; PCM, FLAC or Opus to Music Assistant.
 - A small web UI for pairing, connecting, and picking which speakers a phone
-  plays on.
+  plays on, with title, artist and cover of what it plays.
+- ToothSpin Standalone: the same without Music Assistant, on Sendspin
+  speakers, with fixed speaker groups and track info on speakers with a
+  display.
 - Pairing only while you open the pairing window. There is no guest mode.
 
 ## Not working yet
@@ -69,7 +72,8 @@ that ships with Music Assistant 2.10.7.
 - A Bluetooth adapter, ideally a USB dongle just for ToothSpin.
 - Home Assistant (ToothSpin installs as an App), or a Linux host with
   `bluetoothd` and Docker or Podman.
-- One or several speakers connected to Music Assistant.
+- Speakers: any that Music Assistant plays on, or Sendspin speakers for
+  ToothSpin Standalone.
 
 ## Tested hardware
 

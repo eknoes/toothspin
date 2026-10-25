@@ -60,6 +60,10 @@ group. A speaker keeps its volume when a phone starts on it. To limit how
 loud a speaker gets, set its **Maximum volume** in Music Assistant, or use
 **Maximum start volume**.
 
+**Track info:** the phone's card shows title, artist and cover, as far as
+the phone reports them (covers: Android does). Music Assistant can't show
+them yet: Sendspin doesn't carry them for an input.
+
 **Hide speakers:** the eye icon hides a speaker on that phone's card.
 
 **Without a token:** play the input from Music Assistant: select a player,
