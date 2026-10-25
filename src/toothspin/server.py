@@ -36,6 +36,7 @@ from aiosendspin.server.push_stream import StreamStoppedError
 from aiosendspin.server.roles.metadata.state import Metadata
 
 from .backend import BackendError
+from .rooms import Room, RoomStore
 from .source import _load_identity
 
 if TYPE_CHECKING:
@@ -133,6 +134,7 @@ class ToothSpinServer:
         self._store: FileServerPairingStore | None = None
         self._feeds: dict[str, _Feed] = {}
         self._started = asyncio.Event()
+        self._rooms = RoomStore(self._data_dir / "rooms.json")
 
     @property
     def url(self) -> str:
@@ -185,6 +187,10 @@ class ToothSpinServer:
                 self._update_metadata()
                 self._track_sessions()
                 self._end_idle_streams()
+                try:
+                    await self._keep_rooms()
+                except Exception:
+                    logger.exception("Couldn't group speaker groups again")
                 await asyncio.sleep(METADATA_S)
         finally:
             for feed in self._feeds.values():
@@ -215,66 +221,114 @@ class ToothSpinServer:
         await self._store.remove_record(client_id)
 
     # --- Music Assistant's player API ---
+    #
+    # A room's speakers show as one player of type "group" with the room's id;
+    # commands to it go to all of them.
 
     @property
     def players(self) -> list[dict[str, Any]]:
         if self._server is None:
             return []
-        return [self._player(c) for c in self._server.clients if _is_player(c)]
+        players = []
+        rooms_seen = set()
+        for client in self._server.clients:
+            if not _is_player(client):
+                continue
+            room = self._rooms.of(client.client_id)
+            if room is None:
+                players.append(self._player(client))
+            elif room.id not in rooms_seen:
+                rooms_seen.add(room.id)
+                players.append(self._room_player(room))
+        return players
 
     def _player(self, client: SendspinClient) -> dict[str, Any]:
-        members = [c for c in client.group.clients if _is_player(c)]
-        leader = members[0] if members else client
-        route = self._route(client.group)
         role = _role(client, "player")
-        group_role = client.group.group_role("player")
         return {
-            "player_id": client.client_id,
+            **self._grouping(client.client_id, client.group),
             "name": client.name,
             "type": "player",
-            "provider": "toothspin",
             # Speakers connected to another server can be claimed for playback.
             "available": client.is_connected or client.info_or_none is not None,
-            "can_group_with": [
-                c.client_id for c in self._server.clients  # type: ignore[union-attr]
-                if _is_player(c) and c is not client
-            ],
-            "playback_state": "playing" if route else "idle",
-            "active_source": SOURCE_PREFIX + route.source_id if route else None,
-            "synced_to": leader.client_id if leader is not client else None,
-            "group_members": [m.client_id for m in members]
-            if leader is client and len(members) > 1
-            else [],
             "volume_level": getattr(role, "volume", None),
-            "group_volume": group_role.get_group_volume() if group_role else None,
             "volume_muted": bool(getattr(role, "muted", False)),
             "volume_control": "internal" if role else "none",
             "mute_control": "internal" if role else "none",
         }
 
+    def _room_player(self, room: Room) -> dict[str, Any]:
+        clients = self._room_clients(room)
+        anchor = self._anchor(room)
+        assert anchor is not None
+        roles = [r for c in clients if (r := _role(c, "player")) is not None]
+        volumes = [v for r in roles if (v := getattr(r, "volume", None)) is not None]
+        return {
+            **self._grouping(room.id, anchor.group),
+            "name": room.name,
+            "type": "group",
+            "available": any(c.is_connected or c.info_or_none is not None for c in clients),
+            "volume_level": round(sum(volumes) / len(volumes)) if volumes else None,
+            "volume_muted": bool(roles) and all(getattr(r, "muted", False) for r in roles),
+            "volume_control": "internal" if roles else "none",
+            "mute_control": "internal" if roles else "none",
+        }
+
+    def _grouping(self, player_id: str, group: SendspinGroup) -> dict[str, Any]:
+        """What a player plays and whom it's grouped with, as Music Assistant has it."""
+        members = []
+        for c in group.clients:
+            if _is_player(c) and (visible := self._player_id(c)) not in members:
+                members.append(visible)
+        leader = members[0] if members else player_id
+        route = self._route(group)
+        group_role = group.group_role("player")
+        return {
+            "player_id": player_id,
+            "provider": "toothspin",
+            "can_group_with": sorted(
+                {self._player_id(c) for c in self._server.clients if _is_player(c)}  # type: ignore[union-attr]
+                - {player_id}
+            ),
+            "playback_state": "playing" if route else "idle",
+            "active_source": SOURCE_PREFIX + route.source_id if route else None,
+            "synced_to": leader if leader != player_id else None,
+            "group_members": members if leader == player_id and len(members) > 1 else [],
+            "group_volume": group_role.get_group_volume() if group_role else None,
+        }
+
+    def _player_id(self, client: SendspinClient) -> str:
+        """The player a speaker shows as: its room, or itself."""
+        room = self._rooms.of(client.client_id)
+        return room.id if room else client.client_id
+
     async def call(self, command: str, **args: Any) -> Any:
         if command == "player_queues/play_media":
-            await self._play(await self._client(args["queue_id"]), args["media"])
+            clients = await self._connected(args["queue_id"])
+            leader = self._lead(args["queue_id"])
+            await self._play(leader, args["media"])
+            for client in clients:
+                await leader.group.add_client(client)
         elif command == "players/cmd/stop":
-            await self._stop(self._known(args["player_id"]).group)
+            await self._stop(self._lead(args["player_id"]).group)
         elif command == "players/cmd/set_members":
-            target = await self._client(args["target_player"])
+            await self._connected(args["target_player"])
+            target = self._lead(args["target_player"])
             for player_id in args.get("player_ids_to_remove") or ():
-                await self._known(player_id).ungroup()
+                await self._ungroup(player_id)
             for player_id in args.get("player_ids_to_add") or ():
-                await target.group.add_client(await self._client(player_id))
+                for client in await self._connected(player_id):
+                    await target.group.add_client(client)
         elif command == "players/cmd/volume_set":
-            _role(await self._client(args["player_id"]), "player").set_player_volume(  # type: ignore[union-attr]
-                int(args["volume_level"])
-            )
+            for client in await self._connected(args["player_id"]):
+                _role(client, "player").set_player_volume(int(args["volume_level"]))  # type: ignore[union-attr]
         elif command == "players/cmd/group_volume":
-            group_role = (await self._client(args["player_id"])).group.group_role("player")
+            await self._connected(args["player_id"])
+            group_role = self._lead(args["player_id"]).group.group_role("player")
             if group_role is not None:
                 group_role.set_group_volume(int(args["volume_level"]))
         elif command == "players/cmd/volume_mute":
-            _role(await self._client(args["player_id"]), "player").set_player_mute(  # type: ignore[union-attr]
-                bool(args["muted"])
-            )
+            for client in await self._connected(args["player_id"]):
+                _role(client, "player").set_player_mute(bool(args["muted"]))  # type: ignore[union-attr]
         else:
             raise BackendError(f"unsupported command {command}")
 
@@ -283,6 +337,127 @@ class ToothSpinServer:
         if client is None:
             raise BackendError(f"speaker {player_id} is not available")
         return client
+
+    def _lead(self, player_id: str) -> SendspinClient:
+        """The speaker whose group a player's commands go to."""
+        room = self._rooms.get(player_id)
+        if room is None:
+            return self._known(player_id)
+        anchor = self._anchor(room)
+        if anchor is None:
+            raise BackendError(f"{room.name}'s speakers are not available")
+        return anchor
+
+    async def _connected(self, player_id: str) -> list[SendspinClient]:
+        """The speakers a player stands for, connected (see ``_client``).
+
+        A room plays on those of its speakers that can be reached.
+        """
+        room = self._rooms.get(player_id)
+        if room is None:
+            return [await self._client(player_id)]
+        clients = []
+        for member in self._room_clients(room):
+            try:
+                clients.append(await self._client(member.client_id))
+            except BackendError as err:
+                logger.warning("%s plays without a speaker: %s", room.name, err)
+        if not clients:
+            raise BackendError(f"{room.name}'s speakers are not reachable")
+        return clients
+
+    async def _ungroup(self, player_id: str) -> None:
+        """Take a player out of its group; a room's speakers stay together."""
+        room = self._rooms.get(player_id)
+        if room is None:
+            await self._known(player_id).ungroup()
+            return
+        clients = [c for c in self._room_clients(room) if c.is_connected]
+        if not clients:
+            return
+        await clients[0].ungroup()
+        for client in clients[1:]:
+            await clients[0].group.add_client(client)
+
+    # --- rooms ---
+
+    def _room_clients(self, room: Room) -> list[SendspinClient]:
+        assert self._server is not None
+        return [c for m in room.members if (c := self._server.get_client(m)) is not None]
+
+    def _anchor(self, room: Room) -> SendspinClient | None:
+        """The room's speaker whose group is the room's: the one most of it is in."""
+        clients = self._room_clients(room)
+        connected = [c for c in clients if c.is_connected]
+        if not connected:
+            return clients[0] if clients else None
+        return max(
+            connected,
+            key=lambda c: (
+                self._route(c.group) is not None, sum(m in c.group.clients for m in connected)
+            ),
+        )
+
+    async def _keep_rooms(self) -> None:
+        """Group each room's speakers again that came back on their own."""
+        for room in self._rooms:
+            anchor = self._anchor(room)
+            if anchor is None or not anchor.is_connected:
+                continue
+            for client in self._room_clients(room):
+                if client.is_connected and client not in anchor.group.clients:
+                    logger.info("Grouping %s with %s again", client.name, room.name)
+                    await anchor.group.add_client(client)
+
+    def rooms(self) -> dict[str, Any]:
+        """The rooms and the speakers they can have, for the web UI."""
+        speakers = {
+            c.client_id: c.name
+            for c in (self._server.clients if self._server else ())
+            if _is_player(c)
+        }
+        return {
+            "list": [
+                {
+                    "id": room.id,
+                    "name": room.name,
+                    "members": [
+                        {"id": m, "name": speakers.get(m), "found": m in speakers}
+                        for m in room.members
+                    ],
+                }
+                for room in self._rooms
+            ],
+            "speakers": [
+                {"id": i, "name": n, "room": r.id if (r := self._rooms.of(i)) else None}
+                for i, n in sorted(speakers.items(), key=lambda kv: kv[1].lower())
+            ],
+        }
+
+    async def save_room(self, room_id: str | None, name: str, members: list[str]) -> None:
+        """Create or change a room. A speaker that leaves it stops playing with it."""
+        old = self._rooms.get(room_id) if room_id else None
+        try:
+            room = self._rooms.put(room_id, name, tuple(members))
+        except ValueError as err:
+            raise BackendError(str(err)) from None
+        except KeyError:
+            raise BackendError("That group no longer exists") from None
+        logger.info("Speaker group %s: %s", room.name, ", ".join(
+            c.name for c in self._room_clients(room)))
+        for member in old.members if old else ():
+            client = self._server.get_client(member) if self._server else None
+            if member not in room.members and client is not None and client.is_connected:
+                await client.ungroup()
+        await self._keep_rooms()
+
+    async def delete_room(self, room_id: str) -> None:
+        """Remove a room; its speakers stay as they are, now each on its own."""
+        try:
+            room = self._rooms.delete(room_id)
+        except KeyError:
+            raise BackendError("That group no longer exists") from None
+        logger.info("Removed speaker group %s", room.name)
 
     async def _client(self, player_id: str) -> SendspinClient:
         """A connected speaker, claimed from another server first if needed.

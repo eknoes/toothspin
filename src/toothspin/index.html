@@ -46,6 +46,13 @@
   .brand { display: flex; align-items: center; gap: 12px; }
   .brand img { border-radius: 10px; flex-shrink: 0; }
   .brand .tagline { font-size: 13px; }
+  .brand .nav { margin-left: auto; font-size: 14px; white-space: nowrap; }
+  .room + .room { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+  .room .sub { color: var(--muted); font-size: 13px; }
+  .room-form { display: grid; gap: 8px; }
+  .room + .actions { margin-top: 14px; }
+  .room-form .checks { display: grid; gap: 6px; }
+  .room-form label { display: flex; align-items: center; gap: 8px; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
        color: var(--muted); margin: 0 0 12px; font-weight: 600; }
   section { background: var(--card); border: 1px solid var(--line);
@@ -167,6 +174,7 @@
       <h1 id="title">ToothSpin</h1>
       <div class="muted tagline" id="tagline">Bluetooth audio input</div>
     </div>
+    <a class="nav" id="nav" hidden></a>
   </header>
 
   <section id="setup" hidden></section>
@@ -185,6 +193,8 @@
     <div class="muted" id="subtitle" style="margin-top:8px;font-size:13px"></div>
   </section>
   </div>
+
+  <section id="speakers-page" hidden></section>
 
   <footer class="about" id="about"></footer>
 </main>
@@ -284,7 +294,7 @@ const deviceIn = (st, addr) => st.devices && st.devices.find((d) => d.address ==
 function show() {
   if (!serverState) return;
   state = withExpected(serverState);
-  if (!editing && !sliding) render();
+  if (!editing && !sliding && !roomForm) render();
 }
 
 let refreshTimer = null;
@@ -579,15 +589,116 @@ function renderHeading() {
   document.title = title;
 }
 
+// Standalone only: fixed speaker groups, on a page of their own (#speakers).
+// The speaker group being created or changed: {id (null: new)}. Rendering
+// pauses meanwhile, like for a name.
+let roomForm = null;
+let confirmDeleteRoom = null;
+const onSpeakersPage = () => location.hash === "#speakers" && Boolean(state.rooms);
+window.addEventListener("hashchange", () => { roomForm = null; if (state) render(); });
+
+function renderNav() {
+  const nav = $("nav");
+  nav.hidden = !state.rooms;
+  if (onSpeakersPage()) { nav.href = "#"; nav.textContent = "← Phones"; }
+  else { nav.href = "#speakers"; nav.textContent = "Speaker groups"; }
+}
+
+function renderRoomForm() {
+  const rooms = state.rooms;
+  const room = rooms.list.find((r) => r.id === roomForm.id);
+  const chosen = new Set(room ? room.members.map((m) => m.id) : []);
+  const choices = rooms.speakers.filter((s) => !s.room || s.room === roomForm.id);
+  // Speakers of this group that aren't on the network now stay in it unless unticked.
+  const missing = room ? room.members.filter((m) => !m.found) : [];
+  const check = (id, name) => `<label><input type="checkbox" data-member="${esc(id)}"
+    ${chosen.has(id) ? "checked" : ""}> ${esc(name)}</label>`;
+  return `<div class="room-form">
+      <input id="room-name" class="name-input" maxlength="64" placeholder="Name, e.g. Living room"
+        aria-label="Name" value="${esc(room ? room.name : "")}">
+      <div class="label">Speakers</div>
+      <div class="checks">${choices.map((s) => check(s.id, s.name)).join("")}
+        ${missing.map((m) => check(m.id, "Speaker not found on the network")).join("")}
+        ${choices.length + missing.length ? "" : '<span class="muted">No speakers left that aren\'t in a group</span>'}</div>
+      <div class="actions"><button class="primary" id="room-save">Save</button>
+        <button id="room-cancel">Cancel</button></div>
+    </div>`;
+}
+
+function renderSpeakersPage() {
+  const rooms = state.rooms;
+  const list = rooms.list.map((r) => roomForm && roomForm.id === r.id ? `<div class="room">${renderRoomForm()}</div>` : `
+    <div class="room">
+      <div><b>${esc(r.name)}</b></div>
+      <div class="sub">${r.members.map((m) => m.found ? esc(m.name) : "a speaker not found on the network").join(" · ")}</div>
+      <div class="actions">
+        <button data-edit-room="${esc(r.id)}" ${roomForm ? "disabled" : ""}>Change</button>
+        <button class="danger" data-delete-room="${esc(r.id)}" ${roomForm ? "disabled" : ""}>${confirmDeleteRoom === r.id ? "Really delete?" : "Delete"}</button>
+      </div>
+    </div>`).join("");
+  const el = $("speakers-page");
+  setHtml(el, `<h2>Speaker groups</h2>
+    <p class="muted">Speakers in a group always play together and show as one speaker, e.g. a left and a right speaker as “Living room”.</p>
+    ${list || (roomForm ? "" : '<p class="muted">No speaker groups yet.</p>')}
+    ${roomForm && roomForm.id === null ? `<div class="room">${renderRoomForm()}</div>`
+      : `<div class="actions"><button class="primary" id="room-new" ${roomForm || rooms.speakers.length < 2 ? "disabled" : ""}
+          title="${rooms.speakers.length < 2 ? "Needs two Sendspin speakers on the network" : ""}">New group</button></div>`}`);
+  const open = (id) => {
+    roomForm = {id}; confirmDeleteRoom = null; render();
+    const input = $("room-name"); input.focus(); if (id === null) input.select();
+  };
+  if ($("room-new")) $("room-new").onclick = () => open(null);
+  for (const b of el.querySelectorAll("button[data-edit-room]")) b.onclick = () => open(b.dataset.editRoom);
+  for (const b of el.querySelectorAll("button[data-delete-room]")) {
+    b.onclick = async () => {
+      const id = b.dataset.deleteRoom;
+      if (confirmDeleteRoom !== id) {
+        confirmDeleteRoom = id; render();
+        setTimeout(() => { if (confirmDeleteRoom === id) { confirmDeleteRoom = null; render(); } }, 4000);
+        return;
+      }
+      confirmDeleteRoom = null;
+      await post(`api/rooms/${encodeURIComponent(id)}/delete`);
+      await refresh();
+    };
+  }
+  if (!roomForm) return;
+  const close = () => { roomForm = null; render(); };
+  $("room-cancel").onclick = close;
+  const save = async () => {
+    const members = [...el.querySelectorAll("input[data-member]:checked")].map((i) => i.dataset.member);
+    const name = $("room-name").value.trim();
+    if (!name) { toast("Give the group a name."); return; }
+    if (members.length < 2) { toast("Choose at least two speakers."); return; }
+    const path = roomForm.id ? `api/rooms/${encodeURIComponent(roomForm.id)}` : "api/rooms";
+    $("room-save").disabled = true;
+    if (await post(path, {name, members})) { roomForm = null; await refresh(); render(); }
+    else $("room-save").disabled = false;
+  };
+  $("room-save").onclick = save;
+  $("room-name").onkeydown = (e) => {
+    if (e.key === "Enter") save();
+    if (e.key === "Escape") close();
+  };
+}
+
 function render() {
   renderHeading();
   renderAbout();
   renderSetup();
-  if (!state.bluetooth || (state.setup && state.setup.problem)) return;
+  if (!state.bluetooth || (state.setup && state.setup.problem)) {
+    $("nav").hidden = $("speakers-page").hidden = true;
+    return;
+  }
   const bt = state.bluetooth;
   $("subtitle").textContent = `Visible to phones as “${bt.name}”`;
   $("tagline").textContent = standalone()
     ? "Bluetooth audio for Sendspin speakers" : "Bluetooth audio as a live input";
+  renderNav();
+  const page = onSpeakersPage();
+  $("app-ui").hidden = page;
+  $("speakers-page").hidden = !page;
+  if (page) { renderSpeakersPage(); return; }
 
   const pairing = bt.pairing_remaining !== null;
   $("bt-pairing-text").innerHTML = pairing

@@ -42,6 +42,8 @@ def create_app(
     take_bluetooth_audio: Callable[[], Awaitable[None]] | None = None,
 ) -> web.Application:
     volumes = speakers.Volumes(backend) if backend else None
+    # Fixed speaker groups: only ToothSpin's own server has them.
+    rooms = backend if hasattr(backend, "save_room") else None
 
     def device_state(device: Any) -> dict[str, Any]:
         state = asdict(device)
@@ -95,6 +97,7 @@ def create_app(
                         for s in speakers.speakers(backend.players, volumes.emulated_mutes)
                     ],
                 },
+                "rooms": rooms.rooms() if rooms else None,
             }
         )
 
@@ -197,6 +200,27 @@ def create_app(
             return _backend_error(err)
         return web.json_response({"ok": True})
 
+    async def post_room(request: web.Request) -> web.Response:
+        if rooms is None:
+            raise web.HTTPNotFound
+        body = await _body(request, name=_name, members=_ids)
+        try:
+            async with routing:
+                await rooms.save_room(request.match_info.get("room_id"), body["name"], body["members"])
+        except BackendError as err:
+            return _backend_error(err)
+        return web.json_response({"ok": True})
+
+    async def post_room_delete(request: web.Request) -> web.Response:
+        if rooms is None:
+            raise web.HTTPNotFound
+        try:
+            async with routing:
+                await rooms.delete_room(request.match_info["room_id"])
+        except BackendError as err:
+            return _backend_error(err)
+        return web.json_response({"ok": True})
+
     async def post_sendspin_pairing(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
         if receiver is None:
@@ -253,6 +277,9 @@ def create_app(
     app.router.add_post("/api/speakers/{address}/move", post_speaker_move)
     app.router.add_post("/api/speakers/volume", post_speaker_volume)
     app.router.add_post("/api/speakers/{address}/hidden", post_speaker_hidden)
+    app.router.add_post("/api/rooms", post_room)
+    app.router.add_post("/api/rooms/{room_id}", post_room)
+    app.router.add_post("/api/rooms/{room_id}/delete", post_room_delete)
     return app
 
 
@@ -326,6 +353,13 @@ def _id(value: Any) -> str:
     if not isinstance(value, str) or not 0 < len(value) <= 200 or not value.isprintable():
         raise _Invalid("must be a player id")
     return value
+
+
+def _ids(value: Any) -> list[str]:
+    """A few player ids."""
+    if not isinstance(value, list) or not 0 < len(value) <= 16:
+        raise _Invalid("must be a list of player ids")
+    return [_id(v) for v in value]
 
 
 def _volume(value: Any) -> int:

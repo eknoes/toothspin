@@ -73,6 +73,11 @@ position the phone reports. Covers aren't sent.
 
 **Hide speakers:** the eye icon hides a speaker on that phone's card.
 
+**Speaker groups:** speakers that always play together, e.g. a left and a
+right one in the living room, can be one speaker: under **Speaker groups**
+(top right), make a group of them and name it. The phones' cards then show
+just the group.
+
 ## Configuration
 
 | Option | Description |

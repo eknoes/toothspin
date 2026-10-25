@@ -247,6 +247,84 @@ async def _come_back(tmp_path: Path) -> None:
                 await speaker.client.disconnect()
 
 
+@pytest.mark.timeout(60)
+def test_a_speaker_group_plays_as_one_speaker(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    for name in ("_start_mdns_advertising", "_start_mdns_discovery"):
+        monkeypatch.setattr(
+            f"aiosendspin.server.server.SendspinServer.{name}", lambda *a, **k: asyncio.sleep(0)
+        )
+    asyncio.run(_room(tmp_path))
+
+
+async def _room(tmp_path: Path) -> None:
+    server = ToothSpinServer(tmp_path, "ToothSpin test", port=_free_port())
+    await server.start()
+    source = SendspinSource("Pixel (Bluetooth)", server.url, tmp_path / "phone")
+    await source.setup()
+    await server.pair_local(source)
+    left, right, kitchen = FakeSpeaker("Left"), FakeSpeaker("Right"), FakeSpeaker("Kitchen")
+    tasks = [asyncio.create_task(server.run()), asyncio.create_task(source.run())]
+
+    async def phone() -> None:
+        chunk = b"\x10\x00" * CAPTURE_FORMAT.channels * 960  # 20 ms
+        while True:
+            await source.push(chunk, CAPTURE_FORMAT, source.client.now_us())
+            await asyncio.sleep(0.02)
+
+    def listed() -> dict[str, speakers.Speaker]:
+        return {s.name: s for s in speakers.speakers(server.players)}
+
+    try:
+        for speaker in (left, right, kitchen):
+            await (await speaker.build()).connect(server.url)
+        await _until(lambda: source.status().paired and len(server.players) == 3)
+        await server.save_room(None, "Living room", [left.client_id, right.client_id])
+        assert set(listed()) == {"Living room", "Kitchen"}
+        room = listed()["Living room"]
+        assert server.rooms()["list"][0]["id"] == room.player_id
+        assert kitchen.client_id in room.can_group_with
+
+        # Playing on the room plays on both its speakers, at one volume.
+        uri = speakers.source_uri(source.client.identity.peer_id)
+        await speakers.toggle(server, uri, room.player_id, True, start_volume=20)
+        await _until(lambda: (left.volume, right.volume) == (20, 20))
+        await _until(lambda: source.status().requested)
+        tasks.append(asyncio.create_task(phone()))
+        await _until(lambda: left.audio_bytes > 0 and right.audio_bytes > 0)
+        assert listed()["Living room"].playing_uri == uri
+
+        # Grouped with the kitchen, and out again: the room stays together.
+        await speakers.toggle(server, uri, kitchen.client_id, True)
+        await _until(lambda: kitchen.audio_bytes > 0)
+        assert listed()["Kitchen"].synced_to == room.player_id
+        await speakers.move(server, uri, kitchen.client_id)
+        await _until(lambda: listed()["Living room"].playing_uri is None)
+        assert listed()["Kitchen"].playing_uri == uri
+        await speakers.move(server, uri, room.player_id)
+        await _until(lambda: listed()["Kitchen"].playing_uri is None)
+        received = right.audio_bytes
+        await _until(lambda: right.audio_bytes > received)
+
+        # A speaker of the room that comes back on its own joins it again.
+        assert right.client is not None
+        await right.client.disconnect()
+        await _until(lambda: right.client_id not in {c.client_id for c in server._server.clients})
+        await (await right.build()).connect(server.url)
+        received = right.audio_bytes
+        await _until(lambda: right.audio_bytes > received)
+
+        # Deleting the room shows its speakers again.
+        await server.delete_room(room.player_id)
+        assert {"Left", "Right", "Kitchen"} <= set(listed())
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        for speaker in (left, right, kitchen):
+            if speaker.client:
+                await speaker.client.disconnect()
+
+
 def test_drift_correction_drops_or_repeats_one_frame() -> None:
     pcm = bytes(range(8)) * 4  # 8 frames of 4 bytes
     assert correct_drift(pcm, 4, 100_000, 100_000) == pcm

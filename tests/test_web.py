@@ -85,3 +85,50 @@ def test_setup_page_says_which_toothspin_it_is() -> None:
             assert (await (await client.get("/api/state")).json())["mode"] == "standalone"
 
     asyncio.run(scenario())
+
+
+def test_speaker_groups_only_with_toothspins_own_server() -> None:
+    class Server:
+        """Just the speaker groups of ToothSpin's own server."""
+
+        players: list = []
+        connected = True
+        saved: list = []
+
+        def rooms(self) -> dict:
+            return {"list": [], "speakers": []}
+
+        async def save_room(self, room_id, name, members) -> None:  # noqa: ANN001
+            from toothspin.backend import BackendError
+
+            if name == "Taken":
+                raise BackendError("A speaker is already in Kitchen")
+            self.saved.append((room_id, name, members))
+
+        async def delete_room(self, room_id: str) -> None:
+            self.saved.append((room_id, None, None))
+
+    async def scenario() -> None:
+        app = create_app(None, None, 120, backend=object())  # type: ignore[arg-type]
+        async with TestClient(TestServer(app)) as client:
+            res = await client.post("/api/rooms", json={"name": "Living", "members": ["a", "b"]})
+            assert res.status == 404
+
+        server = Server()
+        app = create_app(None, None, 120, backend=server)  # type: ignore[arg-type]
+        async with TestClient(TestServer(app)) as client:
+            for body in [{"name": "Living"}, {"name": "Living", "members": "a"},
+                         {"name": "Living", "members": []}, {"name": "", "members": ["a", "b"]},
+                         {"name": "Living", "members": ["a", 3]}]:
+                res = await client.post("/api/rooms", json=body)
+                assert res.status == 400, body
+            assert (await client.post("/api/rooms", json={"name": "Living", "members": ["a", "b"]})).ok
+            assert (await client.post("/api/rooms/room-1", json={"name": "Lounge", "members": ["a", "b"]})).ok
+            assert (await client.post("/api/rooms/room-1/delete", json={})).ok
+            assert server.saved == [
+                (None, "Living", ["a", "b"]), ("room-1", "Lounge", ["a", "b"]), ("room-1", None, None),
+            ]
+            res = await client.post("/api/rooms", json={"name": "Taken", "members": ["a", "b"]})
+            assert not res.ok and "Kitchen" in (await res.json())["error"]
+
+    asyncio.run(scenario())
