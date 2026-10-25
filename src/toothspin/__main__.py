@@ -325,7 +325,8 @@ async def _reconnect_after_restart(bluetooth: BluetoothManager, path: Path) -> N
     """Reconnect the phones that were connected when ToothSpin last stopped.
 
     A restart (an update, a changed option) drops them: BlueZ ends their
-    audio connection once ToothSpin's audio stack is gone.
+    audio connection once ToothSpin's audio stack is gone, and often keeps
+    them connected otherwise, so only their audio is connected again.
     """
     try:
         addresses = json.loads(path.read_text())
@@ -334,12 +335,16 @@ async def _reconnect_after_restart(bluetooth: BluetoothManager, path: Path) -> N
         return
     await asyncio.sleep(RECONNECT_DELAY_S)
     for device in bluetooth.devices():
-        if device.address in addresses and not device.connected:
-            logger.info("Reconnecting %s after the restart", device.name)
-            try:
+        if device.address not in addresses:
+            continue
+        try:
+            if not device.connected:
+                logger.info("Reconnecting %s after the restart", device.name)
                 await bluetooth.connect_device(device.address)
-            except (DBusError, TimeoutError) as err:
-                logger.warning("Reconnecting %s failed: %s", device.name, err)
+            elif bluetooth.transport(device.address) is None:
+                await bluetooth.connect_audio(device.address)
+        except (DBusError, TimeoutError) as err:
+            logger.warning("Reconnecting %s failed: %s", device.name, err)
 
 
 async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None:

@@ -44,6 +44,8 @@ ROUTING_RECONNECT_GAPS_S = (5.0, 10.0)
 CALL_UUIDS = frozenset(
     f"0000{short}-0000-1000-8000-00805f9b34fb" for short in ("1108", "1112", "111e", "111f")
 )
+# A phone's A2DP source: the audio connection to it, without the rest.
+AUDIO_SOURCE_UUID = "0000110a-0000-1000-8000-00805f9b34fb"
 # How long a freshly paired phone gets to connect by itself.
 CONNECT_AFTER_PAIRING_S = 8.0
 ADAPTER = "org.bluez.Adapter1"
@@ -341,6 +343,20 @@ class BluetoothManager:
                 lambda t: self._routing_tasks.get(address) is t
                 and self._routing_tasks.pop(address)
             )
+
+    async def connect_audio(self, address: str) -> None:
+        """Connect a connected phone's audio (A2DP) again.
+
+        When ToothSpin's audio stack restarts, BlueZ ends the phones' audio
+        but keeps them connected otherwise.
+        """
+        path = self._path_for(address.upper())
+        self._connect_allowed.add(path)
+        await asyncio.wait_for(
+            dbus.call(self._bus, BLUEZ, path, DEVICE, "ConnectProfile", "s", [AUDIO_SOURCE_UUID]),
+            timeout=30,
+        )
+        logger.info("Connected %s's audio again", self.device_name(path))
 
     async def _wait_connected(self, path: str, timeout: float) -> None:
         async with asyncio.timeout(timeout):

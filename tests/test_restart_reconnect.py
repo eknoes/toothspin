@@ -16,6 +16,12 @@ class FakeBluetooth:
     async def connect_device(self, address: str) -> None:
         self.calls.append(address)
 
+    def transport(self, address: str) -> None:
+        return None
+
+    async def connect_audio(self, address: str) -> None:
+        self.calls.append(f"audio {address}")
+
 
 def test_phones_connected_at_shutdown_are_reconnected_once(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(main, "RECONNECT_DELAY_S", 0)
@@ -28,3 +34,15 @@ def test_phones_connected_at_shutdown_are_reconnected_once(tmp_path, monkeypatch
     assert not path.exists()  # only right after that restart
     asyncio.run(main._reconnect_after_restart(after_restart, path))  # type: ignore[arg-type]
     assert after_restart.calls == ["AA:AA:AA:AA:AA:AA"]
+
+
+def test_phones_still_connected_get_their_audio_back(tmp_path, monkeypatch) -> None:
+    # BlueZ ends a phone's audio with ToothSpin's audio stack, not always the connection.
+    monkeypatch.setattr(main, "RECONNECT_DELAY_S", 0)
+    path = tmp_path / "reconnect.json"
+    both = {"AA:AA:AA:AA:AA:AA", "BB:BB:BB:BB:BB:BB"}
+    main._remember_connected(FakeBluetooth(both), path)  # type: ignore[arg-type]
+
+    after_restart = FakeBluetooth({"BB:BB:BB:BB:BB:BB"})
+    asyncio.run(main._reconnect_after_restart(after_restart, path))  # type: ignore[arg-type]
+    assert after_restart.calls == ["AA:AA:AA:AA:AA:AA", "audio BB:BB:BB:BB:BB:BB"]
