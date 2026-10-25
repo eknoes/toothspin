@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.1 (2026-10-25)
+
+### Fixes
+
+- **server:** No skips when Bluetooth audio comes in bursts
+
+### Documentation
+
+- Diagram for both variants
+- New screenshots with covers and taps
+- Shorter comparison
+- Rickrolling
+- Site and README intro for both variants
+- Covers, speaker groups and Standalone throughout
+- Which Bluetooth adapters work
+
 ## 0.5.0 (2026-10-25)
 
 ### Features
