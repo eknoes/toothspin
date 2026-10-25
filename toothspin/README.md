@@ -11,7 +11,7 @@ plays shows up in Music Assistant as a live input, and you pick the speakers
 right in the app. For when your household asks *"Nice. Where's the
 Bluetooth?"*.
 
-It's young and runs in one home so far, so expect rough edges. Bug reports
+It's young and runs in a couple of homes so far, so expect rough edges. Bug reports
 (any volume) are welcome!
 
 ## Before you install

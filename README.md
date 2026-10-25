@@ -55,8 +55,8 @@ Not working yet:
 > [!NOTE]
 > ToothSpin is in an early state. I built it over a couple of evenings
 > together with [Claude](https://claude.ai). I steered a lot, and reviewed
-> the code. By now it runs in exactly one home (mine). But
-> that's a demanding test lab: several phones, a household that switches
+> the code. By now it runs in a couple of homes. Mine is a demanding test
+> lab: several phones, a household that switches
 > rooms mid-song, and users who report bugs directly to the maintainer,
 > without any technical details and without filing an issue.
 > I'd say I tested it a lot, but you still have to expect rough edges.

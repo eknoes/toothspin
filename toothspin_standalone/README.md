@@ -13,7 +13,7 @@ ToothSpin plays it on your Sendspin speakers, one or several in sync. It
 runs its own Sendspin server, so it can't run next to Music Assistant's
 Sendspin integration: both would fight over the same speakers.
 
-It's young and runs in one home so far, so expect rough edges. Bug reports
+It's young and runs in a couple of homes so far, so expect rough edges. Bug reports
 (any volume) are welcome!
 
 ## Before you install
