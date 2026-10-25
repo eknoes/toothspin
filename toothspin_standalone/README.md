@@ -3,10 +3,11 @@
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
 
-ToothSpin for homes without Music Assistant: it plays phones on Sendspin
-speakers only. **With Music Assistant, install ToothSpin (without
-Standalone) instead:** it plays on all of Music Assistant's speakers, with
-Music Assistant's features.
+ToothSpin for when the phones over Bluetooth are all you play, on Sendspin
+speakers only: no Music Assistant needed. **For anything else (other
+speakers, other music, or Music Assistant runs already), install ToothSpin
+(without Standalone) and pair it with Music Assistant.** The two side by
+side: [ToothSpin or ToothSpin Standalone?](https://eknoes.github.io/toothspin/install.html#standalone)
 
 Your phone pairs with ToothSpin like with any Bluetooth speaker, and
 ToothSpin plays it on your Sendspin speakers, one or several in sync. It

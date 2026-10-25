@@ -11,6 +11,10 @@ plays shows up in Music Assistant as a live input, and you pick the speakers
 right in the app. For when your household asks *"Nice. Where's the
 Bluetooth?"*.
 
+Only the phones over Bluetooth, on Sendspin speakers only? Then **ToothSpin
+Standalone** from the same repository does it without Music Assistant:
+[ToothSpin or ToothSpin Standalone?](https://eknoes.github.io/toothspin/install.html#standalone)
+
 It's young and runs in a couple of homes so far, so expect rough edges. Bug reports
 (any volume) are welcome!
 

@@ -1,15 +1,18 @@
 # ToothSpin Standalone
 
-ToothSpin for homes without Music Assistant. Your phones pair
-with it like with a Bluetooth speaker, and it plays them on your Sendspin
-speakers: one, or several in sync. It runs its own Sendspin server.
+ToothSpin for when the phones over Bluetooth are all you play, on Sendspin
+speakers only. Your phones pair with it like with a Bluetooth speaker, and
+it plays them on your Sendspin speakers: one, or several in sync. It runs
+its own Sendspin server, no Music Assistant needed. The two ToothSpin Apps
+side by side: [ToothSpin or ToothSpin Standalone?](https://eknoes.github.io/toothspin/install.html#standalone)
 
 ## Not together with Music Assistant
 
 This App can't run next to Music Assistant with its Sendspin integration:
 both are Sendspin servers, both want port 8927 and the same speakers. If you
-use Music Assistant, install **ToothSpin** (without Standalone) instead. It
-plays the phones through Music Assistant, on all its speakers.
+want other speakers or music, or use Music Assistant already, install
+**ToothSpin** (without Standalone) instead. It plays the phones through
+Music Assistant, on all its speakers.
 
 Compared to ToothSpin with Music Assistant, this App lacks:
 

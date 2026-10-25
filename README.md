@@ -47,9 +47,10 @@ It currently supports:
 Not working yet:
 * Song title and cover in Music Assistant. Sendspin can't send them for an
   input yet ([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)),
-  ToothSpin's own web UI shows them though.
-* After a pause of more than 10 minutes, you have to switch the speakers on
-  again.
+  ToothSpin's own web UI shows them though (and ToothSpin Standalone sends
+  them to the speakers).
+* With Music Assistant: after a pause of more than 10 minutes, you have to
+  switch the speakers on again.
 * Phone calls. ToothSpin only does music.
 
 > [!NOTE]
@@ -62,9 +63,31 @@ Not working yet:
 > I'd say I tested it a lot, but you still have to expect rough edges.
 > Bug reports and feature requests are welcome!
 
-You need Music Assistant **2.10.7 or newer** and a Bluetooth adapter,
-ideally a USB dongle just for ToothSpin. If you want to know how it's built,
-see the [technical overview](https://eknoes.github.io/toothspin/overview.html).
+You need a Bluetooth adapter, ideally a USB dongle just for ToothSpin, and
+Music Assistant **2.10.7 or newer**, unless you take ToothSpin Standalone (see
+below). If you want to know how it's built, see the
+[technical overview](https://eknoes.github.io/toothspin/overview.html).
+
+## ToothSpin or ToothSpin Standalone?
+
+ToothSpin comes in two variants:
+
+- **Only the phones over Bluetooth, and only Sendspin speakers?** Take
+  **ToothSpin Standalone**. It plays the phones on the speakers itself, no
+  Music Assistant needed.
+- **Anything else** (other speakers, other music, or Music Assistant runs
+  already): take **ToothSpin** and pair it with Music Assistant.
+
+| | **ToothSpin** (with Music Assistant) | **ToothSpin Standalone** |
+|---|---|---|
+| Speakers | Everything Music Assistant plays on: Sendspin, AirPlay, Chromecast, Squeezebox, Home Assistant media players | Sendspin only, and only those that play for servers they aren't paired with (e.g. ESPHome's) |
+| What plays | The phones, plus everything else in Music Assistant (streaming services, radio, your library) | Only the phones |
+| Setup | Music Assistant 2.10.7 or newer; each phone pairs with it once (by itself, with an API token) | Nothing to pair besides Bluetooth |
+| Title and cover on the speakers | Not yet: Sendspin can't send them for an input. ToothSpin's web UI shows them | Title, artist, album and cover on speakers with a display |
+| After a long pause | Switch the speakers on again after 10 minutes | They stay on |
+| Fixed speaker groups (e.g. a stereo pair as one speaker) | Music Assistant's sync groups | ToothSpin's own **Speaker groups** |
+| Player settings | Music Assistant's, e.g. **Maximum volume** | ToothSpin's **Maximum start volume** only |
+| Next to Music Assistant | – | Not next to Music Assistant's Sendspin integration: both want the same speakers |
 
 ## Install
 
@@ -81,8 +104,8 @@ Pick whatever fits your setup:
   CoreOS [supports it](https://docs.fedoraproject.org/en-US/fedora-coreos/provisioning-raspberry-pi4/)
   (the Pi 5 isn't supported yet). (This is how I used to run it)
 
-No Music Assistant? There's a [standalone mode](#standalone-mode) for
-Sendspin speakers only.
+For ToothSpin Standalone, the same three ways work; see
+[standalone mode](#standalone-mode).
 
 ### As a Home Assistant App
 
@@ -209,22 +232,9 @@ a PIN only you know (`BT_PIN`).
 
 ## Standalone mode
 
-ToothSpin is made for Music Assistant. If you only have Sendspin speakers
-(e.g. ESPHome's), standalone mode can play the phones on them
-without it: ToothSpin then runs its own Sendspin server, with the same web
-UI, grouping and volume buttons, and there's nothing to pair besides
-Bluetooth.
-
-Compared to Music Assistant, it lacks:
-
-- Other speakers: only Sendspin, no AirPlay, Chromecast, Squeezebox or Home
-  Assistant media players.
-- Other music: it only plays the phones.
-- Speakers that only play for a server they're paired with. Speakers that
-  speak Sendspin unencrypted or allow unpaired servers work.
-- Music Assistant's player settings, e.g. **Maximum volume**.
-- Running next to Music Assistant's Sendspin integration: both want the same
-  speakers.
+ToothSpin Standalone runs its own Sendspin server instead of going through
+Music Assistant, with the same web UI, grouping and volume buttons. Which
+variant fits: [ToothSpin or ToothSpin Standalone?](#toothspin-or-toothspin-standalone)
 
 To use it, install the Home Assistant App **ToothSpin Standalone** from the
 same repository, or use the image `ghcr.io/eknoes/toothspin-standalone`

@@ -15,6 +15,10 @@ a live input. From there it plays on one speaker, a group, or the whole house.
 I built it because my household's review of our multi-room setup was
 *"Nice. Where's the Bluetooth?"*
 
+Only phones over Bluetooth, and only Sendspin speakers? Then **ToothSpin
+Standalone** plays them without Music Assistant:
+[which one fits]({{ '/install.html#standalone' | relative_url }}).
+
 Under the hood it's a Bluetooth A2DP sink that streams to Music Assistant as
 a [Sendspin](https://github.com/Sendspin/spec) source. You don't need a Music
 Assistant fork or a custom provider: it uses the `sendspin_source` provider
@@ -31,9 +35,10 @@ that ships with Music Assistant 2.10.7.
 ## Not working yet
 
 - Song title and cover in Music Assistant: Sendspin can't send them for an
-  input yet. ToothSpin's web UI shows them though.
-- After a pause of more than 10 minutes, you have to switch the speakers on
-  again.
+  input yet. ToothSpin's web UI shows them though, and ToothSpin Standalone
+  sends them to the speakers.
+- With Music Assistant: after a pause of more than 10 minutes, you have to
+  switch the speakers on again.
 
 ## Web UI
 
@@ -54,7 +59,7 @@ that ships with Music Assistant 2.10.7.
 
 ## What you need
 
-- Music Assistant 2.10.7 or newer.
+- Music Assistant 2.10.7 or newer (not for ToothSpin Standalone).
 - A Bluetooth adapter, ideally a USB dongle just for ToothSpin.
 - Home Assistant (ToothSpin installs as an App), or a Linux host with
   `bluetoothd` and Docker or Podman.

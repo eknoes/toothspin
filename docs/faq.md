@@ -72,12 +72,11 @@ With an older version, ToothSpin says so in **Finish setup**.
 
 ### Does it work without Music Assistant? {#without-music-assistant}
 
-With Sendspin speakers, yes. ToothSpin is made for Music Assistant, but with
-only Sendspin speakers (e.g. ESPHome's) it can run its own Sendspin server:
-[standalone mode]({{ '/install.html#standalone' | relative_url }}), as the
-Home Assistant App **ToothSpin Standalone** or a container. It only plays
-the phones, only on Sendspin speakers, and doesn't work together with Music
-Assistant's Sendspin integration.
+With Sendspin speakers, yes: **ToothSpin Standalone** runs its own Sendspin
+server. If all you want is the phones over Bluetooth, on Sendspin speakers
+only, it's the simpler choice; for anything else, pair ToothSpin with Music
+Assistant. The two side by side:
+[ToothSpin or ToothSpin Standalone?]({{ '/install.html#standalone' | relative_url }})
 
 ### Where is ToothSpin in Home Assistant? {#sidebar}
 

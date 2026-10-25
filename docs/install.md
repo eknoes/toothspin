@@ -2,17 +2,41 @@
 layout: default
 title: Install
 description: Install ToothSpin as a Home Assistant App, with Docker or Podman, or on a Fedora CoreOS machine.
-lede: Three ways to run it. If you use Home Assistant, take the App.
+lede: Two variants, three ways to run them. If you use Home Assistant, take the App.
 ---
 
+- [ToothSpin or ToothSpin Standalone?](#standalone)
 - [Home Assistant App](#home-assistant)
 - [Docker or Podman](#container)
 - [Fedora CoreOS machine](#coreos)
 
-**You need** Music Assistant **2.10.7 or newer** and a Bluetooth adapter,
-ideally a USB dongle just for ToothSpin: phones stay connected more
-reliably than on a shared adapter. No Music Assistant? There's a
-[standalone mode](#standalone) for Sendspin speakers.
+**You need** a Bluetooth adapter, ideally a USB dongle just for ToothSpin:
+phones stay connected more reliably than on a shared adapter. With Music
+Assistant, version **2.10.7 or newer**.
+
+## ToothSpin or ToothSpin Standalone? {#standalone}
+
+- **Only the phones over Bluetooth, and only Sendspin speakers?** Take
+  **ToothSpin Standalone**. It plays the phones on the speakers itself, no
+  Music Assistant needed.
+- **Anything else** (other speakers, other music, or Music Assistant runs
+  already): take **ToothSpin** and pair it with Music Assistant.
+
+| | **ToothSpin** (with Music Assistant) | **ToothSpin Standalone** |
+|---|---|---|
+| Speakers | Everything Music Assistant plays on: Sendspin, AirPlay, Chromecast, Squeezebox, Home Assistant media players | Sendspin only, and only those that play for servers they aren't paired with (e.g. ESPHome's) |
+| What plays | The phones, plus everything else in Music Assistant (streaming services, radio, your library) | Only the phones |
+| Setup | Music Assistant 2.10.7 or newer; each phone pairs with it once (by itself, with an API token) | Nothing to pair besides Bluetooth |
+| Title and cover on the speakers | Not yet: Sendspin can't send them for an input. ToothSpin's web UI shows them | Title, artist, album and cover on speakers with a display |
+| After a long pause | Switch the speakers on again after 10 minutes | They stay on |
+| Fixed speaker groups (e.g. a stereo pair as one speaker) | Music Assistant's sync groups | ToothSpin's own **Speaker groups** |
+| Player settings | Music Assistant's, e.g. **Maximum volume** | ToothSpin's **Maximum start volume** only |
+| Next to Music Assistant | – | Not next to Music Assistant's Sendspin integration: both want the same speakers |
+
+Both install the same ways: in Home Assistant, install **ToothSpin
+Standalone** from the same repository instead of ToothSpin (and skip the
+token step below); with Docker or Podman, use the image
+`ghcr.io/eknoes/toothspin-standalone`.
 
 ## Home Assistant App {#home-assistant}
 
@@ -73,17 +97,3 @@ instead of `--user`, SELinux hosts need a small policy module. Details and all o
 A small VM with the dongle passed through, or a Raspberry Pi 4, set up
 on first boot from one config file:
 [deploy/coreos](https://github.com/eknoes/toothspin/tree/main/deploy/coreos).
-
-## Without Music Assistant {#standalone}
-
-ToothSpin is made for Music Assistant. With only Sendspin speakers (e.g.
-ESPHome's), standalone mode plays the phones on them directly. It
-only plays the phones, only on Sendspin speakers that don't insist on being
-paired, and doesn't work next to Music Assistant's Sendspin integration.
-
-- **Home Assistant:** add the repository as above and install **ToothSpin
-  Standalone** instead of ToothSpin.
-- **Docker or Podman:** use the image `ghcr.io/eknoes/toothspin-standalone`
-  in the setup above.
-
-Details: [standalone mode](https://github.com/eknoes/toothspin#standalone-mode).
