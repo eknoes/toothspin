@@ -85,10 +85,6 @@ ToothSpin comes in two variants:
 | What plays | The phones, plus everything else in Music Assistant (streaming services, radio, your library) | Only the phones |
 | Setup | Music Assistant 2.10.7 or newer; each phone pairs with it once (by itself, with an API token) | Nothing to pair besides Bluetooth |
 | Title and cover on the speakers | Not yet: Sendspin can't send them for an input. ToothSpin's web UI shows them | Title, artist, album and cover on speakers with a display |
-| After a long pause | Switch the speakers on again after 10 minutes | They stay on |
-| Fixed speaker groups (e.g. a stereo pair as one speaker) | Music Assistant's sync groups | ToothSpin's own **Speaker groups** |
-| Player settings | Music Assistant's, e.g. **Maximum volume** | ToothSpin's **Maximum start volume** only |
-| Next to Music Assistant | – | Not next to Music Assistant's Sendspin integration: both want the same speakers |
 
 ## Install
 
