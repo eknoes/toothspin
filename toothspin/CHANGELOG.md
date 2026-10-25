@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.5.0 (2026-10-25)
+
+### Features
+
+- Ask for an update when Music Assistant speaks another Sendspin version
+- **server:** Speaker groups that play as one speaker
+- Covers from the phones
+
+### Fixes
+
+- **source:** Log the codec actually streamed
+- **server:** Recognise older speakers again with aiosendspin 10
+- **server:** Start again until mDNS works
+- **server:** Play again on speakers that come back
+- Connect phones' audio again after a restart
+- **covers:** Start obexd so it keeps running
+- **selinux:** Drop the rule for covers again
+
+### Image and dependencies
+
+- **deps-dev:** Bump ruff from 0.16.10 to 0.17.1
+- Aiosendspin 10.2.0, as Music Assistant 2.10.7 ships
+- Aiosendspin 10.2.1, as Music Assistant 2.10.8 ships
+
+### Documentation
+
+- Music Assistant 2.10.7 or newer
+- Runs in a couple of homes by now
+- List the hardware ToothSpin runs on
+- ToothSpin or ToothSpin Standalone, side by side
+
 ## 0.4.0 (2026-10-20)
 
 ### Features
