@@ -34,7 +34,7 @@ RUN apk mkpkg --output /tmp/no-camera.apk \
     && rm /tmp/no-camera.apk \
     && apk upgrade --no-cache \
     && apk add --no-cache python3 pipewire wireplumber pipewire-spa-bluez pipewire-tools \
-        pulseaudio-utils \
+        pulseaudio-utils bluez-obexd dbus \
     && ! apk info -e libcamera mesa
 # ToothSpin runs as this user. Started as root (Home Assistant), it hands its
 # files to it and switches (src/toothspin/privileges.py). /data belongs to it,

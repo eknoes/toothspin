@@ -86,6 +86,8 @@ class NowPlaying:
     duration_ms: int | None = None
     position_ms: int | None = None
     """Where the phone is in the track now, counted on while it plays."""
+    image_handle: str | None = None
+    """The track's cover, to fetch over cover art (see ``covers``); only while a session is open."""
 
 
 class BluetoothManager:
@@ -245,7 +247,16 @@ class BluetoothManager:
                     album=track.get("Album") or None,
                     duration_ms=track.get("Duration") or None,
                     position_ms=_position_now(props),
+                    image_handle=track.get("ImgHandle") or None,
                 )
+        return None
+
+    def cover_port(self, address: str) -> int | None:
+        """Where the phone offers covers (AVRCP cover art), if it does."""
+        device = f"{self._adapter_path}/dev_{address.upper().replace(':', '_')}/"
+        for path, props in self._players.items():
+            if path.startswith(device):
+                return props.get("ObexPort") or None
         return None
 
     def owns(self, device_path: str) -> bool:

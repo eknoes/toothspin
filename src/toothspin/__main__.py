@@ -25,6 +25,7 @@ from dbus_fast.errors import DBusError
 
 from . import audio_stack, ha, ha_audio, ma_pairing, privileges, setup_check
 from .audio_stack import AudioStack
+from .covers import Covers, ObexDaemon
 from .bluez import BluetoothManager, NowPlaying
 from .backend import PlayerBackend
 from .ma import MusicAssistant, check_version, probe_version
@@ -359,7 +360,9 @@ async def _watch_ma_version(url: str | None, status: setup_check.Status) -> None
 
 
 async def _start_server(
-    args: argparse.Namespace, now_playing: Callable[[str], NowPlaying | None]
+    args: argparse.Namespace,
+    now_playing: Callable[[str], NowPlaying | None],
+    cover: Callable[[str], tuple[str, bytes] | None],
 ) -> ToothSpinServer:
     try:
         from . import server as server_module
@@ -370,7 +373,7 @@ async def _start_server(
         ) from err
     server = ToothSpinServer(
         args.data_dir, "ToothSpin", args.server_port, speaker_buffer_ms=args.speaker_buffer_ms,
-        now_playing=now_playing,
+        now_playing=now_playing, cover=cover,
     )
     server_module.watch_sendspin_logs(server.note_late)
     try:
@@ -419,6 +422,16 @@ async def _run(args: argparse.Namespace) -> None:
     audio = AudioStack() if args.bundled_pipewire else None
     if audio:
         await audio.start()
+    # Covers come with the image's obexd; without it, there are none.
+    obex = None
+    if audio and ObexDaemon.available():
+        obex = ObexDaemon(Path(os.environ["XDG_RUNTIME_DIR"]))
+        try:
+            await obex.start()
+        except (OSError, RuntimeError, DBusError) as err:
+            logger.warning("No covers from the phones: obexd didn't start (%s)", err)
+            await obex.stop()
+            obex = None
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
     shown: list[str | None] = [None]
     adapter = await _claim_adapter(bus, args.adapter, status, shown)
@@ -435,19 +448,29 @@ async def _run(args: argparse.Namespace) -> None:
         allow_phone_connect=args.allow_phone_connect, pin=args.bt_pin or None,
         other_adapters_pairing=args.other_adapters_pairing == "accept",
     )
+    covers = Covers(bluetooth, obex) if obex else None
     backend: PlayerBackend | None
     if args.mode == "standalone":
         # Our own Sendspin server: the phones' sources connect to it, paired
         # automatically, and it plays them on Sendspin speakers.
-        def now_playing(source_id: str) -> NowPlaying | None:
-            """What the phone behind this Sendspin source plays, for the speakers."""
+        def phone(source_id: str) -> str | None:
+            """The address of the phone behind this Sendspin source."""
             for device in bluetooth.devices():
                 receiver = receivers.get(device.address)
                 if receiver is not None and receiver.source.client.identity.peer_id == source_id:
-                    return bluetooth.now_playing(device.address)
+                    return device.address
             return None
 
-        server = await _start_server(args, now_playing)
+        def now_playing(source_id: str) -> NowPlaying | None:
+            """What the phone behind this Sendspin source plays, for the speakers."""
+            address = phone(source_id)
+            return bluetooth.now_playing(address) if address else None
+
+        def cover(source_id: str) -> tuple[str, bytes] | None:
+            address = phone(source_id)
+            return covers.cover(address) if covers and address else None
+
+        server = await _start_server(args, now_playing, cover)
         backend = server
         receivers = Receivers(
             bluetooth, args.data_dir, server.url, AudioCodec(args.codec), args.name,
@@ -476,7 +499,7 @@ async def _run(args: argparse.Namespace) -> None:
     await site.serve(
         create_app(
             bluetooth, receivers, args.pairing_seconds, backend, ingress_port=ingress_port,
-            start_volume=args.start_volume, mode=args.mode,
+            start_volume=args.start_volume, mode=args.mode, covers=covers,
             auto_pairing=args.mode == "music-assistant" and backend is not None,
             status=status,
             take_bluetooth_audio=(lambda: _take_bluetooth_audio(bluetooth, status))
@@ -505,6 +528,7 @@ async def _run(args: argparse.Namespace) -> None:
     )
     if audio:
         tasks.append(asyncio.create_task(audio.exited.wait()))
+    covers_task = asyncio.create_task(covers.run()) if covers else None
     backend_task = asyncio.create_task(backend.run()) if backend else None
     if backend:
         volume_sync = VolumeSync(bluetooth, receivers, backend, args.start_volume)
@@ -531,6 +555,8 @@ async def _run(args: argparse.Namespace) -> None:
         # Our audio stack going away drops the phones; reconnect them next start.
         _remember_connected(bluetooth, reconnect_file)
         reconnect.cancel()
+        if covers_task:
+            covers_task.cancel()
         for task in tasks:
             task.cancel()
         watch.cancel()
@@ -544,6 +570,8 @@ async def _run(args: argparse.Namespace) -> None:
             await asyncio.gather(backend_task, return_exceptions=True)
         await site.close()
         bus.disconnect()
+        if obex:
+            await obex.stop()
         if audio:
             await audio.stop()
 

@@ -132,13 +132,13 @@ change. Audio works either way.
 
 Sendspin, the protocol between ToothSpin and Music Assistant, can't send an
 input's title, artist or cover yet, only its audio. ToothSpin's own app
-shows title and artist on the phone's card, as far as the phone reports
-them. Support in Sendspin is being discussed
+shows title, artist and cover on the phone's card, as far as the phone
+reports them. Support in Sendspin is being discussed
 ([Sendspin/backlog#56](https://github.com/Sendspin/backlog/issues/56)).
 
 In [standalone mode]({{ '/install.html#standalone' | relative_url }}),
-ToothSpin is the Sendspin server itself and sends title, artist, album and
-the track's position to speakers with a display. Covers aren't sent.
+ToothSpin is the Sendspin server itself and sends title, artist, album,
+cover and the track's position to speakers with a display.
 
 ### Why no aptX, LDAC or other higher-quality codecs? {#codecs}
 

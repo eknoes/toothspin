@@ -13,7 +13,7 @@ import json
 import logging
 from dataclasses import asdict
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from importlib.resources import files
 
 import aiohttp
@@ -25,6 +25,9 @@ from .bluez import BluetoothManager
 from .ha import INGRESS_PROXY_IP
 from .backend import BackendError, PlayerBackend
 from .receivers import Receivers
+
+if TYPE_CHECKING:
+    from .covers import Covers
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,7 @@ def create_app(
     auto_pairing: bool = False,
     status: setup_check.Status | None = None,
     take_bluetooth_audio: Callable[[], Awaitable[None]] | None = None,
+    covers: Covers | None = None,
 ) -> web.Application:
     volumes = speakers.Volumes(backend) if backend else None
     # Fixed speaker groups: only ToothSpin's own server has them.
@@ -57,6 +61,10 @@ def create_app(
                 "now_playing": _asdict_or_none(bluetooth.now_playing(device.address)),
             }
         )
+        cover = covers.cover(device.address) if covers and active else None
+        if state["audio"] is not None:
+            # Changes with the track, so the browser fetches the new one.
+            state["audio"]["cover"] = cover[0] if cover else None
         state["sendspin"] = asdict(receiver.source.status()) if receiver else None
         state["hidden_speakers"] = receivers.hidden_speakers(device.address) if receiver else []
         state["reconnecting"] = bluetooth.reconnecting(device.address)
@@ -99,6 +107,15 @@ def create_app(
                 },
                 "rooms": rooms.rooms() if rooms else None,
             }
+        )
+
+    async def get_cover(request: web.Request) -> web.Response:
+        cover = covers.cover(request.match_info["address"]) if covers else None
+        if cover is None:
+            raise web.HTTPNotFound
+        return web.Response(
+            body=cover[1], content_type="image/jpeg",
+            headers={"Cache-Control": "private, max-age=3600"},
         )
 
     async def post_bt_pairing(request: web.Request) -> web.Response:
@@ -269,6 +286,7 @@ def create_app(
     app.router.add_get("/api/state", get_state)
     app.router.add_post("/api/setup/ignore-adapter", post_setup_ignore_adapter)
     app.router.add_post("/api/setup/take-bluetooth-audio", post_setup_take_bluetooth_audio)
+    app.router.add_get("/api/devices/{address}/cover", get_cover)
     app.router.add_post("/api/bluetooth/pairing", post_bt_pairing)
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)

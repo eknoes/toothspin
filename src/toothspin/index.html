@@ -84,6 +84,8 @@
            border-radius: 10px; background: #b3392d; color: #fff; font-size: 14px;
            box-shadow: 0 4px 16px rgba(0, 0, 0, .25); cursor: pointer; }
   .track { font-size: 16px; margin: 6px 0 2px; }
+  .track:has(.cover) { display: flex; align-items: center; gap: 10px; }
+  .track .cover { border-radius: 6px; flex-shrink: 0; }
   .phone { display: grid; gap: 4px; }
   .phone + .phone { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
   .phone .title { display: flex; align-items: center; gap: 4px; font-size: 16px; }
@@ -308,8 +310,12 @@ function renderAudio(d) {
   if (!d.connected) return `<div class="muted">Not connected</div>`;
   if (!d.audio) return `<div class="muted">Connected, not playing</div>`;
   const np = d.audio.now_playing, ss = d.sendspin;
+  const cover = d.audio.cover
+    ? `<img class="cover" alt="" width="48" height="48"
+        src="api/devices/${encodeURIComponent(d.address)}/cover?h=${encodeURIComponent(d.audio.cover)}">`
+    : "";
   const track = np && np.title
-    ? `<div class="track"><b>${esc(np.title)}</b>${np.artist ? ` — ${esc(np.artist)}` : ""}</div>`
+    ? `<div class="track">${cover}<div><b>${esc(np.title)}</b>${np.artist ? ` — ${esc(np.artist)}` : ""}</div></div>`
     : "";
   return `${track}<div><span class="dot ${ss && ss.signal ? "ok" : ""}"></span>
       ${ss && ss.signal ? "Playing" : "Silent"} · ${esc(d.audio.codec || "Bluetooth")} ·

@@ -6,9 +6,11 @@ driven through the same Music Assistant style commands the web UI uses.
 
 import asyncio
 import socket
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from fake_speaker import FakeSpeaker
 from toothspin import server as server_module
@@ -48,8 +50,11 @@ def test_plays_a_phone_on_grouped_speakers(tmp_path: Path, monkeypatch) -> None:
 
 async def _scenario(tmp_path: Path) -> None:
     playing = NowPlaying("playing", "Crawling", "Linkin Park", "Hybrid Theory", 209000, 5000)
+    jpeg = BytesIO()
+    Image.new("RGB", (200, 200), "teal").save(jpeg, "JPEG")
     server = ToothSpinServer(
-        tmp_path, "ToothSpin test", port=_free_port(), now_playing=lambda source_id: playing
+        tmp_path, "ToothSpin test", port=_free_port(), now_playing=lambda source_id: playing,
+        cover=lambda source_id: ("1000001", jpeg.getvalue()),
     )
     await server.start()
     server_task = asyncio.create_task(server.run())
@@ -59,7 +64,7 @@ async def _scenario(tmp_path: Path) -> None:
     await server.pair_local(source)
     source_task = asyncio.create_task(source.run())
 
-    kitchen = FakeSpeaker("Kitchen", volume=80, show_metadata=True)
+    kitchen = FakeSpeaker("Kitchen", volume=80, show_metadata=True, show_artwork=True)
     living = FakeSpeaker("Living room", volume=30)
     for speaker in (kitchen, living):
         await (await speaker.build()).connect(server.url)
@@ -86,8 +91,10 @@ async def _scenario(tmp_path: Path) -> None:
 
         tasks.append(asyncio.create_task(phone()))
         await _until(lambda: kitchen.audio_bytes > 0)
-        # A speaker with a display shows what the phone plays.
+        # A speaker with a display shows what the phone plays, with its cover.
         await _until(lambda: "Crawling" in kitchen.titles)
+        await _until(lambda: any(kitchen.covers))
+        assert Image.open(BytesIO(next(c for c in kitchen.covers if c))).size == (100, 100)
 
         # Adding the living room groups it with the kitchen; both get audio.
         await speakers.toggle(server, uri, living.client_id, True, start_volume=100)

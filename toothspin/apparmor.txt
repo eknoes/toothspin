@@ -21,6 +21,8 @@ profile toothspin flags=(attach_disconnected,mediate_deleted) {
   network inet6,
   network unix,
   network netlink raw,
+  # The phones' covers: obexd connects to them itself (L2CAP).
+  network bluetooth,
 
   # The host's D-Bus: only BlueZ, and the bus itself (connecting, signal
   # subscriptions). Nothing else there, e.g. not systemd, which would hand
@@ -44,6 +46,7 @@ profile toothspin flags=(attach_disconnected,mediate_deleted) {
   /usr/bin/** ix,
   /usr/sbin/** ix,
   /opt/venv/bin/** ix,
+  /usr/lib/bluetooth/obexd ix,
   / r,
   /{,usr/,usr/local/}lib/ r,
   /lib/** mr,

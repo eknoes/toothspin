@@ -68,8 +68,9 @@ speaker.
 group. A speaker keeps its volume when a phone starts on it. To keep a
 speaker from starting loud, use **Maximum start volume**.
 
-**Track info:** speakers with a display show the title, artist, album and
-position the phone reports. Covers aren't sent.
+**Track info:** speakers with a display show the title, artist, album,
+cover and position the phone reports. Covers come in 200×200, from phones
+that offer them over Bluetooth (Android does).
 
 **Hide speakers:** the eye icon hides a speaker on that phone's card.
 

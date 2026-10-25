@@ -18,6 +18,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
+from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -34,6 +35,7 @@ from aiosendspin.server import (
 )
 from aiosendspin.server.push_stream import StreamStoppedError
 from aiosendspin.server.roles.metadata.state import Metadata
+from PIL import Image, UnidentifiedImageError
 
 from .backend import BackendError
 from .rooms import Room, RoomStore
@@ -87,6 +89,8 @@ class _Route:
     """Phone-to-speaker delay when the stream started; drift is corrected towards it."""
     delay_us: int | None = None
     lost: set[str] = field(default_factory=set)
+    cover: str | None = None
+    """Image handle of the cover the group shows."""
     """Speakers that dropped off while playing it, by client id: they play it again on return."""
 
 
@@ -118,6 +122,7 @@ class ToothSpinServer:
         port: int = 8927,
         speaker_buffer_ms: int | None = None,
         now_playing: Callable[[str], NowPlaying | None] | None = None,
+        cover: Callable[[str], tuple[str, bytes] | None] | None = None,
     ) -> None:
         self._data_dir = data_dir / "server"
         self._name = name
@@ -128,6 +133,8 @@ class ToothSpinServer:
         # What a phone plays (AVRCP), by its source's client id: shown on
         # speakers with a display.
         self._now_playing = now_playing
+        # The phone's cover as (image handle, JPEG), by its source's client id.
+        self._cover = cover
         # Speakers playing a phone now, by client id.
         self._sessions: dict[str, _Session] = {}
         self._server: SendspinServer | None = None
@@ -185,6 +192,7 @@ class ToothSpinServer:
         try:
             while True:
                 self._update_metadata()
+                await self._update_covers()
                 self._track_sessions()
                 self._end_idle_streams()
                 try:
@@ -584,6 +592,24 @@ class ToothSpinServer:
                 delay_ms = (route.target_delay_us or 0) // 1000
                 _set_metadata(route.group, _metadata(playing, delay_ms))
 
+    async def _update_covers(self) -> None:
+        """Send each group its phone's cover when it changes."""
+        if self._cover is None:
+            return
+        for source_id, feed in self._feeds.items():
+            cover = self._cover(source_id)
+            handle = cover[0] if cover else None
+            for route in feed.routes:
+                if route.cover == handle:
+                    continue
+                route.cover = handle
+                try:
+                    image = Image.open(BytesIO(cover[1])) if cover else None
+                except UnidentifiedImageError:
+                    logger.warning("The phone's cover isn't an image")
+                    continue
+                await _set_cover(route.group, image)
+
     # --- routing inputs to groups ---
 
     def _route(self, group: SendspinGroup) -> _Route | None:
@@ -620,6 +646,8 @@ class ToothSpinServer:
         feed = self._feeds[route.source_id]
         feed.routes.remove(route)
         _set_metadata(group, None)
+        if route.cover is not None:
+            await _set_cover(group, None)
         await group.stop()
         if not feed.routes:
             source = self._server.get_client(route.source_id) if self._server else None
@@ -666,6 +694,7 @@ class ToothSpinServer:
                 route.group = client.group
                 route.stream = None
                 route.target_delay_us = route.delay_us = None
+                route.cover = None
                 return
 
     async def _trust_speaker(self, client: SendspinClient) -> None:
@@ -760,6 +789,12 @@ def _set_metadata(group: SendspinGroup, metadata: Metadata | None) -> None:
     role = group.group_role("metadata")
     if role is not None:
         role.set_metadata(metadata)  # type: ignore[attr-defined]
+
+
+async def _set_cover(group: SendspinGroup, image: Image.Image | None) -> None:
+    role = group.group_role("artwork")
+    if role is not None:
+        await role.set_album_artwork(image)  # type: ignore[attr-defined]
 
 
 def _log_failure(task: asyncio.Task[None]) -> None:

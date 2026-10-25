@@ -17,7 +17,10 @@ from aiohttp import web
 from aiosendspin.client import SendspinClient
 from aiosendspin.client.listener import ClientListener
 from aiosendspin.models.player import ClientHelloPlayerSupport, SupportedAudioFormat
-from aiosendspin.models.types import AudioCodec, PlayerCommand, Roles
+from aiosendspin.models.artwork import ArtworkChannel
+from aiosendspin.models.types import (
+    ArtworkSource, AudioCodec, PictureFormat, PlayerCommand, Roles,
+)
 from aiosendspin.models.types import UndefinedField
 from aiosendspin.noise import Identity, InMemoryClientPairingStore
 
@@ -34,6 +37,9 @@ class FakeSpeaker:
     show_metadata: bool = False
     """Like a speaker with a display: takes the metadata role."""
     titles: list[str | None] = field(default_factory=list)
+    show_artwork: bool = False
+    """Like a speaker with a display for covers: takes the artwork role."""
+    covers: list[bytes] = field(default_factory=list)
     client: SendspinClient | None = None
     identity: Identity | None = None
     """Kept across builds, so building again is the same speaker coming back."""
@@ -47,7 +53,13 @@ class FakeSpeaker:
         self.client = SendspinClient(
             identity=self.identity,
             client_name=self.name,
-            roles=[Roles.PLAYER, Roles.METADATA] if self.show_metadata else [Roles.PLAYER],
+            roles=[Roles.PLAYER]
+            + ([Roles.METADATA] if self.show_metadata else [])
+            + ([Roles.ARTWORK] if self.show_artwork else []),
+            artwork_channels=[
+                ArtworkChannel(source=ArtworkSource.ALBUM, format=PictureFormat.JPEG,
+                               width=100, height=100)
+            ] if self.show_artwork else None,
             pairing_store=store,
             player_support=ClientHelloPlayerSupport(
                 supported_formats=[
@@ -65,6 +77,7 @@ class FakeSpeaker:
         self.client.add_stream_end_listener(self._on_stream_end)
         self.client.add_server_command_listener(self._on_command)
         self.client.add_metadata_listener(self._on_metadata)
+        self.client.add_artwork_listener(lambda _channel, data: self.covers.append(data))
         return self.client
 
     @property

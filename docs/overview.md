@@ -83,6 +83,19 @@ the transport is active), so a phone left at full volume doesn't blast the
 room. After that, whichever side changes is copied to the other, ignoring
 the echo of its own last write for a few seconds.
 
+## Covers
+
+Phones offer the track's cover over AVRCP's cover art protocol (BIP, an OBEX
+service on its own L2CAP port, `MediaPlayer1.ObexPort`). The image runs
+BlueZ's `obexd`, client part only (it offers phones nothing), on a private
+D-Bus of its own, and keeps a cover art session open per connected phone:
+BlueZ only includes a track's image handle (`Track.ImgHandle`) while one is
+open. On each new handle ToothSpin fetches the thumbnail, a 200×200 JPEG,
+and shows it on the phone's card; in standalone mode the speakers' artwork
+role gets it too. `obexd` opens its socket to the phone itself, which works
+unprivileged (unlike raw HCI sockets), so rootless containers get covers
+too, as long as they share the host's network.
+
 ## Running confined
 
 - ToothSpin doesn't run as root. On the host's system bus, services like
