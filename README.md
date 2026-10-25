@@ -4,6 +4,8 @@
 
 **Stream any phone over Bluetooth to your multi-room speakers, with or without Music Assistant.**
 
+[![Add the repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feknoes%2Ftoothspin)
+
 ToothSpin turns a USB Bluetooth dongle into a Bluetooth speaker for
 [Music Assistant](https://music-assistant.io). Your phone pairs with it like
 with any other speaker, and whatever it plays shows up in Music Assistant as
@@ -23,7 +25,7 @@ ToothSpin is my peace offering. For the phones it's just another Bluetooth
 speaker, and the music can still fill one room or all of them.
 
 <p align="center">
-  <img src="assets/how-it-works.svg" width="760"
+  <img src="docs/assets/how-it-works.svg" width="760"
     alt="Your phone sends audio via Bluetooth to ToothSpin, which forwards it via Sendspin to your speakers, through Music Assistant or directly with ToothSpin Standalone">
 </p>
 
@@ -244,7 +246,7 @@ same repository, or use the image `ghcr.io/eknoes/toothspin-standalone`
 
 ## Tested hardware
 
-What ToothSpin runs on every day:
+What ToothSpin runs on every day at my home:
 
 - **Bluetooth:** a BARROT Bluetooth 6.0 USB dongle (`33fa:0012`), passed
   through to the Home Assistant VM; Android phones.

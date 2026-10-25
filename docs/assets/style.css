@@ -126,6 +126,9 @@ footer {
   font-size: 0.9rem;
 }
 
+.diagram { margin: 1.5rem 0; }
+.diagram img { width: 100%; height: auto; }
+
 .shot { margin: 1.25rem auto; max-width: 28rem; text-align: center; }
 .shot img {
   width: 100%;

@@ -1,5 +1,5 @@
 title: ToothSpin
-description: Bluetooth A2DP receiver that feeds phone audio into Music Assistant as a Sendspin source.
+description: Bluetooth A2DP receiver that streams phone audio over Sendspin to Music Assistant or straight to the speakers.
 repository: eknoes/toothspin
 
 # GitHub Pages fills in baseurl for project sites; set it when building elsewhere.
