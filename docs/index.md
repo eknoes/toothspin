@@ -43,7 +43,7 @@ that ships with Music Assistant 2.10.7.
 ## Web UI
 
 <figure class="shot">
-  <img src="{{ '/assets/screenshots/demo.gif' | relative_url }}" width="480" height="663"
+  <img src="{{ '/assets/screenshots/demo.gif' | relative_url }}" width="480" height="683"
     alt="A speaker joins the phone's group, its volume goes up, then the phone plays only there">
   <figcaption>Add a speaker, turn it up, then play only there.</figcaption>
 </figure>
@@ -51,7 +51,7 @@ that ships with Music Assistant 2.10.7.
 <figure class="shot">
   <picture>
     <source srcset="{{ '/assets/screenshots/web-ui-dark.png' | relative_url }}" media="(prefers-color-scheme: dark)">
-    <img src="{{ '/assets/screenshots/web-ui-light.png' | relative_url }}" width="640" height="949"
+    <img src="{{ '/assets/screenshots/web-ui-light.png' | relative_url }}" width="640" height="1015"
       alt="ToothSpin web UI: a phone playing a track on two grouped speakers, and a second phone showing its Music Assistant pairing code">
   </picture>
   <figcaption>One phone playing on a speaker group, one waiting for Music Assistant pairing.</figcaption>

@@ -1,9 +1,11 @@
 {
+  "mode": "music-assistant",
   "bluetooth": {"name": "ToothSpin", "address": "00:1A:7D:DA:71:13", "pairing_remaining": null},
   "devices": [
     {
       "address": "AA:BB:CC:00:00:01", "name": "Pixel 9", "paired": true, "trusted": false, "connected": true,
-      "audio": {"codec": "AAC", "now_playing": {"title": "Never Gonna Give You Up", "artist": "Rick Astley"}},
+      "audio": {"codec": "AAC", "cover": "demo",
+                "now_playing": {"status": "playing", "title": "Harbour Lights", "artist": "The Night Ferries", "album": "Low Tide"}},
       "sendspin": {
         "name": "Alex's Pixel (Bluetooth)", "url": "ws://192.168.1.10:8927/sendspin", "connected": true,
         "server_name": "Music Assistant", "paired": true, "requested": true, "streaming": true, "signal": true,

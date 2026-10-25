@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+<!-- Made-up album cover for the demo track, so no real artwork ends up in the docs. -->
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#1d2b53"/><stop offset="0.55" stop-color="#c4473a"/><stop offset="1" stop-color="#f3a35c"/>
+  </linearGradient>
+</defs>
+<rect width="300" height="300" fill="url(#sky)"/>
+<circle cx="150" cy="190" r="62" fill="#ffd27a"/>
+<rect y="190" width="300" height="110" fill="#14213d"/>
+<g stroke="#ffd27a" stroke-width="6" stroke-linecap="round" opacity="0.8">
+  <path d="M110 212 H190"/><path d="M125 234 H175"/><path d="M138 256 H162"/>
+</g>
+</svg>

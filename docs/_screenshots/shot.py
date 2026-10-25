@@ -2,20 +2,24 @@
 
 Serves src/toothspin/index.html with a fake receiver behind /api: it starts
 from demo.json and applies the web UI's requests (speakers on/off, moves,
-volume, mute), so no real devices or names end up in the docs. From the repo
-root:
+volume, mute), so no real devices, names or covers end up in the docs. From
+the repo root:
 
     podman run --rm -v .:/repo:Z mcr.microsoft.com/playwright/python:v1.52.0-noble \\
         sh -c "apt-get -qq update && apt-get -qq install -y ffmpeg >/dev/null \\
                && pip install -q playwright==1.52.0 && python /repo/docs/_screenshots/shot.py"
+
+Set CHROMIUM to a browser binary to use that instead of Playwright's own.
 """
 
 import copy
 import json
 import mimetypes
+import os
 import pathlib
 import shutil
 import subprocess
+import re
 import tempfile
 from urllib.parse import unquote
 
@@ -26,6 +30,10 @@ repo = here.parents[1]
 site = repo / "src" / "toothspin"
 out = repo / "docs" / "assets" / "screenshots"
 demo = json.loads((here / "demo.json").read_text())
+demo["about"] = {
+    "version": re.search(r'^version = "(.+)"', (repo / "pyproject.toml").read_text(), re.M)[1],
+    "commit": None,
+}
 PHONE = "AA:BB:CC:00:00:01"
 
 TOKEN = {
@@ -110,6 +118,8 @@ class Receiver:
                 if s["playing_uri"] == uri:
                     s["playing_uri"] = s["synced_to"] = None
             self.play(uri, body["player_id"], True)
+        elif parts[:2] == ["api", "devices"] and parts[3:] == ["cover"]:
+            return route.fulfill(path=here / "cover.svg", content_type="image/svg+xml")
         elif path == "/":
             return route.fulfill(path=site / "index.html", content_type="text/html")
         elif path.startswith("/static/") and (site / path.lstrip("/")).is_file():
@@ -160,27 +170,56 @@ def demo_gif(browser):
     def frame(seconds):
         frames.append((page.screenshot(clip=clip), seconds))
 
+    def finger(x=None, y=None):
+        """Show where the finger touches (x, y), like a phone does; no x: lift it."""
+        page.evaluate("""([x, y]) => {
+            let dot = document.getElementById("finger");
+            if (!dot) {
+                dot = document.createElement("div");
+                dot.id = "finger";
+                dot.style.cssText = "position: fixed; z-index: 9999; pointer-events: none; "
+                    + "width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; "
+                    + "background: rgba(15, 27, 45, 0.3); border: 2px solid rgba(255, 255, 255, 0.9);";
+                document.documentElement.append(dot);  // outside what the UI re-renders
+            }
+            dot.hidden = x === null;
+            if (x !== null) { dot.style.left = `${x}px`; dot.style.top = `${y}px`; }
+        }""", [x, y])
+
+    def tap(selector, before=0.5, after=1.4):
+        box = page.locator(selector).bounding_box()
+        finger(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        frame(before)
+        page.click(selector)
+        page.wait_for_timeout(150)
+        frame(0.3)
+        finger()
+        frame(after)
+
     card = f'[data-addr="{PHONE}"]'
-    frame(1.6)
-    page.click(f'button[data-speaker="office"]{card}')
-    page.wait_for_timeout(150)
     frame(1.4)
+    tap(f'button[data-speaker="office"]{card}')
     slider = page.locator('input[data-vol="office"]')
     slider.wait_for(state="visible")
     page.wait_for_timeout(300)  # the next poll re-renders the card
     box = slider.bounding_box()
     y = box["y"] + box["height"] / 2
-    page.mouse.move(box["x"] + box["width"] * 0.2, y)
+    x = box["x"] + box["width"] * 0.2
+    page.mouse.move(x, y)
+    finger(x, y)
+    frame(0.4)
     page.mouse.down()
     for i in range(1, 13):
-        page.mouse.move(box["x"] + box["width"] * (0.2 + i * 0.04), y)
+        x = box["x"] + box["width"] * (0.2 + i * 0.04)
+        page.mouse.move(x, y)
+        finger(x, y)
         frame(0.06)
     page.mouse.up()
     page.wait_for_timeout(150)
-    frame(1.4)
-    page.click(f'button[data-move="office"]{card}')
-    page.wait_for_timeout(300)
-    frame(2.6)
+    frame(0.3)
+    finger()
+    frame(1.2)
+    tap(f'button[data-move="office"]{card}', after=2.4)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
@@ -200,7 +239,7 @@ def demo_gif(browser):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch()
+    browser = p.chromium.launch(executable_path=os.environ.get("CHROMIUM"))
     screenshots(browser)
     if shutil.which("ffmpeg"):
         demo_gif(browser)
