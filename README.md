@@ -2,12 +2,13 @@
 
 <img src="assets/toothspin.svg" width="96" alt="ToothSpin icon" align="right">
 
-**Stream any phone over Bluetooth into Music Assistant.**
+**Stream any phone over Bluetooth to your multi-room speakers, with or without Music Assistant.**
 
 ToothSpin turns a USB Bluetooth dongle into a Bluetooth speaker for
 [Music Assistant](https://music-assistant.io). Your phone pairs with it like
 with any other speaker, and whatever it plays shows up in Music Assistant as
 a live input. From there it plays on one speaker, a group, or the whole house.
+No Music Assistant? ToothSpin Standalone plays straight on Sendspin speakers.
 
 ## Why?
 
@@ -23,7 +24,7 @@ speaker, and the music can still fill one room or all of them.
 
 <p align="center">
   <img src="assets/how-it-works.svg" width="760"
-    alt="Your phone sends audio via Bluetooth to ToothSpin, which forwards it via Sendspin to Music Assistant">
+    alt="Your phone sends audio via Bluetooth to ToothSpin, which forwards it via Sendspin to your speakers, through Music Assistant or directly with ToothSpin Standalone">
 </p>
 
 ## How it works
