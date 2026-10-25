@@ -21,13 +21,14 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from aiosendspin.models.types import has_role_family
+from aiosendspin.models.types import GoodbyeReason, has_role_family
 from aiosendspin.noise import FileServerPairingStore
 from aiosendspin.noise.keys import generate_psk, psk_id_for
 from aiosendspin.noise.trust_store import PairingPsk, StagedPairingPsk
 from aiosendspin.server import (
     ClientAddedEvent,
     ClientConnectedEvent,
+    ClientDisconnectedEvent,
     SendspinServer,
     SourceStreamStartedEvent,
 )
@@ -69,6 +70,9 @@ DRIFT_TOLERANCE_US = 20_000
 # play when audio comes back on it; the phone's next audio starts a new one
 # on the same speakers.
 IDLE_STREAM_S = 2.0
+# A speaker that leaves for these reasons was told to (by its user, or by
+# another server taking it over); it doesn't play the phone again on return.
+_DELIBERATE_GOODBYES = {GoodbyeReason.ANOTHER_SERVER, GoodbyeReason.USER_REQUEST}
 
 
 @dataclass(eq=False, slots=True)
@@ -81,6 +85,8 @@ class _Route:
     target_delay_us: int | None = None
     """Phone-to-speaker delay when the stream started; drift is corrected towards it."""
     delay_us: int | None = None
+    lost: set[str] = field(default_factory=set)
+    """Speakers that dropped off while playing it, by client id: they play it again on return."""
 
 
 @dataclass(slots=True)
@@ -455,6 +461,37 @@ class ToothSpinServer:
             client = server.get_client(event.client_id)
             if client is not None:
                 asyncio.ensure_future(self._trust_speaker(client))
+                self._rejoin(client)
+        if isinstance(event, ClientDisconnectedEvent):
+            client = server.get_client(event.client_id)
+            route = self._route(client.group) if client is not None else None
+            if route is not None and event.goodbye_reason not in _DELIBERATE_GOODBYES:
+                route.lost.add(event.client_id)
+
+    def _rejoin(self, client: SendspinClient) -> None:
+        """Play a returning speaker's phone again, where it left off.
+
+        A speaker back within seconds is still in its group; one that was
+        gone longer (or rebooted) comes back in a group of its own, and
+        without this would stay silent while the phone plays on.
+        """
+        for feed in self._feeds.values():
+            for route in feed.routes:
+                if client.client_id not in route.lost:
+                    continue
+                route.lost.discard(client.client_id)
+                if client.group is route.group:
+                    return
+                if any(_is_player(c) and c.is_connected for c in route.group.clients):
+                    logger.info("%s is back, rejoining its group", client.name)
+                    task = asyncio.ensure_future(route.group.add_client(client))
+                    task.add_done_callback(_log_failure)
+                    return
+                logger.info("%s is back, playing again", client.name)
+                route.group = client.group
+                route.stream = None
+                route.target_delay_us = route.delay_us = None
+                return
 
     async def _trust_speaker(self, client: SendspinClient) -> None:
         """Play on speakers that allow servers they aren't paired with.
@@ -498,6 +535,9 @@ class ToothSpinServer:
                 route.target_delay_us = route.delay_us = None
 
     async def _push(self, route: _Route, pcm: bytes, fmt: AudioFormat, timestamp_us: int) -> None:
+        if not any(_is_player(c) for c in route.group.clients):
+            # Its speakers dropped off; they pick the stream up on return.
+            return
         if route.stream is None or route.stream.is_stopped:
             route.stream = route.group.start_stream()
             route.stream.set_live_source(True)

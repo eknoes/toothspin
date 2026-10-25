@@ -35,14 +35,17 @@ class FakeSpeaker:
     """Like a speaker with a display: takes the metadata role."""
     titles: list[str | None] = field(default_factory=list)
     client: SendspinClient | None = None
+    identity: Identity | None = None
+    """Kept across builds, so building again is the same speaker coming back."""
 
     async def build(self) -> SendspinClient:
         # Like most speakers set up for a home: plays for servers it isn't paired with.
         store = InMemoryClientPairingStore()
         config = await store.get_pairing_config()
         await store.store_pairing_config(replace(config, unpaired_access_enabled=True))
+        self.identity = self.identity or Identity.generate()
         self.client = SendspinClient(
-            identity=Identity.generate(),
+            identity=self.identity,
             client_name=self.name,
             roles=[Roles.PLAYER, Roles.METADATA] if self.show_metadata else [Roles.PLAYER],
             pairing_store=store,

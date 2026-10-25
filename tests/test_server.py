@@ -184,6 +184,69 @@ async def _long_pause(tmp_path: Path) -> None:
             await kitchen.client.disconnect()
 
 
+@pytest.mark.timeout(60)
+def test_speakers_play_again_when_they_come_back(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    # A speaker that drops off the network comes back in a group of its own;
+    # it plays the phone again there, or rejoins the speakers it played with.
+    for name in ("_start_mdns_advertising", "_start_mdns_discovery"):
+        monkeypatch.setattr(
+            f"aiosendspin.server.server.SendspinServer.{name}", lambda *a, **k: asyncio.sleep(0)
+        )
+    asyncio.run(_come_back(tmp_path))
+
+
+async def _come_back(tmp_path: Path) -> None:
+    server = ToothSpinServer(tmp_path, "ToothSpin test", port=_free_port())
+    await server.start()
+    source = SendspinSource("Pixel (Bluetooth)", server.url, tmp_path / "phone")
+    await source.setup()
+    await server.pair_local(source)
+    kitchen = FakeSpeaker("Kitchen")
+    living = FakeSpeaker("Living room")
+    tasks = [asyncio.create_task(server.run()), asyncio.create_task(source.run())]
+
+    async def phone() -> None:
+        chunk = b"\x10\x00" * CAPTURE_FORMAT.channels * 960  # 20 ms
+        while True:
+            await source.push(chunk, CAPTURE_FORMAT, source.client.now_us())
+            await asyncio.sleep(0.02)
+
+    async def drop_and_return(speaker: FakeSpeaker) -> None:
+        assert speaker.client is not None
+        await speaker.client.disconnect()
+        await _until(lambda: speaker.client_id not in {p["player_id"] for p in server.players})
+        await (await speaker.build()).connect(server.url)
+        received = speaker.audio_bytes
+        await _until(lambda: speaker.audio_bytes > received)
+
+    try:
+        for speaker in (kitchen, living):
+            await (await speaker.build()).connect(server.url)
+        await _until(lambda: source.status().paired and len(server.players) == 2)
+        uri = speakers.source_uri(source.client.identity.peer_id)
+        await speakers.toggle(server, uri, kitchen.client_id, True, start_volume=20)
+        await _until(lambda: source.status().requested)
+        tasks.append(asyncio.create_task(phone()))
+        await _until(lambda: kitchen.audio_bytes > 0)
+
+        await drop_and_return(kitchen)
+        listed = {s.name: s for s in speakers.speakers(server.players)}
+        assert listed["Kitchen"].playing_uri == uri
+
+        await speakers.toggle(server, uri, living.client_id, True, start_volume=20)
+        await _until(lambda: living.audio_bytes > 0)
+        await drop_and_return(living)
+        listed = {s.name: s for s in speakers.speakers(server.players)}
+        assert listed["Living room"].synced_to == kitchen.client_id
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        for speaker in (kitchen, living):
+            if speaker.client:
+                await speaker.client.disconnect()
+
+
 def test_drift_correction_drops_or_repeats_one_frame() -> None:
     pcm = bytes(range(8)) * 4  # 8 frames of 4 bytes
     assert correct_drift(pcm, 4, 100_000, 100_000) == pcm
