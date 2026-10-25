@@ -5,9 +5,9 @@
     {
       "address": "AA:BB:CC:00:00:01", "name": "Pixel 9", "paired": true, "trusted": false, "connected": true,
       "audio": {"codec": "AAC", "cover": "demo",
-                "now_playing": {"status": "playing", "title": "Harbour Lights", "artist": "The Night Ferries", "album": "Low Tide"}},
+                "now_playing": {"status": "playing", "title": "Never Gonna Give You Up", "artist": "Rick Astley", "album": "Whenever You Need Somebody"}},
       "sendspin": {
-        "name": "Alex's Pixel (Bluetooth)", "url": "ws://192.168.1.10:8927/sendspin", "connected": true,
+        "name": "Rick's Pixel (Bluetooth)", "url": "ws://192.168.1.10:8927/sendspin", "connected": true,
         "server_name": "Music Assistant", "paired": true, "requested": true, "streaming": true, "signal": true,
         "pairing_window_open": false, "pairing_requested": false, "pin": null
       },

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-<!-- Made-up album cover for the demo track, so no real artwork ends up in the docs. -->
+<!-- Made-up album cover, so no real artwork ends up in the docs. -->
 <defs>
   <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0" stop-color="#1d2b53"/><stop offset="0.55" stop-color="#c4473a"/><stop offset="1" stop-color="#f3a35c"/>
