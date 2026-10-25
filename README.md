@@ -235,6 +235,21 @@ same repository, or use the image `ghcr.io/eknoes/toothspin-standalone`
 | `SERVER_PORT` | `8927` | port of ToothSpin's Sendspin server |
 | `SPEAKER_BUFFER_MS` | – | buffer for speakers that don't report their own (older Sendspin versions; otherwise 1000 ms). Less, e.g. `500`, starts playback sooner; too little drops out |
 
+## Tested hardware
+
+What ToothSpin runs on every day:
+
+- **Bluetooth:** a BARROT Bluetooth 6.0 USB dongle (`33fa:0012`), passed
+  through to the Home Assistant VM; Android phones.
+- **Speakers**, with Music Assistant and in standalone mode:
+  - [Louder Esparagus](https://github.com/sonocotta/esparagus-media-center#louder-esparagus)
+    and [Louder-ESP32 Mini](https://github.com/sonocotta/esp32-audio-dock#louder-esp32-mini)
+    with ESPHome
+  - [HiFi-ESP32](https://github.com/sonocotta/esp32-audio-dock#hifi-esp32-and-hifi-esp32-plus)
+    with ESPHome, into a stereo amplifier
+  - Raspberry Pis with [piCorePlayer](https://www.picoreplayer.org/) and
+    `sendspin-cpp-cli`
+
 ## More
 
 - [Technical overview](https://eknoes.github.io/toothspin/overview.html):

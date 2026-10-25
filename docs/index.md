@@ -58,7 +58,22 @@ that ships with Music Assistant 2.10.7.
 - A Bluetooth adapter, ideally a USB dongle just for ToothSpin.
 - Home Assistant (ToothSpin installs as an App), or a Linux host with
   `bluetoothd` and Docker or Podman.
-- One or several speakers connected to Music Assistant. I use [Louder Esparagus](https://github.com/sonocotta/esparagus-media-center#louder-esparagus) and some Raspberry Pis with [PiCorePlayer](https://www.picoreplayer.org/).
+- One or several speakers connected to Music Assistant.
+
+## Tested hardware
+
+What ToothSpin runs on every day:
+
+- **Bluetooth:** a BARROT Bluetooth 6.0 USB dongle (`33fa:0012`), passed
+  through to the Home Assistant VM; Android phones.
+- **Speakers**, with Music Assistant and in standalone mode:
+  - [Louder Esparagus](https://github.com/sonocotta/esparagus-media-center#louder-esparagus)
+    and [Louder-ESP32 Mini](https://github.com/sonocotta/esp32-audio-dock#louder-esp32-mini)
+    with ESPHome
+  - [HiFi-ESP32](https://github.com/sonocotta/esp32-audio-dock#hifi-esp32-and-hifi-esp32-plus)
+    with ESPHome, into a stereo amplifier
+  - Raspberry Pis with [piCorePlayer](https://www.picoreplayer.org/) and
+    `sendspin-cpp-cli`
 
 [Install it]({{ '/install.html' | relative_url }}), or read the
 [FAQ]({{ '/faq.html' | relative_url }}). How it fits together: [technical overview]({{ '/overview.html' | relative_url }}).
