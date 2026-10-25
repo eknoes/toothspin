@@ -77,6 +77,13 @@ that ships with Music Assistant 2.10.7.
 
 ## Tested hardware
 
+Any Bluetooth adapter Linux supports should work, as long as it does
+Bluetooth Classic with A2DP, which phones use for music. ToothSpin is an
+A2DP sink with AAC and SBC only: no calls (HFP/HSP) and no LE Audio (LC3,
+Auracast). Most USB dongles work with Linux's standard driver. The host
+needs BlueZ 5.51 or newer, and 5.79 or newer for covers; current Home
+Assistant OS has that.
+
 What ToothSpin runs on every day at my home:
 
 - **Bluetooth:** a BARROT Bluetooth 6.0 USB dongle (`33fa:0012`), passed
