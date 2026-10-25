@@ -1,10 +1,12 @@
 """Album covers from the phones, for speakers with a display and the web UI.
 
 Phones offer the current track's cover over AVRCP's cover art protocol (BIP
-over OBEX). BlueZ's obexd fetches it: ToothSpin runs its own, client part
-only (it offers phones nothing), on a private D-Bus of its own. BlueZ only
-includes a track's image handle while a cover art session to the phone is
-open, so one stays open per connected phone that offers covers.
+over OBEX). BlueZ's obexd fetches it: ToothSpin runs its own on a private
+D-Bus, which it also uses as its system bus. obexd won't run without a
+service and the Bluetooth transport, which would offer that service to
+phones through bluetoothd; on a bus without bluetoothd it offers nothing.
+BlueZ only includes a track's image handle while a cover art session to the
+phone is open, so one stays open per connected phone that offers covers.
 
 It needs no privileges: obexd's Bluetooth socket (L2CAP) works from a
 rootless container too. Without obexd (outside the image) there are no
@@ -42,6 +44,7 @@ OBEX_PATH = "/org/bluez/obex"
 POLL_S = 1.0
 RETRY_S = 30.0
 FETCH_TIMEOUT_S = 15.0
+START_TIMEOUT_S = 10.0
 # Covers kept per phone: tracks come round again.
 CACHE = 8
 # A bus for obexd and ToothSpin only: no service activation, so nothing can
@@ -54,6 +57,7 @@ _BUS_CONFIG = """<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Confi
   <auth>EXTERNAL</auth>
   <policy context="default">
     <allow send_destination="*"/>
+    <allow receive_sender="*"/>
     <allow own="*"/>
   </policy>
 </busconfig>
@@ -184,6 +188,10 @@ class ObexDaemon:
         return os.access(OBEXD, os.X_OK)
 
     async def start(self) -> None:
+        async with asyncio.timeout(START_TIMEOUT_S):
+            await self._start()
+
+    async def _start(self) -> None:
         self._dir.mkdir(mode=0o700, exist_ok=True)
         socket = self._dir / "bus"
         address = f"unix:path={socket}"
@@ -197,8 +205,13 @@ class ObexDaemon:
                 break
             await asyncio.sleep(0.1)
         self._procs.append(await asyncio.create_subprocess_exec(
-            OBEXD, "--nodetach", "--plugin=client",
-            env={**os.environ, "DBUS_SESSION_BUS_ADDRESS": address},
+            OBEXD, "--nodetach", "--plugin=client,opp,bluetooth",
+            env={
+                **os.environ,
+                "DBUS_SESSION_BUS_ADDRESS": address,
+                # Never the host's: there it would offer phones Object Push.
+                "DBUS_SYSTEM_BUS_ADDRESS": address,
+            },
         ))
         self._bus = await MessageBus(bus_address=address).connect()
         for _ in range(50):

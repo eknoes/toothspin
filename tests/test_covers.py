@@ -1,10 +1,13 @@
 import asyncio
+import shutil
+import sys
 
+import pytest
 from dbus_fast.errors import DBusError
 
 from toothspin import covers as covers_module
 from toothspin.bluez import BluetoothDevice, NowPlaying
-from toothspin.covers import Covers
+from toothspin.covers import Covers, ObexDaemon
 
 PHONE = "AA:BB:CC:DD:EE:FF"
 
@@ -106,5 +109,36 @@ def test_a_failed_cover_is_retried_later_in_a_new_session(monkeypatch) -> None: 
         now[0] += covers_module.RETRY_S
         await covers.sync()
         assert covers.cover(PHONE) == ("1000001", b"jpeg 1000001")
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.skipif(shutil.which("dbus-daemon") is None, reason="needs dbus-daemon")
+@pytest.mark.timeout(30)
+def test_obexd_starts_on_a_bus_of_its_own(tmp_path, monkeypatch) -> None:  # noqa: ANN001
+    # Stands in for obexd: takes its name on the bus it's given.
+    fake = tmp_path / "obexd"
+    fake.write_text(f"""#!{sys.executable}
+import asyncio
+from dbus_fast.aio import MessageBus
+
+async def main():
+    bus = await MessageBus().connect()
+    await bus.request_name("org.bluez.obex")
+    await asyncio.Event().wait()
+
+asyncio.run(main())
+""")
+    fake.chmod(0o755)
+    monkeypatch.setattr(covers_module, "OBEXD", str(fake))
+    runtime = tmp_path / "runtime"
+    runtime.mkdir(mode=0o700)
+    obex = ObexDaemon(runtime)
+
+    async def scenario() -> None:
+        try:
+            await obex.start()
+        finally:
+            await obex.stop()
 
     asyncio.run(scenario())

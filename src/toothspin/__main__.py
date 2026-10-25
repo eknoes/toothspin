@@ -428,8 +428,8 @@ async def _run(args: argparse.Namespace) -> None:
         obex = ObexDaemon(Path(os.environ["XDG_RUNTIME_DIR"]))
         try:
             await obex.start()
-        except (OSError, RuntimeError, DBusError) as err:
-            logger.warning("No covers from the phones: obexd didn't start (%s)", err)
+        except (OSError, RuntimeError, DBusError, TimeoutError) as err:
+            logger.warning("No covers from the phones: obexd didn't start (%s)", err or "timed out")
             await obex.stop()
             obex = None
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
