@@ -472,3 +472,55 @@ def test_late_audio_is_counted_per_speaker_and_summed_up(tmp_path: Path, caplog)
     server._feeds.clear()  # noqa: SLF001
     server._track_sessions()  # noqa: SLF001  # Büro stops: 5 + 2 not yet warned about
     assert "Büro played for 0 min; 2 time(s) audio arrived too late to play (7 piece(s))" in caplog.text
+
+
+@pytest.mark.timeout(60)
+def test_bluetooth_bursts_dont_make_speakers_skip(tmp_path: Path, monkeypatch) -> None:  # noqa: ANN001
+    # Bluetooth hands over the phone's audio in bursts. A late burst must not
+    # move the stream's timeline: every speaker would skip ahead.
+    for name in ("_start_mdns_advertising", "_start_mdns_discovery"):
+        monkeypatch.setattr(
+            f"aiosendspin.server.server.SendspinServer.{name}", lambda *a, **k: asyncio.sleep(0)
+        )
+    asyncio.run(_bursts(tmp_path))
+
+
+async def _bursts(tmp_path: Path) -> None:
+    server = ToothSpinServer(tmp_path, "ToothSpin test", port=_free_port())
+    await server.start()
+    source = SendspinSource("Pixel (Bluetooth)", server.url, tmp_path / "phone")
+    await source.setup()
+    await server.pair_local(source)
+    kitchen = FakeSpeaker("Kitchen")
+    tasks = [asyncio.create_task(server.run()), asyncio.create_task(source.run())]
+
+    async def phone() -> None:
+        chunk = b"\x10\x00" * CAPTURE_FORMAT.channels * 960  # 20 ms
+        start = asyncio.get_running_loop().time()
+        for i in range(150):
+            # Every 10th chunk comes 30 ms late, the next ones right behind it.
+            due = start + i * 0.02 + (0.03 if i % 10 == 0 and i else 0)
+            await asyncio.sleep(max(0.0, due - asyncio.get_running_loop().time()))
+            await source.push(chunk, CAPTURE_FORMAT, source.client.now_us())
+
+    try:
+        await (await kitchen.build()).connect(server.url)
+        await _until(lambda: source.status().paired and len(server.players) == 1)
+        uri = speakers.source_uri(source.client.identity.peer_id)
+        await speakers.toggle(server, uri, kitchen.client_id, True, start_volume=20)
+        await _until(lambda: source.status().requested)
+        await phone()
+        await _until(lambda: len(kitchen.chunks) > 100)
+        frame = CAPTURE_FORMAT.channels * 2
+        jumps = [
+            later - (ts + size // frame * 1_000_000 // 48000)
+            for (ts, size), (later, _) in zip(kitchen.chunks, kitchen.chunks[1:])
+        ]
+        # Drift correction moves the timeline by a frame (21 us) at most.
+        assert max(abs(j) for j in jumps) < 1000, sorted(jumps)[-5:]
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        if kitchen.client:
+            await kitchen.client.disconnect()

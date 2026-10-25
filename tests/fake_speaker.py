@@ -40,6 +40,8 @@ class FakeSpeaker:
     show_artwork: bool = False
     """Like a speaker with a display for covers: takes the artwork role."""
     covers: list[bytes] = field(default_factory=list)
+    chunks: list[tuple[int, int]] = field(default_factory=list)
+    """(play timestamp, bytes) of each audio chunk, to check the timeline."""
     client: SendspinClient | None = None
     identity: Identity | None = None
     """Kept across builds, so building again is the same speaker coming back."""
@@ -96,8 +98,9 @@ class FakeSpeaker:
     def _on_stream_end(self, _roles: object) -> None:
         self.streams_ended += 1
 
-    def _on_audio(self, _timestamp_us: int, data: bytes, _fmt: object, _send_ahead: object) -> None:
+    def _on_audio(self, timestamp_us: int, data: bytes, _fmt: object, _send_ahead: object) -> None:
         self.audio_bytes += len(data)
+        self.chunks.append((timestamp_us, len(data)))
 
     def _on_command(self, payload) -> None:  # noqa: ANN001
         if payload.player is None:

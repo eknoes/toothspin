@@ -68,6 +68,11 @@ _NO_TIMING_REPORTED = "omitted required player timing fields"
 # Keep the delay from phone to speakers within this of where it started:
 # phone and speakers run on slightly different clocks.
 DRIFT_TOLERANCE_US = 20_000
+# Bluetooth hands over the phone's audio in bursts. A stream starting right at
+# the speakers' minimum lead falls below it whenever a burst comes late, and
+# aiosendspin then moves the whole timeline on: every speaker skips a few ms.
+# Starting this far ahead takes the bursts (drift correction keeps it there).
+BURST_RESERVE_US = 100_000
 # An input quiet for this long has stopped, e.g. the phone paused. Its
 # speakers' stream is then ended, as speakers left on an empty stream don't
 # play when audio comes back on it; the phone's next audio starts a new one
@@ -750,8 +755,13 @@ class ToothSpinServer:
         if route.target_delay_us is not None and route.delay_us is not None and len(pcm) > frame:
             pcm = correct_drift(pcm, frame, route.target_delay_us, route.delay_us)
         route.stream.prepare_audio(pcm, fmt)
+        start_us = None
+        if route.target_delay_us is None:
+            stream = route.stream
+            lead_us = stream._min_send_ahead_us()  # noqa: SLF001
+            start_us = stream.now_us() + lead_us + BURST_RESERVE_US
         try:
-            play_us = await route.stream.commit_audio()
+            play_us = await route.stream.commit_audio(play_start_us=start_us)
         except StreamStoppedError:
             route.stream = None
             return
