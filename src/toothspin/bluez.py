@@ -234,6 +234,17 @@ class BluetoothManager:
             Variant("q", max(0, min(127, level))),
         )
 
+    async def media_control(self, address: str, command: str) -> None:
+        """Send an AVRCP play/pause/next/previous to the phone with this address."""
+        if command not in ("play", "pause", "next", "previous"):
+            raise ValueError(command)
+        device = f"{self._adapter_path}/dev_{address.upper().replace(':', '_')}/"
+        for path in self._players:
+            if path.startswith(device):
+                await dbus.call(self._bus, BLUEZ, path, PLAYER, command.capitalize())
+                return
+        raise KeyError(address)
+
     def now_playing(self, address: str) -> NowPlaying | None:
         """AVRCP track info for the device with this address, if it has a player."""
         device = f"{self._adapter_path}/dev_{address.upper().replace(':', '_')}/"

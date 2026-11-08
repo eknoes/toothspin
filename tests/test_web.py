@@ -132,3 +132,24 @@ def test_speaker_groups_only_with_toothspins_own_server() -> None:
             assert not res.ok and "Kitchen" in (await res.json())["error"]
 
     asyncio.run(scenario())
+
+
+def test_media_control_endpoint() -> None:
+    class Phones:
+        calls: list[tuple[str, str]] = []
+
+        async def media_control(self, address: str, command: str) -> None:
+            if command == "eject":
+                raise ValueError(command)
+            self.calls.append((address, command))
+
+    async def scenario() -> None:
+        phones = Phones()
+        app = create_app(phones, None, 120)  # type: ignore[arg-type]
+        async with TestClient(TestServer(app)) as client:
+            res = await client.post("/api/devices/84:0f:4c:90:46:af/media/pause", json={})
+            assert res.ok and phones.calls == [("84:0f:4c:90:46:af", "pause")]
+            res = await client.post("/api/devices/84:0f:4c:90:46:af/media/eject", json={})
+            assert res.status == 404
+
+    asyncio.run(scenario())

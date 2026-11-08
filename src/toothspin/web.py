@@ -147,6 +147,19 @@ def create_app(
             )
         return web.json_response({"ok": True})
 
+    async def post_media(request: web.Request) -> web.Response:
+        address = request.match_info["address"]
+        command = request.match_info["command"]
+        try:
+            await bluetooth.media_control(address, command)
+        except (ValueError, KeyError):
+            raise web.HTTPNotFound from None
+        except (DBusError, TimeoutError) as err:
+            return web.json_response(
+                {"ok": False, "error": f"Media control failed: {err or 'timed out'}"}, status=502
+            )
+        return web.json_response({"ok": True})
+
     async def post_sendspin_name(request: web.Request) -> web.Response:
         name = (await _body(request, name=_name))["name"]
         try:
@@ -289,6 +302,7 @@ def create_app(
     app.router.add_get("/api/devices/{address}/cover", get_cover)
     app.router.add_post("/api/bluetooth/pairing", post_bt_pairing)
     app.router.add_post("/api/bluetooth/devices/{address}/{action}", post_bt_device)
+    app.router.add_post("/api/devices/{address}/media/{command}", post_media)
     app.router.add_post("/api/sendspin/{address}/pairing", post_sendspin_pairing)
     app.router.add_post("/api/sendspin/{address}/name", post_sendspin_name)
     app.router.add_post("/api/speakers/{address}/toggle", post_speaker_toggle)

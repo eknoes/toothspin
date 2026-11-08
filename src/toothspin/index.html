@@ -122,6 +122,8 @@
   .spk .hide { color: var(--muted); }
   .spk .move { color: var(--muted); }
   .spk .move:hover { color: var(--accent); }
+  .media { display: flex; gap: 8px; margin-top: 8px; }
+  .media .icon { line-height: 1; padding: 4px 10px; }
   .icon.muted { color: var(--danger); }
   @media (max-width: 520px) {
     /* Name on its own line, slider + volume + mute below. */
@@ -317,11 +319,21 @@ function renderAudio(d) {
   const track = np && np.title
     ? `<div class="track">${cover}<div><b>${esc(np.title)}</b>${np.artist ? ` — ${esc(np.artist)}` : ""}</div></div>`
     : "";
+  // Only phones with an AVRCP player can be controlled.
+  const playing = np && np.status === "playing";
+  const btn = (command, label, glyph) =>
+    `<button class="icon" data-media="${command}" data-addr="${esc(d.address)}"
+       aria-label="${label}" title="${label}">${glyph}</button>`;
+  const mediaControls = np && np.status
+    ? `<div class="media">${btn("previous", "Previous track", "&#x23EE;")}
+        ${playing ? btn("pause", "Pause", "&#x23F8;") : btn("play", "Play", "&#x25B6;")}
+        ${btn("next", "Next track", "&#x23ED;")}</div>`
+    : "";
   return `${track}<div><span class="dot ${ss && ss.signal ? "ok" : ""}"></span>
       ${ss && ss.signal ? "Playing" : "Silent"} · ${esc(d.audio.codec || "Bluetooth")} ·
       ${!ss || !ss.requested ? (standalone() ? "not on a speaker" : "not playing in Music Assistant")
         : ss.streaming ? (standalone() ? "streaming to speakers" : "streaming to Music Assistant")
-        : "starting stream…"}</div>`;
+        : "starting stream…"}</div>${mediaControls}`;
 }
 
 // Standalone: ToothSpin's own Sendspin server instead of Music Assistant.
@@ -765,6 +777,10 @@ function render() {
         post(url);
       }
     };
+  }
+  for (const b of $("devices").querySelectorAll("button[data-media]")) {
+    b.onclick = () => post(
+      `api/devices/${encodeURIComponent(b.dataset.addr)}/media/${b.dataset.media}`);
   }
   for (const b of $("devices").querySelectorAll("button[data-pair]")) {
     b.onclick = () => post(`api/sendspin/${encodeURIComponent(b.dataset.pair)}/pairing`);

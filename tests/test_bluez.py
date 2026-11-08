@@ -1,3 +1,4 @@
+import pytest
 from dbus_fast import Message, MessageType, Variant
 
 from toothspin.bluez import BluetoothManager, NowPlaying
@@ -369,3 +370,26 @@ def test_position_counts_on_while_playing_and_stops_on_pause(monkeypatch) -> Non
     )
     clock[0] += 100  # past the end: never beyond the duration
     assert manager.now_playing("84:0f:4c:90:46:af").position_ms == 60000
+
+
+def test_media_control(monkeypatch) -> None:
+    import asyncio
+    from toothspin import bluez
+
+    calls = []
+
+    async def fake_call(bus, destination, path, interface, member, *args):
+        calls.append((path, interface, member))
+
+    monkeypatch.setattr(bluez.dbus, "call", fake_call)
+    manager = BluetoothManager(bus=None)  # type: ignore[arg-type]
+    manager._players[PLAYER_PATH] = {"Status": "playing"}
+
+    for command, member in [("play", "Play"), ("pause", "Pause"),
+                            ("next", "Next"), ("previous", "Previous")]:
+        asyncio.run(manager.media_control("84:0f:4c:90:46:af", command))
+        assert calls[-1] == (PLAYER_PATH, "org.bluez.MediaPlayer1", member)
+    with pytest.raises(ValueError):
+        asyncio.run(manager.media_control("84:0f:4c:90:46:af", "eject"))
+    with pytest.raises(KeyError):
+        asyncio.run(manager.media_control("00:11:22:33:44:55", "play"))

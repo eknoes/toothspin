@@ -84,6 +84,13 @@ the transport is active), so a phone left at full volume doesn't blast the
 room. After that, whichever side changes is copied to the other, ignoring
 the echo of its own last write for a few seconds.
 
+## Media controls
+
+A phone that offers an AVRCP player gets previous, play/pause and next
+buttons on its card in the web UI. They call the matching method on the
+phone's `MediaPlayer1` (`POST /api/devices/{address}/media/{command}`), so
+the phone reacts as if a headset had been pressed.
+
 ## Covers
 
 Phones offer the track's cover over AVRCP's cover art protocol (BIP, an OBEX
