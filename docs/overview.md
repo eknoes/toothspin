@@ -210,7 +210,7 @@ library Music Assistant uses too:
 
 `source@v1` is young and still changing. ToothSpin pins `aiosendspin` to the
 version the stable Music Assistant ships: 10.2.1, as in 2.10.9 (2.10.7 has
-10.2.0, which works the same). ToothSpin 0.5.2 uses 10.3.0, which speaks the
+10.2.0, which works the same). ToothSpin 0.6.0 uses 10.3.0, which speaks the
 same Sendspin as 10.2.1 as a client; only the Standalone server side changes.
 
 - **Older Music Assistant:** up to 2.10.6 it ships aiosendspin 9.1.1, and

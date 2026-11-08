@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 (2026-11-08)
+
+### Features
+
+- **web:** Play, pause, next and previous buttons for the phone
+
+### Changes
+
+- Aiosendspin 10.3.0 (tested against Music Assistant 2.10.9)
+
+### Dependencies
+
+- CI: codeql-action 4.39.1, docker/login-action 4.7.0, setup-python 7.1.0
+- Ruff 0.17.3
+
 ## 0.5.1 (2026-10-25)
 
 ### Fixes
