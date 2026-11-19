@@ -72,6 +72,12 @@ On your own Linux machine. The host needs **BlueZ** (`bluetoothd`) with the
 dongle, and **no other Bluetooth audio stack** (a desktop PipeWire or
 PulseAudio would compete for the phones). The image brings the rest.
 
+First, replace the host's `/etc/bluetooth/main.conf` with
+[ours](https://github.com/eknoes/toothspin/blob/main/deploy/bluetooth/main.conf)
+and restart Bluetooth (`sudo systemctl restart bluetooth`). Without it,
+phones connect but never ask to confirm the pairing and drop again after
+a few seconds.
+
 ```bash
 docker run -d --name toothspin --restart unless-stopped \
   --network host \

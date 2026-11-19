@@ -120,10 +120,14 @@ step: [installation guide](https://eknoes.github.io/toothspin/install.html#home-
 
 ### With Docker or Podman
 
-The host needs **BlueZ** (`bluetoothd`) with the dongle, ideally with our
-[main.conf](deploy/bluetooth/main.conf) so phones see a speaker, and **no
+The host needs **BlueZ** (`bluetoothd`) with the dongle, our
+[main.conf](deploy/bluetooth/main.conf) installed (`deploy/bluetooth/install.sh`
+copies it to `/etc/bluetooth/main.conf` and restarts bluetoothd), and **no
 other Bluetooth audio stack** (a desktop PipeWire or PulseAudio would
-compete for the phones). The image brings everything else.
+compete for the phones). The image brings everything else. Without
+main.conf, phones connect but never ask to confirm the pairing and drop
+again after a few seconds, and TVs or transmitters may not list ToothSpin
+at all.
 
 ```bash
 docker build -t toothspin .
