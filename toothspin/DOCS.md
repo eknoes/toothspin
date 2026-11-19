@@ -91,8 +91,12 @@ port for `8080/tcp` (e.g. `8080`). The web interface is then also at
 
 ## Notes
 
-- Phones may show ToothSpin as a computer instead of a speaker. Audio works
-  either way.
+- The app uses the host's network and the `NET_ADMIN` capability (each
+  lowers its security rating by one point), only to set the Bluetooth
+  adapter's device class to "speaker": Android TV only lists speakers when
+  pairing. ToothSpin gives up the capability right after.
+- Phones paired before may keep showing ToothSpin as a computer until they
+  pair again. Audio works either way.
 - Removing a phone in ToothSpin also removes it from Music Assistant (with a
   token; otherwise remove it there yourself). App backups include each
   phone's Music Assistant pairing.

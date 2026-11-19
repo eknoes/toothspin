@@ -8,9 +8,15 @@ image: ghcr.io/eknoes/toothspin
 arch:
   - aarch64
   - amd64
-# No host network: Music Assistant (its App runs on the host) is reached via
-# the host's address on Home Assistant's internal network.
-# Uses the host's BlueZ (bluetoothd) over D-Bus; no raw Bluetooth access.
+# Bluetooth sockets only exist in the host's network namespace, and the
+# kernel only accepts class changes from a process with NET_ADMIN. Both are
+# for one thing: setting the adapter's device class to "speaker" (Android TV
+# hides anything else), which the read-only /etc/bluetooth can't do. The
+# service opens the socket as root, then drops every capability.
+host_network: true
+privileged:
+  - NET_ADMIN
+# Uses the host's BlueZ (bluetoothd) over D-Bus.
 host_dbus: true
 # Only to read the App's ingress port and port mapping, and to show the app
 # in the sidebar on its first start.
@@ -22,7 +28,12 @@ audio: true
 # adapter too, and to raise a notification when setup needs the user.
 homeassistant_api: true
 ingress: true
+# On the host network, so a fixed port would listen on the host; the
+# Supervisor picks a free one (the service reads it from its API).
+ingress_port: 0
 # Optional: the web interface on the network, without Home Assistant's login.
+# On the host network this isn't a mapping: the host port set here is the
+# one the service listens on.
 ports:
   8080/tcp: null
 panel_icon: mdi:home-sound-in

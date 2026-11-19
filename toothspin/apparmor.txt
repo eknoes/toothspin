@@ -14,6 +14,10 @@ profile toothspin flags=(attach_disconnected,mediate_deleted) {
   # Home Assistant's init (tini, root) passes the stop signal on to
   # ToothSpin, which no longer runs as root.
   capability kill,
+  # Only to open the kernel's Bluetooth management socket (it's trusted if
+  # the opener has it), which sets the adapter's device class; dropped with
+  # root right after.
+  capability net_admin,
 
   # Network: Music Assistant, Sendspin, mDNS, the web UI (TCP/UDP), D-Bus and
   # PipeWire (unix sockets), the kernel's netlink for interface lookups.
@@ -21,7 +25,8 @@ profile toothspin flags=(attach_disconnected,mediate_deleted) {
   network inet6,
   network unix,
   network netlink raw,
-  # The phones' covers: obexd connects to them itself (L2CAP).
+  # The phones' covers (obexd connects to them itself, L2CAP) and the
+  # management socket (raw HCI).
   network bluetooth,
 
   # The host's D-Bus: only BlueZ, and the bus itself (connecting, signal

@@ -17,6 +17,7 @@ ends.
 import asyncio
 import contextlib
 import logging
+import socket
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -27,7 +28,7 @@ from dbus_fast.aio import MessageBus
 from dbus_fast.errors import DBusError
 from dbus_fast.service import ServiceInterface, method
 
-from . import dbus
+from . import dbus, mgmt
 
 logger = logging.getLogger(__name__)
 
@@ -100,8 +101,13 @@ class BluetoothManager:
         allow_phone_connect: bool = True,
         pin: str | None = None,
         other_adapters_pairing: bool = True,
+        mgmt_socket: socket.socket | None = None,
+        as_app: bool = False,
     ) -> None:
         self._bus = bus
+        # Opened as root, for the device class (see mgmt.py); used once, in start().
+        self._mgmt_socket = mgmt_socket
+        self._as_app = as_app
         self._adapter_path = f"/org/bluez/{adapter}"
         self._alias = alias
         self._on_change = on_change or (lambda: None)
@@ -145,6 +151,11 @@ class BluetoothManager:
             f"arg0='{BLUEZ}'",
         )
         await self._reload()
+        # bluetoothd resets the class only while initialising the adapter,
+        # which is over now; we exit if that happens again (see `lost`).
+        await asyncio.to_thread(
+            mgmt.apply_class, self._mgmt_socket, self._adapter_path, self._as_app
+        )
 
         self._bus.export(AGENT_PATH, _Agent(self))
         manager = "org.bluez.AgentManager1"

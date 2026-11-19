@@ -28,8 +28,9 @@ INGRESS_PROXY_IP = "172.30.32.2"
 # The host, as seen from an App's container. The Music Assistant App runs on
 # the host network, so this is where ToothSpin finds it.
 HOST_IP = "172.30.32.1"
-# The web UI's port inside the container for the LAN; the App's Network
-# section maps it to a host port (off unless the user sets one).
+# The App's Network section entry for the web UI on the LAN. On the host
+# network there's no mapping: the host port the user sets is the one we bind
+# (off unless they set one).
 LAN_PORT = 8080
 
 # App option -> environment variable read by the service.
@@ -89,9 +90,9 @@ def _options_from_api() -> dict[str, Any] | None:
         return None
 
 
-async def app_info() -> tuple[int, str, bool]:
+async def app_info() -> tuple[int, str, int | None]:
     """The ingress port, our slug (Home Assistant's pages for the App are
-    named after it) and whether the user mapped the LAN port."""
+    named after it) and the port the user chose for the LAN, if any."""
     api = os.environ.get("SUPERVISOR_API", "http://supervisor")
     headers = {"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"}
     async with (
@@ -101,10 +102,11 @@ async def app_info() -> tuple[int, str, bool]:
         response.raise_for_status()
         data = await response.json(content_type=None)
     network = data["data"].get("network") or {}
+    lan_port = network.get(f"{LAN_PORT}/tcp")
     return (
         int(data["data"]["ingress_port"]),
         str(data["data"]["slug"]),
-        network.get(f"{LAN_PORT}/tcp") is not None,
+        int(lan_port) if lan_port else None,
     )
 
 

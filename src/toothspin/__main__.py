@@ -23,7 +23,7 @@ from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 from dbus_fast.errors import DBusError
 
-from . import audio_stack, ha, ha_audio, ma_pairing, privileges, setup_check
+from . import audio_stack, ha, ha_audio, ma_pairing, mgmt, privileges, setup_check
 from .audio_stack import AudioStack
 from .covers import Covers, ObexDaemon
 from .bluez import BluetoothManager, NowPlaying
@@ -389,7 +389,7 @@ async def _start_server(
     return server
 
 
-async def _run(args: argparse.Namespace) -> None:
+async def _run(args: argparse.Namespace, mgmt_socket: socket.socket | None = None) -> None:
     status = setup_check.Status(
         app=ha.running_as_app(),
         # Standalone has no Music Assistant to need a token for.
@@ -397,16 +397,16 @@ async def _run(args: argparse.Namespace) -> None:
         take_bluetooth_audio=args.take_bluetooth_audio,
     )
     ingress_port = None
-    lan = False
+    lan_port = None
     if status.app:
-        ingress_port, status.app_slug, lan = await ha.app_info()
-        # No host network, so no mDNS: Music Assistant's App runs on the host.
+        ingress_port, status.app_slug, lan_port = await ha.app_info()
+        # Music Assistant's App runs on the host; its address is known, no mDNS needed.
         if not args.ma_url:
             args.ma_url = f"http://{ha.HOST_IP}:8095"
         if not args.url:
             args.url = f"ws://{ha.HOST_IP}:8927/sendspin"
     if ingress_port:
-        ports = [ingress_port] + ([ha.LAN_PORT] if lan else [])
+        ports = [ingress_port] + ([lan_port] if lan_port else [])
     else:
         ports = [args.web_port]
     site = _Web(args.web_host, ports, ingress_port)
@@ -447,6 +447,7 @@ async def _run(args: argparse.Namespace) -> None:
         bus, adapter.name, alias=args.bt_name, on_change=on_bluetooth_change,
         allow_phone_connect=args.allow_phone_connect, pin=args.bt_pin or None,
         other_adapters_pairing=args.other_adapters_pairing == "accept",
+        mgmt_socket=mgmt_socket, as_app=status.app,
     )
     covers = Covers(bluetooth, obex) if obex else None
     backend: PlayerBackend | None
@@ -576,6 +577,15 @@ async def _run(args: argparse.Namespace) -> None:
             await audio.stop()
 
 
+def _open_mgmt_socket() -> socket.socket | None:
+    """The kernel's Bluetooth management socket, or None where unavailable."""
+    try:
+        return mgmt.open_socket()
+    except OSError as err:
+        logger.debug("No Bluetooth management socket: %s", err)
+        return None
+
+
 def main() -> None:
     as_app = ha.apply_options()
     args = _parse_args()
@@ -586,9 +596,11 @@ def main() -> None:
     if as_app:
         logger.info("Running as a Home Assistant App")
     runtime = Path(os.environ.get("XDG_RUNTIME_DIR", audio_stack.DEFAULT_RUNTIME))
+    # Needs CAP_NET_ADMIN when opened, so before dropping root.
+    mgmt_socket = _open_mgmt_socket()
     privileges.drop_root(args.data_dir, runtime)
     try:
-        asyncio.run(_run(args))
+        asyncio.run(_run(args, mgmt_socket))
     except KeyboardInterrupt:
         pass
 

@@ -12,7 +12,13 @@ arch:
 # Its own Sendspin server finds the speakers via mDNS and connects to them,
 # and they to it (port 8927): both need the host's network.
 host_network: true
-# Uses the host's BlueZ (bluetoothd) over D-Bus; no raw Bluetooth access.
+# Only to set the adapter's device class to "speaker" (Android TV hides
+# anything else), which the read-only /etc/bluetooth can't do: the kernel
+# only accepts it from a process with NET_ADMIN. The service sets it as root,
+# then drops every capability.
+privileged:
+  - NET_ADMIN
+# Uses the host's BlueZ (bluetoothd) over D-Bus.
 host_dbus: true
 # Only to read the App's ingress port and to show the app in the sidebar on
 # its first start.

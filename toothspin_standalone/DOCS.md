@@ -100,8 +100,11 @@ just the group.
 - This App uses the host's network: its Sendspin server finds the speakers
   via mDNS, and they connect to it on port 8927. Its web interface is only
   reachable through Home Assistant.
-- Phones may show ToothSpin as a computer instead of a speaker. Audio works
-  either way.
+- The `NET_ADMIN` capability (one point less in its security rating) is only
+  to set the Bluetooth adapter's device class to "speaker": Android TV only
+  lists speakers when pairing. ToothSpin gives it up right after.
+- Phones paired before may keep showing ToothSpin as a computer until they
+  pair again. Audio works either way.
 - App backups include each phone's pairing with ToothSpin's server.
 
 ## Support

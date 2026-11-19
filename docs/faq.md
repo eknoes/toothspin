@@ -114,8 +114,9 @@ connect like to any Bluetooth speaker.
 
 ### The phone shows ToothSpin as a computer {#computer}
 
-That's set in the host's Bluetooth configuration, which an App can't
-change. Audio works either way.
+The adapter's device class says "speaker": the Home Assistant Apps set it
+when they start, Docker installs through `main.conf`. Phones that paired
+before may keep the old icon until they pair again. Audio works either way.
 
 ### It's connected, but nothing plays {#no-sound}
 
