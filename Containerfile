@@ -25,6 +25,9 @@ ARG MODE=music-assistant
 # stands in for libcamera; the check fails the build should a new libcamera
 # soname bring the real one back. Upgrade first: the base image lags behind
 # Alpine's security fixes.
+# CI passes the day here: a cached layer would otherwise keep old packages,
+# with their known vulnerabilities, until this line changes.
+ARG ALPINE_UPDATES=""
 RUN apk mkpkg --output /tmp/no-camera.apk \
         --info name:toothspin-no-camera --info version:1-r0 --info arch:noarch \
         --info "description:Stands in for libcamera, PipeWire camera support is disabled" \

@@ -104,6 +104,9 @@ jobs:
         with:
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Today, so the image picks up Alpine's updates daily
+        id: day
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - name: Build the image (amd64) for scanning
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -116,6 +119,7 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
             EXTRAS=${{ matrix.flavour.extras }}
             MODE=${{ matrix.flavour.mode }}
+            ALPINE_UPDATES=${{ steps.day.outputs.day }}
           # Written here so the image job reuses these amd64 layers instead
           # of building them a second time.
           cache-from: type=gha,scope=${{ matrix.flavour.name }}
@@ -197,6 +201,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Today, so the image picks up Alpine's updates daily
+        id: day
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - name: Build (and push on main/tags)
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -206,6 +213,7 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
             EXTRAS=${{ matrix.flavour.extras }}
             MODE=${{ matrix.flavour.mode }}
+            ALPINE_UPDATES=${{ steps.day.outputs.day }}
           platforms: linux/amd64,linux/arm64
           push: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
