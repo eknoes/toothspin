@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.2 (2026-11-23)
+
+### Fixes
+
+- **bluetooth:** Set the adapter's class to speaker in the Home Assistant Apps
+
+### Documentation
+
+- main.conf is required for Docker and Podman
+
+### Dependencies
+
+- CI: codeql-action, docker/login-action 4.8.0, action-app-linter 2.21.2
+- Ruff 0.17.5
+
 ## 0.6.0 (2026-11-08)
 
 ### Features
