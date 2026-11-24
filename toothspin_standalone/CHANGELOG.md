@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1 (2026-11-24)
+
+### Features
+
+- **app:** Home Assistant entities in ToothSpin via its MQTT broker (#29)
+
+### Documentation
+
+- Home Assistant entities with Music Assistant too (#29)
+
 ## 0.7.0 (2026-11-24)
 
 ### Features
