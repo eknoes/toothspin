@@ -22,6 +22,8 @@ jobs:
           python-version: "3.14"
       - name: Install
         run: pip install -e '.[test]'
+      - name: Install an MQTT broker (tests/test_mqtt.py)
+        run: sudo apt-get install -y -qq --no-install-recommends mosquitto
       - name: Tests
         run: pytest -q
       - name: Security lint (ruff's bandit rules, see pyproject.toml)

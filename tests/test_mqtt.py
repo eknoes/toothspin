@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -179,6 +180,8 @@ def test_router_stop_takes_followers_off_first(monkeypatch) -> None:
 @pytest.fixture
 def broker():  # noqa: ANN201
     if shutil.which("mosquitto") is None:
+        if os.environ.get("CI"):
+            pytest.fail("CI installs mosquitto, but it isn't there")
         pytest.skip("needs mosquitto")
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
