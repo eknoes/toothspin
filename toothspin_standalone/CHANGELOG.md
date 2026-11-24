@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0 (2026-11-24)
+
+### Features
+
+- **mqtt:** Pairing and speakers per phone as Home Assistant entities (#29)
+- **app:** Home Assistant entities in ToothSpin Standalone via its MQTT broker (#29)
+- **web:** Rename 'Add phone' to 'Add device'
+
+### Fixes
+
+- **server:** Report speakers as stopped while the phone is quiet
+
+### Documentation
+
+- Home Assistant entities in ToothSpin Standalone (#29)
+
 ## 0.6.2 (2026-11-23)
 
 ### Fixes
