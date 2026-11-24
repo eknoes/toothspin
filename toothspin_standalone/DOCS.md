@@ -82,6 +82,13 @@ right one in the living room, can be one speaker: under **Speaker groups**
 (top right), make a group of them and name it. The phones' cards then show
 just the group.
 
+**In Home Assistant:** with an MQTT broker (the **Mosquitto broker** App
+and the MQTT integration), ToothSpin shows up as a device by itself, with
+a **Pair a phone** button. Each paired phone gets its own device with a
+**Speaker** dropdown, which plays the phone on just that speaker (or
+**Off**), and a switch per speaker, which adds that speaker to the phone's
+group or takes it out. Use them on a dashboard or in automations.
+
 ## Configuration
 
 | Option | Description |

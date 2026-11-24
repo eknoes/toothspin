@@ -29,6 +29,10 @@ audio: true
 # Only to check whether Home Assistant's Bluetooth integration uses the
 # adapter too, and to raise a notification when setup needs the user.
 homeassistant_api: true
+# Pairing and the phones' speakers as entities in Home Assistant, over its
+# MQTT broker (e.g. the Mosquitto App) if there is one.
+services:
+  - mqtt:want
 ingress: true
 # On the host network: a free port the Supervisor picks, which only answers
 # its ingress proxy.
