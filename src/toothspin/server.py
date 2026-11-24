@@ -74,8 +74,9 @@ DRIFT_TOLERANCE_US = 20_000
 # Starting this far ahead takes the bursts (drift correction keeps it there).
 BURST_RESERVE_US = 100_000
 # An input quiet for this long has stopped, e.g. the phone paused. Its
-# speakers' stream is then ended, as speakers left on an empty stream don't
-# play when audio comes back on it; the phone's next audio starts a new one
+# speakers are then stopped: speakers left on an empty stream don't play when
+# audio comes back on it, and they'd keep reporting that they play (e.g. to
+# Home Assistant). They stay the phone's: its next audio starts a new stream
 # on the same speakers.
 IDLE_STREAM_S = 2.0
 # A speaker that leaves for these reasons was told to (by its user, or by
@@ -199,7 +200,7 @@ class ToothSpinServer:
                 self._update_metadata()
                 await self._update_covers()
                 self._track_sessions()
-                self._end_idle_streams()
+                await self._end_idle_streams()
                 try:
                     await self._keep_rooms()
                 except Exception:
@@ -569,12 +570,12 @@ class ToothSpinServer:
             else:
                 logger.info("%s played for %.0f min without dropouts", session.name, minutes)
 
-    def _end_idle_streams(self) -> None:
+    async def _end_idle_streams(self) -> None:
         now = time.monotonic()
-        for source_id, feed in self._feeds.items():
+        for source_id, feed in list(self._feeds.items()):
             if now - feed.last_audio < IDLE_STREAM_S:
                 continue
-            for route in feed.routes:
+            for route in list(feed.routes):
                 if route.stream is not None:
                     source = self._server.get_client(source_id) if self._server else None
                     names = ", ".join(c.name for c in route.group.clients if _is_player(c))
@@ -582,8 +583,9 @@ class ToothSpinServer:
                         "%s stopped playing; %s wait until it plays again",
                         source.name if source else "The phone", names,
                     )
-                    route.group.stop_stream()
                     route.stream = None
+                    # Not stop_stream(): that leaves the group's state "playing".
+                    await route.group.stop(keep_progress=True)
 
     # --- track info ---
 

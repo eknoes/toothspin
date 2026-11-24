@@ -175,14 +175,18 @@ async def _long_pause(tmp_path: Path) -> None:
         await play(1.0)
         await _until(lambda: kitchen.audio_bytes > 0)
         assert kitchen.streams_started == 1
+        await _until(lambda: kitchen.playback_state == "playing")
 
         await _until(lambda: kitchen.streams_ended == 1)
+        # The speaker reports it stopped (e.g. to Home Assistant), not playing.
+        await _until(lambda: kitchen.playback_state == "stopped")
         # Still chosen: the phone's next audio plays there without asking.
         assert speakers.speakers(server.players)[0].playing_uri == uri
         received = kitchen.audio_bytes
         await play(1.0)
         await _until(lambda: kitchen.audio_bytes > received)
         assert kitchen.streams_started == 2
+        await _until(lambda: kitchen.playback_state == "playing")
     finally:
         for task in tasks:
             task.cancel()

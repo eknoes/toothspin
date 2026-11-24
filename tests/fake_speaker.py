@@ -33,6 +33,8 @@ class FakeSpeaker:
     audio_bytes: int = 0
     streams_started: int = 0
     streams_ended: int = 0
+    playback_state: str | None = None
+    """The group's playback state, as the server last reported it."""
     volumes: list[int] = field(default_factory=list)
     show_metadata: bool = False
     """Like a speaker with a display: takes the metadata role."""
@@ -79,6 +81,7 @@ class FakeSpeaker:
         self.client.add_stream_end_listener(self._on_stream_end)
         self.client.add_server_command_listener(self._on_command)
         self.client.add_metadata_listener(self._on_metadata)
+        self.client.add_group_update_listener(self._on_group_update)
         self.client.add_artwork_listener(lambda _channel, data: self.covers.append(data))
         return self.client
 
@@ -91,6 +94,11 @@ class FakeSpeaker:
         metadata = payload.metadata
         if metadata is not None and not isinstance(metadata.title, UndefinedField):
             self.titles.append(metadata.title)
+
+    def _on_group_update(self, payload) -> None:  # noqa: ANN001
+        state = getattr(payload, "playback_state", None)
+        if state is not None and not isinstance(state, UndefinedField):
+            self.playback_state = state.value
 
     def _on_stream_start(self, _message: object) -> None:
         self.streams_started += 1
