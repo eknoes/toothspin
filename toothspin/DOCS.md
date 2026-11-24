@@ -69,6 +69,43 @@ them yet: Sendspin doesn't carry them for an input.
 **Without a token:** play the input from Music Assistant: select a player,
 open **Browse**, pick the phone's input and press **Play**.
 
+## In Home Assistant
+
+With the **Mosquitto broker** App and the **MQTT** integration set up,
+ToothSpin adds its own devices to Home Assistant by itself (restart
+ToothSpin once if you install the broker afterwards):
+
+- **ToothSpin**, with a **Pair a device** button, which opens the pairing
+  window like **Add device**, and a **Pairing** sensor that's on while it's
+  open.
+- **One device per paired phone**, with the Music Assistant token:
+  - a **Speaker** dropdown, which plays the phone on just that speaker, or
+    on none (**Off**). While it plays on several, it shows **Several
+    speakers**.
+  - a switch per speaker, which adds that speaker to the phone's group or
+    takes it out. A speaker that can't play in sync with the group's other
+    speakers is unavailable.
+
+They do what the buttons on the phone's card do: both always show the same.
+Hidden speakers are left out. Removing a phone in ToothSpin removes its
+device too. The speakers themselves are in Home Assistant already, through
+Music Assistant's integration.
+
+Use them on a dashboard or in automations, e.g. to play Pixel on the
+kitchen speaker with an NFC tag:
+
+```yaml
+triggers:
+  - trigger: tag
+    tag_id: kitchen
+actions:
+  - action: select.select_option
+    target:
+      entity_id: select.pixel_speaker
+    data:
+      option: Kitchen
+```
+
 ## Configuration
 
 | Option | Description |

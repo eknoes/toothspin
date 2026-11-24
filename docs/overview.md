@@ -208,11 +208,13 @@ library Music Assistant uses too:
 
 ## Home Assistant entities
 
-In standalone mode, ToothSpin publishes its entities with
+ToothSpin publishes its entities with
 [MQTT discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery).
 As an App it asks the Supervisor for Home Assistant's broker
 (`services: mqtt:want`); in a container `MQTT_URL` names one (`mqtt://` or
-`mqtts://`, `off` turns it off).
+`mqtts://`, `off` turns it off). The speakers come from the same backend as
+the web UI's: Music Assistant's players (only with its token; without,
+there's only pairing), or the standalone server's speakers and groups.
 
 - Everything sits under one node, `toothspin_<adapter MAC>`: discovery
   configs at `homeassistant/<component>/<node>/<object>/config`, states and

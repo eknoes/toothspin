@@ -189,7 +189,7 @@ are optional:
 | `ALLOW_PHONE_CONNECT` | `true` | `false`: phones only connect via the web UI's **Connect** |
 | `OTHER_ADAPTERS_PAIRING` | `accept` | `refuse`: no device can pair with the host's other Bluetooth adapters ([why](https://eknoes.github.io/toothspin/faq.html#other-adapters)) |
 | `BT_PAIRING_SECONDS` | `120` | how long **Add device** keeps pairing open |
-| `MQTT_URL` | – (as an App: Home Assistant's broker) | e.g. `mqtt://user:password@192.168.178.91:1883` (`mqtts://` for TLS): pairing button, speaker dropdown and speaker switches per phone in Home Assistant, via MQTT discovery; `off` turns it off |
+| `MQTT_URL` | – (as an App: Home Assistant's broker) | e.g. `mqtt://user:password@192.168.178.91:1883` (`mqtts://` for TLS): pairing button, speaker dropdown and speaker switches per phone (with Music Assistant: needs `MA_TOKEN`) in Home Assistant, via MQTT discovery; `off` turns it off |
 | `WEB_PORT` | `8080` | |
 | `LOG_LEVEL` | `INFO` | |
 
