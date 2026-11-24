@@ -88,6 +88,13 @@ def test_hidden_and_same_named_speakers() -> None:
     assert options == [OFF, "Echo", "Echo (2)", "Loud"]
 
 
+def test_configs_have_one_kind_of_availability() -> None:
+    entities = build(NODE, [PHONE], speaker_list(player("kitchen")), True, False)
+    for payload in entities.configs.values():
+        parsed = json.loads(payload)
+        assert ("availability" in parsed) != ("availability_topic" in parsed)
+
+
 def test_speakers_stay_while_the_backend_is_down() -> None:
     entities = build(NODE, [PHONE], speaker_list(player("kitchen")), False, False)
     assert entities.states[f"{BASE}/{A}/available"] == "offline"

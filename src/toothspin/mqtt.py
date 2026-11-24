@@ -157,7 +157,9 @@ def build(
 
     def add(component: str, object_id: str, config: dict[str, Any]) -> None:
         config = {"unique_id": f"{node}_{object_id}", "origin": origin, **config}
-        config.setdefault("availability_topic", online)
+        # Home Assistant takes one or the other, never both.
+        if "availability" not in config:
+            config["availability_topic"] = online
         topic = f"{DISCOVERY_PREFIX}/{component}/{node}/{object_id}/config"
         entities.configs[topic] = json.dumps(config, sort_keys=True)
 
