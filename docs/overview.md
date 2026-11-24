@@ -206,6 +206,30 @@ library Music Assistant uses too:
   run next to Music Assistant's Sendspin integration, which wants the same
   port and speakers.
 
+## Home Assistant entities
+
+In standalone mode, ToothSpin publishes its entities with
+[MQTT discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery).
+As an App it asks the Supervisor for Home Assistant's broker
+(`services: mqtt:want`); in a container `MQTT_URL` names one (`mqtt://` or
+`mqtts://`, `off` turns it off).
+
+- Everything sits under one node, `toothspin_<adapter MAC>`: discovery
+  configs at `homeassistant/<component>/<node>/<object>/config`, states and
+  commands under `toothspin/<node>/`. Configs and states are retained.
+- `toothspin/<node>/status` is `online`, and `offline` through the last
+  will. A phone's entities also go unavailable while the speakers aren't
+  known yet; a speaker's switch while that speaker can't be grouped with
+  the ones the phone plays on.
+- On Home Assistant's birth message (`homeassistant/status` = `online`),
+  ToothSpin sends everything again. At startup it reads the retained
+  configs under its node and deletes those of phones and speakers that are
+  gone.
+- The dropdown's options are the speakers' names (made unique); **Several
+  speakers** only shows the state and does nothing when picked.
+- Commands go through the same routing as the web UI's buttons, one after
+  another; of quick clicks on the same speaker, the last one wins.
+
 ## Versions
 
 `source@v1` is young and still changing. ToothSpin pins `aiosendspin` to the

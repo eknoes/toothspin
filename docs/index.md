@@ -38,7 +38,7 @@ that ships with Music Assistant 2.10.7.
   plays on, with title, artist and cover of what it plays.
 - ToothSpin Standalone: the same without Music Assistant, on Sendspin
   speakers, with fixed speaker groups and track info on speakers with a
-  display.
+  display, and pairing and speakers per phone as Home Assistant entities.
 - Pairing only while you open the pairing window. There is no guest mode.
 
 ## Not working yet

@@ -82,12 +82,41 @@ right one in the living room, can be one speaker: under **Speaker groups**
 (top right), make a group of them and name it. The phones' cards then show
 just the group.
 
-**In Home Assistant:** with an MQTT broker (the **Mosquitto broker** App
-and the MQTT integration), ToothSpin shows up as a device by itself, with
-a **Pair a device** button. Each paired phone gets its own device with a
-**Speaker** dropdown, which plays the phone on just that speaker (or
-**Off**), and a switch per speaker, which adds that speaker to the phone's
-group or takes it out. Use them on a dashboard or in automations.
+## In Home Assistant
+
+With the **Mosquitto broker** App and the **MQTT** integration set up,
+ToothSpin adds its own devices to Home Assistant by itself (restart
+ToothSpin once if you install the broker afterwards):
+
+- **ToothSpin**, with a **Pair a device** button, which opens the pairing
+  window like **Add device**, and a **Pairing** sensor that's on while it's
+  open.
+- **One device per paired phone**, with
+  - a **Speaker** dropdown, which plays the phone on just that speaker, or
+    on none (**Off**). While it plays on several, it shows **Several
+    speakers**.
+  - a switch per speaker, which adds that speaker to the phone's group or
+    takes it out. A speaker that can't play in sync with the group's other
+    speakers is unavailable.
+
+They do what the buttons on the phone's card do: both always show the same.
+Speaker groups show as one speaker, and hidden speakers are left out.
+Removing a phone in ToothSpin removes its device too.
+
+Use them on a dashboard or in automations, e.g. to play Pixel on the
+kitchen speaker with an NFC tag:
+
+```yaml
+triggers:
+  - trigger: tag
+    tag_id: kitchen
+actions:
+  - action: select.select_option
+    target:
+      entity_id: select.pixel_speaker
+    data:
+      option: Kitchen
+```
 
 ## Configuration
 

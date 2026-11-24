@@ -195,6 +195,18 @@ speaker or its amplifier.
 In standalone mode there's no Music Assistant to cap it: use **Maximum
 start volume**, or limit it on the speaker or its amplifier.
 
+### Can I control it from Home Assistant? {#home-assistant-entities}
+
+In [standalone mode]({{ '/install.html#standalone' | relative_url }}), yes:
+with an MQTT broker (the **Mosquitto broker** App and the **MQTT**
+integration), ToothSpin Standalone adds a **Pair a device** button and,
+per phone, a **Speaker** dropdown and a switch per speaker to Home
+Assistant. With Docker or Podman, point `MQTT_URL` at the broker Home
+Assistant uses, e.g. `mqtt://user:password@192.168.1.10:1883`.
+
+With Music Assistant, its speakers are in Home Assistant already, through
+Music Assistant's integration.
+
 ### Can I take phone calls through it? {#calls}
 
 No. ToothSpin only receives music, no calls.
