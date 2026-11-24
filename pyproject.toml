@@ -31,7 +31,7 @@ codecs = ["aiosendspin[source]==10.3.0"]
 # Standalone mode, ToothSpin's own Sendspin server (PyAV, numpy, Pillow: big).
 server = ["aiosendspin[server]==10.3.0"]
 test = [
-  "pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==10.3.0", "numpy>=1.26", "ruff==0.17.5",
+  "pytest>=8", "pytest-timeout>=2", "aiosendspin[server]==10.3.0", "numpy>=1.26", "ruff==0.17.6",
 ]
 
 [project.scripts]
