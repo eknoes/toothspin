@@ -51,7 +51,7 @@ token step below); with Docker or Podman, use the image
    **Settings → Devices & services → Bluetooth**, **ignore** it if it's
    under *Discovered*, or **disable** it if it was added.
 5. **Start ToothSpin** and open it from the sidebar.
-6. **Add a phone:** press **Add phone** and connect to "ToothSpin" in the
+6. **Add a device:** press **Add device** and connect to "ToothSpin" in the
    phone's Bluetooth settings. Play something and switch on a speaker.
 
 If anything is missing, **Finish setup** at the top of the app lists what to

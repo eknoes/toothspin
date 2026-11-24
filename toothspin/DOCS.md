@@ -41,7 +41,7 @@ itself once that's fixed.
 
 ## Usage
 
-**Add a phone:** press **Add phone**, then connect to "ToothSpin" in the
+**Add a device:** press **Add device**, then connect to "ToothSpin" in the
 phone's Bluetooth settings within two minutes.
 
 **Pair with Music Assistant:** each phone becomes its own input, e.g.

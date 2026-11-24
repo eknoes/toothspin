@@ -58,7 +58,7 @@ itself once that's fixed.
 
 ## Usage
 
-**Add a phone:** press **Add phone**, then connect to "ToothSpin" in the
+**Add a device:** press **Add device**, then connect to "ToothSpin" in the
 phone's Bluetooth settings within two minutes.
 
 **Play:** connect the phone (by itself, or with **Connect** on its card),
@@ -84,7 +84,7 @@ just the group.
 
 **In Home Assistant:** with an MQTT broker (the **Mosquitto broker** App
 and the MQTT integration), ToothSpin shows up as a device by itself, with
-a **Pair a phone** button. Each paired phone gets its own device with a
+a **Pair a device** button. Each paired phone gets its own device with a
 **Speaker** dropdown, which plays the phone on just that speaker (or
 **Off**), and a switch per speaker, which adds that speaker to the phone's
 group or takes it out. Use them on a dashboard or in automations.

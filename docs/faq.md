@@ -108,7 +108,7 @@ so only use it at home.
 
 ### My phone doesn't find ToothSpin {#not-found}
 
-Phones can only pair while pairing is open: press **Add phone** in
+Phones can only pair while pairing is open: press **Add device** in
 ToothSpin, then search on the phone within two minutes. Paired phones
 connect like to any Bluetooth speaker.
 

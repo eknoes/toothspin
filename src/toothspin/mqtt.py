@@ -164,7 +164,7 @@ def build(
         entities.configs[topic] = json.dumps(config, sort_keys=True)
 
     add("button", "pairing", {
-        "name": "Pair a phone",
+        "name": "Pair a device",
         "icon": "mdi:bluetooth-connect",
         "command_topic": f"{base}/cmd/pairing",
         "device": bridge_device,

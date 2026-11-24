@@ -724,9 +724,9 @@ function render() {
     : bt.pin_pairing
       ? `<span class="muted">Phones can pair any time: connect to <b>${esc(bt.name)}</b> and enter the PIN
          from ToothSpin's configuration. Phones that don't ask for one need the pairing window.</span>`
-      : `<span class="muted">To add a phone, make ToothSpin visible for two minutes.</span>`;
+      : `<span class="muted">To add a device, make ToothSpin visible for two minutes.</span>`;
   const btn = $("bt-pairing-btn");
-  btn.textContent = pairing ? "Stop pairing" : "Add phone";
+  btn.textContent = pairing ? "Stop pairing" : "Add device";
   btn.className = pairing ? "" : "primary";
   btn.onclick = () => post("api/bluetooth/pairing", {open: !pairing});
 

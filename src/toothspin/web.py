@@ -571,7 +571,7 @@ def _setup_state(
         todo.append({
             "kind": "hint",
             "title": "Pair your first phone",
-            "text": f"Press **Add phone** below, then connect to “{bluetooth.alias}” "
+            "text": f"Press **Add device** below, then connect to “{bluetooth.alias}” "
             "in the phone's Bluetooth settings.",
             "steps": [],
         })
