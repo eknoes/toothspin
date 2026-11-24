@@ -10,6 +10,7 @@ read back from its player state, never stored here.
 from __future__ import annotations
 
 import asyncio
+import itertools
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -316,3 +317,44 @@ class Volumes:
             restore = self.emulated_mutes.pop(player_id)
             await self._backend.call("players/cmd/volume_set", player_id=player_id, volume_level=restore)
         await self._backend.refresh()
+
+
+class Router:
+    """Speaker changes from the web UI and Home Assistant, one after another.
+
+    Quick clicks on several speakers arrive nearly at once; each plans from
+    the grouping the one before left, not all from the same old one.
+    """
+
+    def __init__(self, backend: PlayerBackend, start_volume: int = 100) -> None:
+        self._backend = backend
+        self._start_volume = start_volume
+        self.lock = asyncio.Lock()
+        self._tickets = itertools.count()
+        self._latest: dict[tuple[str, str], int] = {}
+
+    async def toggle(self, uri: str, player_id: str, on: bool) -> bool:
+        """Switch a speaker on or off for ``uri``; False if a newer click superseded it.
+
+        Only the latest click on a speaker matters: one still waiting behind
+        a slow request is skipped once a newer one arrives.
+        """
+        key = (uri, player_id)
+        ticket = self._latest[key] = next(self._tickets)
+        async with self.lock:
+            if self._latest[key] != ticket:
+                return False
+            await toggle(self._backend, uri, player_id, on, self._start_volume)
+        return True
+
+    async def move(self, uri: str, player_id: str) -> None:
+        async with self.lock:
+            await move(self._backend, uri, player_id, self._start_volume)
+
+    async def stop(self, uri: str) -> None:
+        """Take ``uri`` off every speaker, followers first so no leader hands it on."""
+        async with self.lock:
+            await self._backend.refresh()
+            playing = [s for s in speakers(self._backend.players) if s.playing_uri == uri]
+            for speaker in sorted(playing, key=lambda s: s.synced_to is None):
+                await toggle(self._backend, uri, speaker.player_id, False)

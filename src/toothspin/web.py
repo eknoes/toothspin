@@ -7,8 +7,6 @@ Supervisor's ingress proxy may reach.
 
 from __future__ import annotations
 
-import asyncio
-import itertools
 import json
 import logging
 from dataclasses import asdict
@@ -44,8 +42,11 @@ def create_app(
     status: setup_check.Status | None = None,
     take_bluetooth_audio: Callable[[], Awaitable[None]] | None = None,
     covers: Covers | None = None,
+    router: speakers.Router | None = None,
 ) -> web.Application:
     volumes = speakers.Volumes(backend) if backend else None
+    if router is None and backend is not None:
+        router = speakers.Router(backend, start_volume)
     # Fixed speaker groups: only ToothSpin's own server has them.
     rooms = backend if hasattr(backend, "save_room") else None
 
@@ -168,41 +169,27 @@ def create_app(
             raise web.HTTPNotFound from None
         return web.json_response({"ok": True})
 
-    # Quick clicks on several speakers arrive nearly at once; each plans from
-    # the grouping the one before left, not all from the same old one.
-    routing = asyncio.Lock()
-    tickets = itertools.count()
-    latest: dict[tuple[str, str], int] = {}
-
     async def post_speaker_toggle(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
-        if receiver is None or backend is None:
+        if receiver is None or router is None:
             raise web.HTTPNotFound
         body = await _body(request, player_id=_id, on=_bool)
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
-        player_id = body["player_id"]
-        # Only the latest click on a speaker matters: one still waiting
-        # behind a slow request is skipped once a newer one arrives.
-        key = (uri, player_id)
-        ticket = latest[key] = next(tickets)
         try:
-            async with routing:
-                if latest[key] != ticket:
-                    return web.json_response({"ok": True, "superseded": True})
-                await speakers.toggle(backend, uri, player_id, body["on"], start_volume)
+            if not await router.toggle(uri, body["player_id"], body["on"]):
+                return web.json_response({"ok": True, "superseded": True})
         except (BackendError, TimeoutError) as err:
             return _backend_error(err)
         return web.json_response({"ok": True})
 
     async def post_speaker_move(request: web.Request) -> web.Response:
         receiver = receivers.get(request.match_info["address"])
-        if receiver is None or backend is None:
+        if receiver is None or router is None:
             raise web.HTTPNotFound
         body = await _body(request, player_id=_id)
         uri = speakers.source_uri(receiver.source.client.identity.peer_id)
         try:
-            async with routing:
-                await speakers.move(backend, uri, body["player_id"], start_volume)
+            await router.move(uri, body["player_id"])
         except (BackendError, TimeoutError) as err:
             return _backend_error(err)
         return web.json_response({"ok": True})
@@ -235,7 +222,7 @@ def create_app(
             raise web.HTTPNotFound
         body = await _body(request, name=_name, members=_ids)
         try:
-            async with routing:
+            async with router.lock:
                 await rooms.save_room(request.match_info.get("room_id"), body["name"], body["members"])
         except BackendError as err:
             return _backend_error(err)
@@ -245,7 +232,7 @@ def create_app(
         if rooms is None:
             raise web.HTTPNotFound
         try:
-            async with routing:
+            async with router.lock:
                 await rooms.delete_room(request.match_info["room_id"])
         except BackendError as err:
             return _backend_error(err)
