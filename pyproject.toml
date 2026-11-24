@@ -16,6 +16,8 @@ dependencies = [
     # The default PCM codec needs no extras; FLAC/Opus need the "codecs" extra.
     "aiosendspin==10.3.0",
     "dbus-fast==5.2.0",
+    # Home Assistant's entities (MQTT discovery).
+    "aiomqtt==2.5.1",
 ]
 
 [project.urls]

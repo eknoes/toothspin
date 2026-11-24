@@ -223,6 +223,23 @@ async def dismiss(notification_id: str) -> None:
     await _service("persistent_notification", "dismiss", {"notification_id": notification_id})
 
 
+async def mqtt_service() -> dict[str, Any] | None:
+    """The MQTT broker Home Assistant provides (e.g. the Mosquitto App), if any.
+
+    Needs ``services: [mqtt:want]``; without a broker the Supervisor answers 400.
+    """
+    headers = {"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"}
+    async with (
+        aiohttp.ClientSession() as session,
+        session.get(f"{_api()}/services/mqtt", headers=headers) as response,
+    ):
+        if response.status in (400, 403, 404):
+            return None
+        response.raise_for_status()
+        data = (await response.json(content_type=None)).get("data") or {}
+    return data or None
+
+
 def _api() -> str:
     return os.environ.get("SUPERVISOR_API", "http://supervisor")
 

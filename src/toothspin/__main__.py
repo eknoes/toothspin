@@ -23,7 +23,7 @@ from dbus_fast import BusType
 from dbus_fast.aio import MessageBus
 from dbus_fast.errors import DBusError
 
-from . import audio_stack, ha, ha_audio, ma_pairing, mgmt, privileges, setup_check
+from . import audio_stack, ha, ha_audio, ma_pairing, mgmt, mqtt, privileges, setup_check, speakers
 from .audio_stack import AudioStack
 from .covers import Covers, ObexDaemon
 from .bluez import BluetoothManager, NowPlaying
@@ -122,6 +122,11 @@ def _parse_args() -> argparse.Namespace:
         "--bundled-pipewire", action=argparse.BooleanOptionalAction,
         default=env("BUNDLED_PIPEWIRE", "0") == "1",
         help="Start PipeWire + WirePlumber ourselves (the container image does this)",
+    )
+    parser.add_argument(
+        "--mqtt-url", default=env("MQTT_URL"),
+        help="MQTT broker for Home Assistant's entities, e.g. mqtt://user:password@host:1883 "
+        "(as an App: Home Assistant's own broker; off: none)",
     )
     parser.add_argument("--log-level", default=env("LOG_LEVEL", "INFO"))
     args = parser.parse_args()
@@ -389,6 +394,33 @@ async def _start_server(
     return server
 
 
+async def _mqtt_broker(url: str | None, app: bool) -> mqtt.Broker | None:
+    """Where to publish Home Assistant's entities: MQTT_URL, else (as an App)
+    Home Assistant's broker, else nowhere."""
+    if url and url.strip().lower() == "off":
+        return None
+    if url:
+        try:
+            return mqtt.broker_from_url(url)
+        except ValueError as err:
+            raise SystemExit(f"MQTT_URL: {err}") from err
+    if not app:
+        return None
+    try:
+        service = await ha.mqtt_service()
+    except (aiohttp.ClientError, OSError) as err:
+        logger.warning("Couldn't ask Home Assistant for its MQTT broker: %s", err)
+        return None
+    if service is None:
+        logger.info("No MQTT broker in Home Assistant (e.g. the Mosquitto App): no entities there")
+        return None
+    return mqtt.Broker(
+        host=service["host"], port=int(service.get("port") or 1883),
+        username=service.get("username") or None, password=service.get("password") or None,
+        tls=bool(service.get("ssl")),
+    )
+
+
 async def _run(args: argparse.Namespace, mgmt_socket: socket.socket | None = None) -> None:
     status = setup_check.Status(
         app=ha.running_as_app(),
@@ -497,9 +529,10 @@ async def _run(args: argparse.Namespace, mgmt_socket: socket.socket | None = Non
     reconnect_file = args.data_dir / RECONNECT_FILE
     reconnect = asyncio.create_task(_reconnect_after_restart(bluetooth, reconnect_file))
 
+    router = speakers.Router(backend, args.start_volume) if backend else None
     await site.serve(
         create_app(
-            bluetooth, receivers, args.pairing_seconds, backend, ingress_port=ingress_port,
+            bluetooth, receivers, args.pairing_seconds, backend, ingress_port=ingress_port, router=router,
             start_volume=args.start_volume, mode=args.mode, covers=covers,
             auto_pairing=args.mode == "music-assistant" and backend is not None,
             status=status,
@@ -530,6 +563,20 @@ async def _run(args: argparse.Namespace, mgmt_socket: socket.socket | None = Non
     if audio:
         tasks.append(asyncio.create_task(audio.exited.wait()))
     covers_task = asyncio.create_task(covers.run()) if covers else None
+    broker = await _mqtt_broker(args.mqtt_url, status.app)
+    mqtt_task = None
+    if broker is not None:
+        bridge = mqtt.MqttBridge(
+            broker, bluetooth, receivers, backend, router, args.pairing_seconds,
+            configuration_url=f"homeassistant://hassio/ingress/{status.app_slug}"
+            if status.app and status.app_slug else None,
+        )
+        mqtt_task = asyncio.create_task(bridge.run())
+        # Optional, like speaker control: a crash is logged, the rest goes on.
+        mqtt_task.add_done_callback(
+            lambda t: t.cancelled() or t.exception() is None
+            or logger.error("MQTT bridge crashed", exc_info=t.exception())
+        )
     backend_task = asyncio.create_task(backend.run()) if backend else None
     if backend:
         volume_sync = VolumeSync(bluetooth, receivers, backend, args.start_volume)
@@ -561,7 +608,7 @@ async def _run(args: argparse.Namespace, mgmt_socket: socket.socket | None = Non
         for task in tasks:
             task.cancel()
         watch.cancel()
-        for task in (version_watch, audio_watch):
+        for task in (version_watch, audio_watch, mqtt_task):
             if task:
                 task.cancel()
         # Sources say goodbye before our own server (if any) goes away.
